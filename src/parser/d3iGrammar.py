@@ -1,4 +1,4 @@
-# Generated from ./parser/grammar/d3iGrammar.g4 by ANTLR 4.13.2
+# Generated from ./src/parser/grammar/d3iGrammar.g4 by ANTLR 4.13.2
 # encoding: utf-8
 from antlr4 import *
 from io import StringIO
@@ -354,6 +354,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitD3i" ):
                 listener.exitD3i(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitD3i" ):
+                return visitor.visitD3i(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -420,6 +426,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitDirective" ):
                 listener.exitDirective(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitDirective" ):
+                return visitor.visitDirective(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -485,6 +497,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitDomain" ):
                 listener.exitDomain(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitDomain" ):
+                return visitor.visitDomain(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -558,6 +576,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitDomain_element" ):
                 listener.exitDomain_element(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitDomain_element" ):
+                return visitor.visitDomain_element(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -635,6 +659,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitContext" ):
                 listener.exitContext(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitContext" ):
+                return visitor.visitContext(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -736,6 +766,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitContext_element" ):
                 listener.exitContext_element(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitContext_element" ):
+                return visitor.visitContext_element(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -856,6 +892,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitValue_object" ):
                 listener.exitValue_object(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitValue_object" ):
+                return visitor.visitValue_object(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -945,6 +987,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitValue_object_member" ):
                 listener.exitValue_object_member(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitValue_object_member" ):
+                return visitor.visitValue_object_member(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1044,6 +1092,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitEvent" ):
                 listener.exitEvent(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitEvent" ):
+                return visitor.visitEvent(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1133,6 +1187,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitEvent_member" ):
                 listener.exitEvent_member(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitEvent_member" ):
+                return visitor.visitEvent_member(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1232,6 +1292,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitEntity" ):
                 listener.exitEntity(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitEntity" ):
+                return visitor.visitEntity(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1321,6 +1387,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitEntity_member" ):
                 listener.exitEntity_member(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitEntity_member" ):
+                return visitor.visitEntity_member(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1420,6 +1492,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitAggregate" ):
                 listener.exitAggregate(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitAggregate" ):
+                return visitor.visitAggregate(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1499,6 +1577,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitAggregate_element" ):
                 listener.exitAggregate_element(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitAggregate_element" ):
+                return visitor.visitAggregate_element(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1585,6 +1669,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitRepository" ):
                 listener.exitRepository(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitRepository" ):
+                return visitor.visitRepository(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1666,6 +1756,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitService" ):
                 listener.exitService(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitService" ):
+                return visitor.visitService(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1742,6 +1838,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitService_element" ):
                 listener.exitService_element(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitService_element" ):
+                return visitor.visitService_element(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1826,6 +1928,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitInterface" ):
                 listener.exitInterface(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitInterface" ):
+                return visitor.visitInterface(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -1902,6 +2010,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitInterface_element" ):
                 listener.exitInterface_element(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitInterface_element" ):
+                return visitor.visitInterface_element(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -1992,6 +2106,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitOperation" ):
                 listener.exitOperation(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitOperation" ):
+                return visitor.visitOperation(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -2091,6 +2211,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitOperation_param" ):
                 listener.exitOperation_param(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitOperation_param" ):
+                return visitor.visitOperation_param(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -2166,6 +2292,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitOperation_return" ):
                 listener.exitOperation_return(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitOperation_return" ):
+                return visitor.visitOperation_return(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -2266,6 +2398,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitAcl" ):
                 listener.exitAcl(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitAcl" ):
+                return visitor.visitAcl(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -2342,6 +2480,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitAcl_element" ):
                 listener.exitAcl_element(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitAcl_element" ):
+                return visitor.visitAcl_element(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -2435,6 +2579,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitAcl_function" ):
                 listener.exitAcl_function(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitAcl_function" ):
+                return visitor.visitAcl_function(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -2530,6 +2680,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitAcl_function_param" ):
                 listener.exitAcl_function_param(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitAcl_function_param" ):
+                return visitor.visitAcl_function_param(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -2594,6 +2750,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitType" ):
                 listener.exitType(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitType" ):
+                return visitor.visitType(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -2678,6 +2840,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitPrimitive_type" ):
                 listener.exitPrimitive_type(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitPrimitive_type" ):
+                return visitor.visitPrimitive_type(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -2725,6 +2893,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitReference_type" ):
                 listener.exitReference_type(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitReference_type" ):
+                return visitor.visitReference_type(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -2785,6 +2959,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitContainer_type" ):
                 listener.exitContainer_type(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitContainer_type" ):
+                return visitor.visitContainer_type(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -2869,6 +3049,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitQualifiedName" ):
                 listener.exitQualifiedName(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitQualifiedName" ):
+                return visitor.visitQualifiedName(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -2944,6 +3130,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitDecorator" ):
                 listener.exitDecorator(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitDecorator" ):
+                return visitor.visitDecorator(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -3031,6 +3223,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitDecorator_param" ):
                 listener.exitDecorator_param(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitDecorator_param" ):
+                return visitor.visitDecorator_param(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 
@@ -3125,6 +3323,12 @@ class d3iGrammar ( Parser ):
             if hasattr( listener, "exitEnum" ):
                 listener.exitEnum(self)
 
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitEnum" ):
+                return visitor.visitEnum(self)
+            else:
+                return visitor.visitChildren(self)
+
 
 
 
@@ -3203,6 +3407,12 @@ class d3iGrammar ( Parser ):
         def exitRule(self, listener:ParseTreeListener):
             if hasattr( listener, "exitEnum_element" ):
                 listener.exitEnum_element(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitEnum_element" ):
+                return visitor.visitEnum_element(self)
+            else:
+                return visitor.visitChildren(self)
 
 
 

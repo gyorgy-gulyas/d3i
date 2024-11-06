@@ -1,4 +1,4 @@
-# Generated from ./parser/grammar/d3iLexer.g4 by ANTLR 4.13.2
+# Generated from ./src/parser/grammar/d3iLexer.g4 by ANTLR 4.13.2
 from antlr4 import *
 from io import StringIO
 import sys

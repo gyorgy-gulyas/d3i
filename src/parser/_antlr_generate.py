@@ -2,11 +2,11 @@ import os
 import shutil
 import glob
 
-os.system("java -jar ./tools/antlr/antlr-4.13.2-complete.jar -o ./parser -Dlanguage=Python3 ./parser/grammar/d3iLexer.g4")
-os.system("java -jar ./tools/antlr/antlr-4.13.2-complete.jar -o ./parser -Dlanguage=Python3 ./parser/grammar/d3iGrammar.g4")
+os.system("java -jar ./tools/antlr/antlr-4.13.2-complete.jar -o ./src/parser -Dlanguage=Python3 ./src/parser/grammar/d3iLexer.g4")
+os.system("java -jar ./tools/antlr/antlr-4.13.2-complete.jar -o ./src/parser -Dlanguage=Python3 ./src/parser/grammar/d3iGrammar.g4 -visitor")
 
-source_directory = './parser'
-destination_directory = './parser/grammar'
+source_directory = './src/parser'
+destination_directory = './src/parser/grammar'
 wildcards = ['*.interp', '*.tokens']
 
 files_to_move = []
