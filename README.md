@@ -104,7 +104,9 @@ acl ExternalSystemAcl {
 Once you run DDD Interpreter on your D3I input file, you can generate various outputs:
 - **Domain model diagrams** (e.g., UML, ERD)
 - **Domain documentation** (Markdown, JSON)
-- **Generated Code** (Python, C#)
+- **Generated model codes**
+- **Generated service interfaces, client libaries, service skeletons**
+- **Supported many programning languages** (c#, Python, and many more, just write a new emmiter)
 
 ## Contributing
 
