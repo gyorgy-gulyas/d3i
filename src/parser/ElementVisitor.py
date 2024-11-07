@@ -8,15 +8,17 @@ class ElementVisitor(d3iGrammarVisitor):
         result = d3i()
         counter = 0
         while True:
-            directive = self.visit( ctx.directive((counter)))
+            directive = ctx.directive((counter))
             if( directive == None ):
                 break
             counter = counter + 1
-            result.directives.append(directive)
+            result.directives.append(self.visit( directive))
 
-        result.domain = self.visit( ctx.domain())
+        domain = ctx.domain(0)
+        if( domain != None ):
+            result.domain = self.visit( domain )
 
-        return self.visitChildren(ctx)
+        return result
 
     # Visit a parse tree produced by d3iGrammar#directive.
     def visitDirective(self, ctx:d3iGrammar.DirectiveContext):
@@ -32,11 +34,11 @@ class ElementVisitor(d3iGrammarVisitor):
 
         counter = 0
         while True:
-            decorator = self.visit( ctx.decorator((counter)))
+            decorator = ctx.decorator((counter))
             if( decorator == None ):
                 break
             counter = counter + 1
-            result.decorators.append(decorator)
+            result.decorators.append(self.visit( decorator))
 
         counter = 0
         while True:
@@ -57,7 +59,42 @@ class ElementVisitor(d3iGrammarVisitor):
 
     # Visit a parse tree produced by d3iGrammar#context.
     def visitContext(self, ctx:d3iGrammar.ContextContext):
-        return self.visitChildren(ctx)
+        result = context()
+        result.name = ctx.IDENTIFIER()
+        
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if( decorator == None ):
+                break
+            counter = counter + 1
+            result.decorators.append(self.visit( decorator))
+
+        counter = 0
+        while True:
+            context_element: d3iGrammar.Context_elementContext = ctx.domain_element((counter))
+            if( context_element == None ):
+                break
+            elif( context_element.enum() != None ):
+                result.enums.append( self.visit( context_element.enum()))
+            elif( context_element.value_object() != None ):
+                result.value_objects.append( self.visit( context_element.value_object()))
+            elif( context_element.entity() != None ):
+                result.entities.append( self.visit( context_element.entity()))
+            elif( context_element.aggregate() != None ):
+                result.aggregates.append( self.visit( context_element.aggregate()))
+            elif( context_element.repository() != None ):
+                result.repositories.append( self.visit( context_element.repository()))
+            elif( context_element.acl()):
+                result.acls.append( self.visit( context_element.acl()))
+            elif( context_element.event()):
+                result.domain_events.append( self.visit( context_element.event()))
+            elif( context_element.service()):
+                result.services.append( self.visit( context_element.service()))
+            elif( context_element.interface()):
+                result.iterfaces.append( self.visit( context_element.interface()))
+
+        return result
 
 
     # Visit a parse tree produced by d3iGrammar#context_element.

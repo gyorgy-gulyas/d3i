@@ -1,26 +1,37 @@
-from types import List
+from typing import List
 from enum import Enum
+
+class base_element:
+    def __init__(self):
+        self.decorators = []
+        self.fileName = None
+        self.Line = None
+        self.Column = None
+
+class decorated_base_element(base_element):
+    def __init__(self):
+        self.decorators = []
 
 class d3i:
     def __init__(self):
-        self.directives = List[directive] = []
+        self.directives = []
         self.domain = None
 
-class directive:
+class directive(decorated_base_element):
     def __init__(self):
         self.keyword = None
         self.value = None
 
-class qualified_name:
+class qualified_name(base_element):
     def __init__(self):
         self.names = []
 
-class decorator:
+class decorator(base_element):
     def __init__(self):
         self.name = None
-        self.params = List[decorator_param] = []
+        self.params = []
 
-class decorator_param:
+class decorator_param(base_element):
     def __init__(self):
         self.type = None
         self.value = None
@@ -31,17 +42,26 @@ class decorator_param:
         Number = 2
         String = 3
 
-class domain:
+class domain(decorated_base_element):
     def __init__(self):
-        self.decorators = List[decorator] = []
+        self.decorators = []
         self.name = None
-        self.contexts = List[context] = []
-        self.domain_events = List[event] = []
+        self.contexts = []
+        self.domain_events = []
 
-class context:
+class context(decorated_base_element):
     def __init__(self):
         self.name = None
+        self.enums = []
+        self.value_objects = []
+        self.entities = []
+        self.aggregates = []
+        self.repositories = []
+        self.acls = []
+        self.domain_events = []
+        self.services = []
+        self.iterfaces = []
 
-class event:
+class event(decorated_base_element):
     def __init__(self):
         self.name = None
