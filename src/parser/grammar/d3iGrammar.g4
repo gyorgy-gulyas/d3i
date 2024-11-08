@@ -135,14 +135,14 @@ acl
     acl_element
         : enum
         | value_object
-        | acl_function
+        | method
         ;
         
-        acl_function
-            : decorator* IDENTIFIER '(' acl_function_param? (',' acl_function_param)* ')' ':' type
+        method
+            : decorator* IDENTIFIER '(' method_param? (',' method_param)* ')' ':' type
             ;
 
-            acl_function_param
+            method_param
                 : decorator* IDENTIFIER ':' type
                 ;
 type

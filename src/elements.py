@@ -149,3 +149,52 @@ class aggregate_entity(base_element):
         super().__init__(fileName, pos)
         self.isRoot = None
         self.entity = None
+
+class repository(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name = None
+        self.element_name = None
+
+class service(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name = None
+        self.internal_enums = []
+        self.internal_value_objects = []
+        self.operations = []
+
+class interface(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name = None
+        self.internal_enums = []
+        self.internal_value_objects = []
+        self.operations = []
+
+class operation(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name = None
+        self.operation_params = []
+        self.operation_returns = []
+
+class operation_param(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name = None
+        self.type = None
+
+class operation_return(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.type = None
+
+
+class acl(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name = None
+        self.internal_enums = []
+        self.internal_value_objects = []
+        self.methods = []

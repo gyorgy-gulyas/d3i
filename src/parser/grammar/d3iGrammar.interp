@@ -115,8 +115,8 @@ operation_param
 operation_return
 acl
 acl_element
-acl_function
-acl_function_param
+method
+method_param
 type
 primitive_type
 reference_type

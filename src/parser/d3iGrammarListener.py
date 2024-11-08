@@ -260,21 +260,21 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by d3iGrammar#acl_function.
-    def enterAcl_function(self, ctx:d3iGrammar.Acl_functionContext):
+    # Enter a parse tree produced by d3iGrammar#method.
+    def enterMethod(self, ctx:d3iGrammar.MethodContext):
         pass
 
-    # Exit a parse tree produced by d3iGrammar#acl_function.
-    def exitAcl_function(self, ctx:d3iGrammar.Acl_functionContext):
+    # Exit a parse tree produced by d3iGrammar#method.
+    def exitMethod(self, ctx:d3iGrammar.MethodContext):
         pass
 
 
-    # Enter a parse tree produced by d3iGrammar#acl_function_param.
-    def enterAcl_function_param(self, ctx:d3iGrammar.Acl_function_paramContext):
+    # Enter a parse tree produced by d3iGrammar#method_param.
+    def enterMethod_param(self, ctx:d3iGrammar.Method_paramContext):
         pass
 
-    # Exit a parse tree produced by d3iGrammar#acl_function_param.
-    def exitAcl_function_param(self, ctx:d3iGrammar.Acl_function_paramContext):
+    # Exit a parse tree produced by d3iGrammar#method_param.
+    def exitMethod_param(self, ctx:d3iGrammar.Method_paramContext):
         pass
 
 

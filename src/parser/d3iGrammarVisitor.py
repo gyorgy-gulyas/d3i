@@ -149,13 +149,13 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by d3iGrammar#acl_function.
-    def visitAcl_function(self, ctx:d3iGrammar.Acl_functionContext):
+    # Visit a parse tree produced by d3iGrammar#method.
+    def visitMethod(self, ctx:d3iGrammar.MethodContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by d3iGrammar#acl_function_param.
-    def visitAcl_function_param(self, ctx:d3iGrammar.Acl_function_paramContext):
+    # Visit a parse tree produced by d3iGrammar#method_param.
+    def visitMethod_param(self, ctx:d3iGrammar.Method_paramContext):
         return self.visitChildren(ctx)
 
 

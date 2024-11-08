@@ -254,8 +254,8 @@ class d3iGrammar ( Parser ):
     RULE_operation_return = 25
     RULE_acl = 26
     RULE_acl_element = 27
-    RULE_acl_function = 28
-    RULE_acl_function_param = 29
+    RULE_method = 28
+    RULE_method_param = 29
     RULE_type = 30
     RULE_primitive_type = 31
     RULE_reference_type = 32
@@ -273,10 +273,9 @@ class d3iGrammar ( Parser ):
                    "aggregate_element", "aggregate_entity", "repository", 
                    "service", "service_element", "interface", "interface_element", 
                    "operation", "operation_param", "operation_return", "acl", 
-                   "acl_element", "acl_function", "acl_function_param", 
-                   "type", "primitive_type", "reference_type", "container_type", 
-                   "qualifiedName", "decorator", "decorator_param", "enum", 
-                   "enum_element" ]
+                   "acl_element", "method", "method_param", "type", "primitive_type", 
+                   "reference_type", "container_type", "qualifiedName", 
+                   "decorator", "decorator_param", "enum", "enum_element" ]
 
     EOF = Token.EOF
     DOT=1
@@ -2669,8 +2668,8 @@ class d3iGrammar ( Parser ):
             return self.getTypedRuleContext(d3iGrammar.Value_objectContext,0)
 
 
-        def acl_function(self):
-            return self.getTypedRuleContext(d3iGrammar.Acl_functionContext,0)
+        def method(self):
+            return self.getTypedRuleContext(d3iGrammar.MethodContext,0)
 
 
         def getRuleIndex(self):
@@ -2716,7 +2715,7 @@ class d3iGrammar ( Parser ):
             elif la_ == 3:
                 self.enterOuterAlt(localctx, 3)
                 self.state = 394
-                self.acl_function()
+                self.method()
                 pass
 
 
@@ -2729,7 +2728,7 @@ class d3iGrammar ( Parser ):
         return localctx
 
 
-    class Acl_functionContext(ParserRuleContext):
+    class MethodContext(ParserRuleContext):
         __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
@@ -2759,11 +2758,11 @@ class d3iGrammar ( Parser ):
                 return self.getTypedRuleContext(d3iGrammar.DecoratorContext,i)
 
 
-        def acl_function_param(self, i:int=None):
+        def method_param(self, i:int=None):
             if i is None:
-                return self.getTypedRuleContexts(d3iGrammar.Acl_function_paramContext)
+                return self.getTypedRuleContexts(d3iGrammar.Method_paramContext)
             else:
-                return self.getTypedRuleContext(d3iGrammar.Acl_function_paramContext,i)
+                return self.getTypedRuleContext(d3iGrammar.Method_paramContext,i)
 
 
         def COMMA(self, i:int=None):
@@ -2773,29 +2772,29 @@ class d3iGrammar ( Parser ):
                 return self.getToken(d3iGrammar.COMMA, i)
 
         def getRuleIndex(self):
-            return d3iGrammar.RULE_acl_function
+            return d3iGrammar.RULE_method
 
         def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterAcl_function" ):
-                listener.enterAcl_function(self)
+            if hasattr( listener, "enterMethod" ):
+                listener.enterMethod(self)
 
         def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitAcl_function" ):
-                listener.exitAcl_function(self)
+            if hasattr( listener, "exitMethod" ):
+                listener.exitMethod(self)
 
         def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitAcl_function" ):
-                return visitor.visitAcl_function(self)
+            if hasattr( visitor, "visitMethod" ):
+                return visitor.visitMethod(self)
             else:
                 return visitor.visitChildren(self)
 
 
 
 
-    def acl_function(self):
+    def method(self):
 
-        localctx = d3iGrammar.Acl_functionContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 56, self.RULE_acl_function)
+        localctx = d3iGrammar.MethodContext(self, self._ctx, self.state)
+        self.enterRule(localctx, 56, self.RULE_method)
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
@@ -2818,7 +2817,7 @@ class d3iGrammar ( Parser ):
             _la = self._input.LA(1)
             if _la==10 or _la==38:
                 self.state = 405
-                self.acl_function_param()
+                self.method_param()
 
 
             self.state = 412
@@ -2828,7 +2827,7 @@ class d3iGrammar ( Parser ):
                 self.state = 408
                 self.match(d3iGrammar.COMMA)
                 self.state = 409
-                self.acl_function_param()
+                self.method_param()
                 self.state = 414
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
@@ -2848,7 +2847,7 @@ class d3iGrammar ( Parser ):
         return localctx
 
 
-    class Acl_function_paramContext(ParserRuleContext):
+    class Method_paramContext(ParserRuleContext):
         __slots__ = 'parser'
 
         def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
@@ -2873,29 +2872,29 @@ class d3iGrammar ( Parser ):
 
 
         def getRuleIndex(self):
-            return d3iGrammar.RULE_acl_function_param
+            return d3iGrammar.RULE_method_param
 
         def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterAcl_function_param" ):
-                listener.enterAcl_function_param(self)
+            if hasattr( listener, "enterMethod_param" ):
+                listener.enterMethod_param(self)
 
         def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitAcl_function_param" ):
-                listener.exitAcl_function_param(self)
+            if hasattr( listener, "exitMethod_param" ):
+                listener.exitMethod_param(self)
 
         def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitAcl_function_param" ):
-                return visitor.visitAcl_function_param(self)
+            if hasattr( visitor, "visitMethod_param" ):
+                return visitor.visitMethod_param(self)
             else:
                 return visitor.visitChildren(self)
 
 
 
 
-    def acl_function_param(self):
+    def method_param(self):
 
-        localctx = d3iGrammar.Acl_function_paramContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 58, self.RULE_acl_function_param)
+        localctx = d3iGrammar.Method_paramContext(self, self._ctx, self.state)
+        self.enterRule(localctx, 58, self.RULE_method_param)
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
