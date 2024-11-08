@@ -305,12 +305,21 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by d3iGrammar#container_type.
-    def enterContainer_type(self, ctx:d3iGrammar.Container_typeContext):
+    # Enter a parse tree produced by d3iGrammar#list_type.
+    def enterList_type(self, ctx:d3iGrammar.List_typeContext):
         pass
 
-    # Exit a parse tree produced by d3iGrammar#container_type.
-    def exitContainer_type(self, ctx:d3iGrammar.Container_typeContext):
+    # Exit a parse tree produced by d3iGrammar#list_type.
+    def exitList_type(self, ctx:d3iGrammar.List_typeContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#map_type.
+    def enterMap_type(self, ctx:d3iGrammar.Map_typeContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#map_type.
+    def exitMap_type(self, ctx:d3iGrammar.Map_typeContext):
         pass
 
 

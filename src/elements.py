@@ -48,7 +48,7 @@ class decorator_param(base_element):
         self.type = None
         self.value = None
 
-    class Type(Enum):
+    class Kind(Enum):
         QualifiedName = 1
         Integer = 2
         Number = 2
@@ -198,3 +198,60 @@ class acl(decorated_base_element):
         self.internal_enums = []
         self.internal_value_objects = []
         self.methods = []
+
+class method(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name = None
+        self.method_params = []
+        self.return_type = []
+
+class method_param(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name = None
+        self.type = []
+
+class type(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name = None
+        self.Kind = None 
+    
+    class Kind(Enum):
+        Primitive = 1
+        Reference = 2
+        List = 2
+        Map = 2
+
+class primitive_type(type):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.PrimtiveType = None 
+    
+    class PrimtiveType(Enum):
+        Integer = 1
+        Number = 2
+        Float = 2
+        Date = 3,
+        Time = 4,
+        DateTime = 5,
+        String = 6,
+        Boolean = 7,
+        Bytes = 8,
+
+class reference_type(type):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.reference_name = None 
+
+class list_type(type):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.item_type = None 
+
+class map_type(type):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.key_type = None
+        self.value_type = None 

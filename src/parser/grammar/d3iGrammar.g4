@@ -148,7 +148,8 @@ acl
 type
     : primitive_type
     | reference_type
-    | container_type
+    | list_type
+    | map_type
     ;
     
     primitive_type
@@ -167,9 +168,12 @@ type
         : qualifiedName
         ;
 
-    container_type
-        : 'list' '[' type ',' type ']'
-        | 'map' '[' type ',' type ']'
+    list_type
+        : 'list' '[' type ']'
+        ;
+
+    map_type
+        : 'map' '[' type ',' type ']'
         ;
         
 qualifiedName 

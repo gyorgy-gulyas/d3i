@@ -174,8 +174,13 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by d3iGrammar#container_type.
-    def visitContainer_type(self, ctx:d3iGrammar.Container_typeContext):
+    # Visit a parse tree produced by d3iGrammar#list_type.
+    def visitList_type(self, ctx:d3iGrammar.List_typeContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#map_type.
+    def visitMap_type(self, ctx:d3iGrammar.Map_typeContext):
         return self.visitChildren(ctx)
 
 

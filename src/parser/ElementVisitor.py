@@ -322,14 +322,14 @@ class ElementVisitor(d3iGrammarVisitor):
                 break
             counter = counter + 1
             result.decorators.append(self.visit(decorator))
-        
+
         return result
 
     # Visit a parse tree produced by d3iGrammar#service.
     def visitService(self, ctx: d3iGrammar.ServiceContext):
         result = service(self.fileName, ctx.start)
         result.name = ctx.IDENTIFIER(0)
-        
+
         counter = 0
         while True:
             decorator = ctx.decorator((counter))
@@ -353,7 +353,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (service_element.value_object()):
                 result.internal_value_objects.append(
                     self.visit(service_element.value_object()))
-        
+
         return result
 
     # Visit a parse tree produced by d3iGrammar#service_element.
@@ -364,7 +364,7 @@ class ElementVisitor(d3iGrammarVisitor):
     def visitInterface(self, ctx: d3iGrammar.InterfaceContext):
         result = interface(self.fileName, ctx.start)
         result.name = ctx.IDENTIFIER(0)
-        
+
         counter = 0
         while True:
             decorator = ctx.decorator((counter))
@@ -388,7 +388,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (interface_element.value_object()):
                 result.internal_value_objects.append(
                     self.visit(interface_element.value_object()))
-        
+
         return result
 
     # Visit a parse tree produced by d3iGrammar#interface_element.
@@ -399,7 +399,7 @@ class ElementVisitor(d3iGrammarVisitor):
     def visitOperation(self, ctx: d3iGrammar.OperationContext):
         result = operation(self.fileName, ctx.start)
         result.name = ctx.IDENTIFIER(0)
-        
+
         counter = 0
         while True:
             decorator = ctx.decorator((counter))
@@ -430,8 +430,8 @@ class ElementVisitor(d3iGrammarVisitor):
     def visitOperation_param(self, ctx: d3iGrammar.Operation_paramContext):
         result = operation_param(self.fileName, ctx.start)
         result.name = ctx.IDENTIFIER(0)
-        result.type = self.visit( ctx.type_() )
-        
+        result.type = self.visit(ctx.type_())
+
         counter = 0
         while True:
             decorator = ctx.decorator((counter))
@@ -445,8 +445,8 @@ class ElementVisitor(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#operation_return.
     def visitOperation_return(self, ctx: d3iGrammar.Operation_returnContext):
         result = operation_return(self.fileName, ctx.start)
-        result.type = self.visit( ctx.type_() )
-        
+        result.type = self.visit(ctx.type_())
+
         counter = 0
         while True:
             decorator = ctx.decorator((counter))
@@ -461,7 +461,7 @@ class ElementVisitor(d3iGrammarVisitor):
     def visitAcl(self, ctx: d3iGrammar.AclContext):
         result = acl(self.fileName, ctx.start)
         result.name = ctx.IDENTIFIER(0)
-        
+
         counter = 0
         while True:
             decorator = ctx.decorator((counter))
@@ -485,7 +485,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (acl_element.value_object()):
                 result.internal_value_objects.append(
                     self.visit(acl_element.value_object()))
-        
+
         return result
 
     # Visit a parse tree produced by d3iGrammar#acl_element.
@@ -493,28 +493,100 @@ class ElementVisitor(d3iGrammarVisitor):
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by d3iGrammar#method.
-    def visitMethod(self, ctx:d3iGrammar.MethodContext):
-        return self.visitChildren(ctx)
+    def visitMethod(self, ctx: d3iGrammar.MethodContext):
+        result = method(self.fileName, ctx.start)
+        result.name = ctx.IDENTIFIER(0)
+        if (ctx.type_(0) != None):
+            result.return_type = self.visit(ctx.type_(0))
+
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if (decorator == None):
+                break
+            counter = counter + 1
+            result.decorators.append(self.visit(decorator))
+
+        counter = 0
+        while True:
+            method_param = ctx.method_param((counter))
+            if (method_param == None):
+                break
+            counter = counter + 1
+            result.method_params.append(self.visit(method_param))
+
+        return result
 
     # Visit a parse tree produced by d3iGrammar#method_param.
-    def visitMethod_param(self, ctx:d3iGrammar.Method_paramContext):
-        return self.visitChildren(ctx)
-    
+    def visitMethod_param(self, ctx: d3iGrammar.Method_paramContext):
+        result = method_param(self.fileName, ctx.start)
+        result.name = ctx.IDENTIFIER(0)
+        result.type = self.visit(ctx.type_(0))
+
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if (decorator == None):
+                break
+            counter = counter + 1
+            result.decorators.append(self.visit(decorator))
+
+        return result
+
     # Visit a parse tree produced by d3iGrammar#type.
     def visitType(self, ctx: d3iGrammar.TypeContext):
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by d3iGrammar#primitive_type.
     def visitPrimitive_type(self, ctx: d3iGrammar.Primitive_typeContext):
-        return self.visitChildren(ctx)
+        result = primitive_type(self.fileName, ctx.start)
+        result.Kind = type.Kind.Primitive
+
+        if (ctx.INTEGER() != None):
+            result.PrimtiveType = primitive_type.PrimtiveType.Integer
+        elif (ctx.NUMBER() != None):
+            result.PrimtiveType = primitive_type.PrimtiveType.Number
+        elif (ctx.FLOAT() != None):
+            result.PrimtiveType = primitive_type.PrimtiveType.Float
+        elif (ctx.DATE() != None):
+            result.PrimtiveType = primitive_type.PrimtiveType.Date
+        elif (ctx.TIME() != None):
+            result.PrimtiveType = primitive_type.PrimtiveType.Time
+        elif (ctx.DATETIME() != None):
+            result.PrimtiveType = primitive_type.PrimtiveType.DateTime
+        elif (ctx.STRING() != None):
+            result.PrimtiveType = primitive_type.PrimtiveType.String
+        elif (ctx.BOOLEAN() != None):
+            result.PrimtiveType = primitive_type.PrimtiveType.Boolean
+        elif (ctx.BYTES() != None):
+            result.PrimtiveType = primitive_type.PrimtiveType.Bytes
+
+        return result
 
     # Visit a parse tree produced by d3iGrammar#reference_type.
     def visitReference_type(self, ctx: d3iGrammar.Reference_typeContext):
-        return self.visitChildren(ctx)
+        result = reference_type(self.fileName, ctx.start)
+        result.Kind = type.Kind.Reference
+        result.reference_name = self.visit(ctx.qualifiedName())
 
-    # Visit a parse tree produced by d3iGrammar#container_type.
-    def visitContainer_type(self, ctx: d3iGrammar.Container_typeContext):
-        return self.visitChildren(ctx)
+        return result
+
+    # Visit a parse tree produced by d3iGrammar#list_type.
+    def visitList_type(self, ctx: d3iGrammar.List_typeContext):
+        result = list_type(self.fileName, ctx.start)
+        result.Kind = type.Kind.List
+        result.item_type = self.visit(ctx.type_())
+
+        return result
+
+    # Visit a parse tree produced by d3iGrammar#map_type.
+    def visitMap_type(self, ctx: d3iGrammar.Map_typeContext):
+        result = map_type(self.fileName, ctx.start)
+        result.Kind = type.Kind.Map
+        result.key_type = self.visit(ctx.type_(0))
+        result.value_type = self.visit(ctx.type_(1))
+
+        return result
 
     # Visit a parse tree produced by d3iGrammar#qualifiedName.
     def visitQualifiedName(self, ctx: d3iGrammar.QualifiedNameContext):
