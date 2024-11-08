@@ -125,24 +125,28 @@ class ElementVisitor(d3iGrammarVisitor):
 
         counter = 0
         while True:
-            value_object_member: d3iGrammar.Value_object_memberContext = ctx.value_object_member(
+            value_object_element: d3iGrammar.Value_object_elementContext = ctx.value_object_element(
                 (counter))
-            if (value_object_member == None):
+            if (value_object_element == None):
                 break
-            elif (value_object_member.IDENTIFIER() != None):
-                result.members.append(
-                    self._visitValue_object_member(value_object_member))
-            elif (value_object_member.enum()):
+            elif (value_object_element.value_object_member() != None):
+                result.members.append(self.visit(
+                    value_object_element.value_object_member()))
+            elif (value_object_element.enum()):
                 result.internal_enums.append(
-                    self.visit(value_object_member.enum()))
-            elif (value_object_member.value_object()):
+                    self.visit(value_object_element.enum()))
+            elif (value_object_element.value_object()):
                 result.internal_value_objects.append(
-                    self.visit(value_object_member.value_object()))
+                    self.visit(value_object_element.value_object()))
 
         return result
 
+    # Visit a parse tree produced by d3iGrammar#value_object_element.
+    def visitValue_object_element(self, ctx: d3iGrammar.Value_object_elementContext):
+        return self.visitChildren(ctx)
+
     # Visit a parse tree produced by d3iGrammar#value_object_member.
-    def _visitValue_object_member(self, ctx: d3iGrammar.Value_object_memberContext):
+    def visitValue_object_member(self, ctx: d3iGrammar.Value_object_memberContext):
         result = value_object_member(self.fileName, ctx.start)
         result.name = ctx.IDENTIFIER()
         result.type = self.visit(ctx.type_())
@@ -191,8 +195,12 @@ class ElementVisitor(d3iGrammarVisitor):
 
         return self.visitChildren(ctx)
 
+    # Visit a parse tree produced by d3iGrammar#event_element.
+    def visitEvent_element(self, ctx: d3iGrammar.Event_elementContext):
+        return self.visitChildren(ctx)
+
     # Visit a parse tree produced by d3iGrammar#event_member.
-    def _visitEvent_member(self, ctx: d3iGrammar.Event_memberContext):
+    def visitEvent_member(self, ctx: d3iGrammar.Event_memberContext):
         result = event_member(self.fileName, ctx.start)
         result.name = ctx.IDENTIFIER()
         result.type = self.visit(ctx.type_())
@@ -205,10 +213,6 @@ class ElementVisitor(d3iGrammarVisitor):
             result.decorators.append(self.visit(decorator))
 
         return result
-
-    # Visit a parse tree produced by d3iGrammar#event_member.
-    def visitEvent_member(self, ctx: d3iGrammar.Event_memberContext):
-        return self.visitChildren(ctx)
 
     # Visit a parse tree produced by d3iGrammar#entity.
     def visitEntity(self, ctx: d3iGrammar.EntityContext):
@@ -225,24 +229,24 @@ class ElementVisitor(d3iGrammarVisitor):
 
         counter = 0
         while True:
-            entity_member: d3iGrammar.Entity_memberContext = ctx.entity_member(
+            entity_element: d3iGrammar.Entity_elementContext = ctx.entity_element(
                 (counter))
-            if (entity_member == None):
+            if (entity_element == None):
                 break
-            elif (entity_member.IDENTIFIER() != None):
+            elif (entity_element.IDENTIFIER() != None):
                 result.members.append(
-                    self._visitEntity_member(entity_member))
-            elif (entity_member.enum()):
+                    self.visit(entity_element))
+            elif (entity_element.enum()):
                 result.internal_enums.append(
-                    self.visit(entity_member.enum()))
-            elif (entity_member.value_object()):
+                    self.visit(entity_element.enum()))
+            elif (entity_element.value_object()):
                 result.internal_value_objects.append(
-                    self.visit(entity_member.value_object()))
+                    self.visit(entity_element.value_object()))
 
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by d3iGrammar#entity_member.
-    def _visitEntity_member(self, ctx: d3iGrammar.Entity_memberContext):
+    # Visit a parse tree produced by d3iGrammar#entity_element.
+    def visitEntity_element(self, ctx: d3iGrammar.Entity_elementContext):
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by d3iGrammar#entity_member.
@@ -263,10 +267,46 @@ class ElementVisitor(d3iGrammarVisitor):
 
     # Visit a parse tree produced by d3iGrammar#aggregate.
     def visitAggregate(self, ctx: d3iGrammar.AggregateContext):
-        return self.visitChildren(ctx)
+        result = aggregate(self.fileName, ctx.start)
+        result.name = ctx.IDENTIFIER()
+
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if (decorator == None):
+                break
+            counter = counter + 1
+            result.decorators.append(self.visit(decorator))
+
+        counter = 0
+        while True:
+            aggregate_element: d3iGrammar.Aggregate_elementContext = ctx.aggregate_element(
+                (counter))
+            if (aggregate_element == None):
+                break
+            elif (aggregate_element.aggregate_entity() != None):
+                result.internal_entities.append(
+                    self.visit(aggregate_element))
+            elif (aggregate_element.enum()):
+                result.internal_enums.append(
+                    self.visit(aggregate_element.enum()))
+            elif (aggregate_element.value_object()):
+                result.internal_value_objects.append(
+                    self.visit(aggregate_element.value_object()))
+
+        return result
 
     # Visit a parse tree produced by d3iGrammar#aggregate_element.
     def visitAggregate_element(self, ctx: d3iGrammar.Aggregate_elementContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by d3iGrammar#aggregate_entity.
+    def visitAggregate_entity(self, ctx: d3iGrammar.Aggregate_entityContext):
+        result = aggregate_entity(self.fileName, ctx.start)
+        result.entity = self.visit(ctx.entity())
+        if (ctx.ROOT() != None):
+            result.isRoot = True
+
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by d3iGrammar#repository.
@@ -377,7 +417,7 @@ class ElementVisitor(d3iGrammarVisitor):
         else:
             result.type = decorator_param.Type.String
             result.value = ctx.STRING_LITERAL()
-        
+
         return result
 
     # Visit a parse tree produced by d3iGrammar#enum.

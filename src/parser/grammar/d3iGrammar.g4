@@ -49,6 +49,7 @@ value_object
         value_object_member
             : decorator* IDENTIFIER ':' type
             ;
+
 event
     :  decorator* 'event' IDENTIFIER '{' event_element* '}'
     ;
@@ -82,9 +83,13 @@ aggregate
     ;
 
     aggregate_element
-        :  'root'? entity
+        : aggregate_entity
         | enum
         | value_object
+        ;
+        
+        aggregate_entity
+        :  'root'? entity
         ;
 
 repository

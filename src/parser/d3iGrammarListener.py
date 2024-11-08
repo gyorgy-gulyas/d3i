@@ -71,6 +71,15 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#value_object_element.
+    def enterValue_object_element(self, ctx:d3iGrammar.Value_object_elementContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#value_object_element.
+    def exitValue_object_element(self, ctx:d3iGrammar.Value_object_elementContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#value_object_member.
     def enterValue_object_member(self, ctx:d3iGrammar.Value_object_memberContext):
         pass
@@ -89,6 +98,15 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#event_element.
+    def enterEvent_element(self, ctx:d3iGrammar.Event_elementContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#event_element.
+    def exitEvent_element(self, ctx:d3iGrammar.Event_elementContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#event_member.
     def enterEvent_member(self, ctx:d3iGrammar.Event_memberContext):
         pass
@@ -104,6 +122,15 @@ class d3iGrammarListener(ParseTreeListener):
 
     # Exit a parse tree produced by d3iGrammar#entity.
     def exitEntity(self, ctx:d3iGrammar.EntityContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#entity_element.
+    def enterEntity_element(self, ctx:d3iGrammar.Entity_elementContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#entity_element.
+    def exitEntity_element(self, ctx:d3iGrammar.Entity_elementContext):
         pass
 
 
@@ -131,6 +158,15 @@ class d3iGrammarListener(ParseTreeListener):
 
     # Exit a parse tree produced by d3iGrammar#aggregate_element.
     def exitAggregate_element(self, ctx:d3iGrammar.Aggregate_elementContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#aggregate_entity.
+    def enterAggregate_entity(self, ctx:d3iGrammar.Aggregate_entityContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#aggregate_entity.
+    def exitAggregate_entity(self, ctx:d3iGrammar.Aggregate_entityContext):
         pass
 
 

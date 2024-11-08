@@ -44,6 +44,11 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by d3iGrammar#value_object_element.
+    def visitValue_object_element(self, ctx:d3iGrammar.Value_object_elementContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by d3iGrammar#value_object_member.
     def visitValue_object_member(self, ctx:d3iGrammar.Value_object_memberContext):
         return self.visitChildren(ctx)
@@ -54,6 +59,11 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by d3iGrammar#event_element.
+    def visitEvent_element(self, ctx:d3iGrammar.Event_elementContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by d3iGrammar#event_member.
     def visitEvent_member(self, ctx:d3iGrammar.Event_memberContext):
         return self.visitChildren(ctx)
@@ -61,6 +71,11 @@ class d3iGrammarVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by d3iGrammar#entity.
     def visitEntity(self, ctx:d3iGrammar.EntityContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#entity_element.
+    def visitEntity_element(self, ctx:d3iGrammar.Entity_elementContext):
         return self.visitChildren(ctx)
 
 
@@ -76,6 +91,11 @@ class d3iGrammarVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by d3iGrammar#aggregate_element.
     def visitAggregate_element(self, ctx:d3iGrammar.Aggregate_elementContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#aggregate_entity.
+    def visitAggregate_entity(self, ctx:d3iGrammar.Aggregate_entityContext):
         return self.visitChildren(ctx)
 
 

@@ -126,11 +126,26 @@ class entity(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
+        self.members = []
         self.internal_enums = []
         self.internal_value_objects = []
-
 
 class entity_member(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
+        self.type = None
+
+class aggregate(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name = None
+        self.internal_entities = []
+        self.internal_enums = []
+        self.internal_value_objects = []
+
+class aggregate_entity(base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.isRoot = None
+        self.entity = None
