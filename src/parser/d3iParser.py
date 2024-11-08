@@ -8,9 +8,18 @@ class d3iParser:
         self.lexer = None
         self.grammar = None
         self.tree = None
+        self.fileName = None
 
     def ParseText( self, input ):
-        self.lexer = d3iLexer(InputStream(input))
+        self.fileName = "internal string"
+        self._parseInternal(InputStream(input))
+        
+    def ParseFile( self, fileName ):
+        self.fileName = fileName
+        self._parseInternal(FileStream(fileName))
+
+    def _parseInternal( self, stream ):
+        self.lexer = d3iLexer(stream)
         self.grammar = d3iGrammar(CommonTokenStream(self.lexer))
         self.tree = self.grammar.d3i()
 
@@ -18,5 +27,5 @@ class d3iParser:
         print(self.tree.toStringTree(recog=self.grammar))
 
     def BuildElementTree( self ):
-        visitor = ElementVisitor()
+        visitor = ElementVisitor(self.fileName)
         visitor.visit(self.tree)

@@ -37,34 +37,45 @@ context
         ;
 
 value_object
-    : decorator* 'valueObject' IDENTIFIER '{' value_object_member* '}'
+    : decorator* 'valueObject' IDENTIFIER '{' value_object_element* '}'
     ;
 
-    value_object_member
-        : decorator* IDENTIFIER ':' type
+    value_object_element
+        : value_object_member
         | enum
         | value_object
         ;
         
+        value_object_member
+            : decorator* IDENTIFIER ':' type
+            ;
 event
-    :  decorator* 'event' IDENTIFIER '{' event_member* '}'
+    :  decorator* 'event' IDENTIFIER '{' event_element* '}'
     ;
+
+    event_element
+        : event_member
+        | enum
+        | value_object
+        ;
 
     event_member
         : decorator* IDENTIFIER ':' type
-        | enum
-        | value_object
         ;
         
 entity
-    :  decorator* 'entity' IDENTIFIER '{' entity_member* '}'
+    :  decorator* 'entity' IDENTIFIER '{' entity_element* '}'
     ;
 
-    entity_member
-        : decorator* IDENTIFIER ':' type
+    entity_element
+        : entity_member
         | enum
         | value_object
         ;
+
+        entity_member
+            : decorator* IDENTIFIER ':' type
+            ;
         
 aggregate
     :  decorator* 'aggregate' IDENTIFIER '{' aggregate_element* '}'
