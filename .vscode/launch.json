@@ -8,9 +8,10 @@
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
-            "justMyCode": "False",
+            "justMyCode": false,
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "envFile": "${workspaceRoot}/.env"
         }
     ]
 }

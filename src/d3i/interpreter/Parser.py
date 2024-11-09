@@ -1,7 +1,7 @@
 from antlr4 import *
-from interpreter.grammar.d3iLexer import *
-from interpreter.grammar.d3iGrammar import *
-from interpreter.ElementVisitor import *
+from d3i.interpreter.grammar.d3iLexer import *
+from d3i.interpreter.grammar.d3iGrammar import *
+from d3i.interpreter.ElementVisitor import *
 
 class Parser:
     def __init__( self ):
@@ -12,20 +12,21 @@ class Parser:
 
     def ParseText( self, input ):
         self.fileName = "internal string"
-        self._parseInternal(InputStream(input))
+        return self._parseInternal(InputStream(input))
         
     def ParseFile( self, fileName ):
         self.fileName = fileName
-        self._parseInternal(FileStream(fileName))
+        return self._parseInternal(FileStream(fileName))
 
     def _parseInternal( self, stream ):
         self.lexer = d3iLexer(stream)
         self.grammar = d3iGrammar(CommonTokenStream(self.lexer))
         self.tree = self.grammar.d3i()
+        return self._buildElementTree()
 
     def PrintTree( self ):
         print(self.tree.toStringTree(recog=self.grammar))
 
-    def BuildElementTree( self ):
+    def _buildElementTree( self ):
         visitor = ElementVisitor(self.fileName)
-        visitor.visit(self.tree)
+        return visitor.visit(self.tree)

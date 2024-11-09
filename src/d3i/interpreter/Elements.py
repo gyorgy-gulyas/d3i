@@ -19,7 +19,7 @@ class decorated_base_element(base_element):
 class d3i:
     def __init__(self):
         self.directives = []
-        self.domain = None
+        self.domains = []
 
 
 class directive(decorated_base_element):

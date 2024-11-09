@@ -1,6 +1,6 @@
-from interpreter.grammar.d3iGrammar import *
-from interpreter.grammar.d3iGrammarVisitor import *
-from interpreter.Elements import *
+from d3i.interpreter.grammar.d3iGrammar import *
+from d3i.interpreter.grammar.d3iGrammarVisitor import *
+from d3i.interpreter.Elements import *
 
 
 class ElementVisitor(d3iGrammarVisitor):
@@ -18,9 +18,13 @@ class ElementVisitor(d3iGrammarVisitor):
             counter = counter + 1
             result.directives.append(self.visit(directive))
 
-        domain = ctx.domain(0)
-        if (domain != None):
-            result.domain = self.visit(domain)
+        counter = 0
+        while True:
+            domain = ctx.domain((counter))
+            if (domain == None):
+                break
+            counter = counter + 1
+            result.domains.append(self.visit(domain))
 
         return result
 
