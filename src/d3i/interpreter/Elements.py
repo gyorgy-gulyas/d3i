@@ -4,7 +4,7 @@ from enum import Enum
 
 class base_element:
     def __init__(self, fileName, pos):
-        self.decorators = List[decorator] = []
+        self.decorators = []
         self.fileName = fileName
         self.line = pos.line
         self.column = pos.column

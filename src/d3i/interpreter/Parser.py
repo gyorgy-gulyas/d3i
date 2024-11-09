@@ -1,9 +1,9 @@
 from antlr4 import *
-from parser.d3iLexer import *
-from parser.d3iGrammar import *
-from parser.ElementVisitor import *
+from interpreter.grammar.d3iLexer import *
+from interpreter.grammar.d3iGrammar import *
+from interpreter.ElementVisitor import *
 
-class d3iParser:
+class Parser:
     def __init__( self ):
         self.lexer = None
         self.grammar = None

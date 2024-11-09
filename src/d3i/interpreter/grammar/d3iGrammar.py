@@ -1,4 +1,4 @@
-# Generated from ./src/parser/grammar/d3iGrammar.g4 by ANTLR 4.13.2
+# Generated from ./src/d3i/interpreter/grammar/d3iGrammar.g4 by ANTLR 4.13.2
 # encoding: utf-8
 from antlr4 import *
 from io import StringIO

@@ -1,6 +1,6 @@
-from parser.d3iGrammar import *
-from parser.d3iGrammarVisitor import *
-from elements import *
+from interpreter.grammar.d3iGrammar import *
+from interpreter.grammar.d3iGrammarVisitor import *
+from interpreter.Elements import *
 
 
 class ElementVisitor(d3iGrammarVisitor):

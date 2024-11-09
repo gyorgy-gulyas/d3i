@@ -1,6 +1,6 @@
-from parser.d3iParser import d3iParser
+from interpreter.Parser import Parser
 
-parser = d3iParser()
+parser = Parser()
 parser.ParseText( """
 domain Valami {
     @hello
