@@ -234,5 +234,125 @@ domain somedomain {
         self.assertEqual(member.type.Kind, d3i.interpreter.type.Kind.Primitive )
         self.assertEqual(member.type.PrimtiveType, d3i.interpreter.primitive_type.PrimtiveType.Integer )
 
+    def test_value_object_inner_enum(self):
+        parser = d3i.interpreter.Parser()
+        root = parser.ParseText( 
+"""
+domain somedomain {
+    context context_1 {
+        @decorator_valueobject
+        valueObject Address {
+            enum InnerEnum{
+                Value1,
+                Value2
+            }
+            @required
+            city:string
+            street:string
+            country:General.Country
+            @required
+            zipCode:integer
+        }
+    }
+}
+""")
+        context: d3i.interpreter.context = root.domains[0].contexts[0]
+        value_object:d3i.interpreter.value_object = context.value_objects[0]
+        self.assertEqual(len(value_object.decorators), 1)
+        self.assertEqual(value_object.name, "Address")
+        self.assertEqual(len(value_object.members), 4)
+        enum_inner:d3i.interpreter.enum = value_object.internal_enums[0]
+        self.assertEqual(enum_inner.name, "InnerEnum")
+        self.assertEqual(len(enum_inner.enum_elements), 2 )
+
+    def test_entity(self):
+        parser = d3i.interpreter.Parser()
+        root = parser.ParseText( 
+"""
+domain somedomain {
+    context context_1 {
+        @decorator_entity
+        entity Customer {
+            @required
+            name:string
+            address:Address
+        }
+    }
+}
+""")
+        context: d3i.interpreter.context = root.domains[0].contexts[0]
+        entity:d3i.interpreter.entity = context.entities[0]
+        self.assertEqual(len(entity.decorators), 1)
+        self.assertEqual(entity.name, "Customer")
+        self.assertEqual(len(entity.members), 2)
+        member:d3i.interpreter.entity_member = entity.members[0]
+        self.assertEqual(member.name, "name")
+        self.assertEqual(member.type.Kind, d3i.interpreter.type.Kind.Primitive )
+        self.assertEqual(member.type.PrimtiveType, d3i.interpreter.primitive_type.PrimtiveType.String )
+        self.assertEqual(member.decorators[0].name, "required")
+        member:d3i.interpreter.entity_member = entity.members[1]
+        self.assertEqual(member.name, "address")
+        self.assertEqual(member.type.Kind, d3i.interpreter.type.Kind.Reference )
+        self.assertEqual(member.type.reference_name.getText(), "Address" )
+
+    def test_entity_inner_enum(self):
+        parser = d3i.interpreter.Parser()
+        root = parser.ParseText( 
+"""
+domain somedomain {
+    context context_1 {
+        @decorator_entity
+        entity Customer {
+            enum Kind{
+                PrivatePerson,
+                Company
+            }
+            @required
+            name:string
+            address:Address
+            kind:Kind
+        }
+    }
+}
+""")
+        context: d3i.interpreter.context = root.domains[0].contexts[0]
+        entity:d3i.interpreter.entity = context.entities[0]
+        self.assertEqual(len(entity.decorators), 1)
+        self.assertEqual(entity.name, "Customer")
+        self.assertEqual(len(entity.members), 3)
+        inner_enum:d3i.interpreter.enum = entity.internal_enums[0]
+        self.assertEqual(inner_enum.name, "Kind")
+        self.assertEqual(len(inner_enum.enum_elements), 2)
+
+
+    def test_entity_inner_valueobject(self):
+        parser = d3i.interpreter.Parser()
+        root = parser.ParseText( 
+"""
+domain somedomain {
+    context context_1 {
+        @decorator_entity
+        entity Customer {
+            valueObject Credit {
+                limit:decimal
+                currency:Currency
+            }
+            @required
+            name:string
+            address:Address
+            kind:Kind
+        }
+    }
+}
+""")
+        context: d3i.interpreter.context = root.domains[0].contexts[0]
+        entity:d3i.interpreter.entity = context.entities[0]
+        self.assertEqual(len(entity.decorators), 1)
+        self.assertEqual(entity.name, "Customer")
+        self.assertEqual(len(entity.members), 3)
+        inner_value_object:d3i.interpreter.value_object = entity.internal_value_objects[0]
+        self.assertEqual(inner_value_object.name, "Credit")
+        self.assertEqual(len(inner_value_object.members), 2)
+
 if __name__ == "__main__":
     unittest.main()

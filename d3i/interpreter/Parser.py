@@ -10,15 +10,15 @@ class Parser:
         self.tree = None
         self.fileName = None
 
-    def ParseText( self, input ):
+    def ParseText( self, input, abortWhenError:bool=None ):
         self.fileName = "internal string"
-        return self._parseInternal(InputStream(input))
+        return self._parseInternal(InputStream(input),abortWhenError)
         
-    def ParseFile( self, fileName ):
+    def ParseFile( self, fileName, abortWhenError:bool=None ):
         self.fileName = fileName
-        return self._parseInternal(FileStream(fileName))
+        return self._parseInternal(FileStream(fileName),abortWhenError)
 
-    def _parseInternal( self, stream ):
+    def _parseInternal( self, stream, abortWhenError:bool ):
         self.lexer = d3iLexer(stream)
         self.grammar = d3iGrammar(CommonTokenStream(self.lexer))
 
@@ -31,7 +31,8 @@ class Parser:
        
         if(error_listener.has_error):
             print(error_listener.error_message)
-            return None
+            if(abortWhenError):
+                return None
 
         return self._buildElementTree()
 
