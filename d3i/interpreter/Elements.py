@@ -32,7 +32,11 @@ class directive(decorated_base_element):
 class qualified_name(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.names = []
+        self.names: List[str] = []
+    
+    def getText( self ):
+        return '.'.join(self.names)
+   
 
 
 class decorator(base_element):

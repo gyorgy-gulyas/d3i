@@ -1,6 +1,6 @@
 from antlr4 import *
-from d3i.interpreter.grammar.d3iLexer import *
-from d3i.interpreter.grammar.d3iGrammar import *
+from d3i.grammar.d3iLexer import *
+from d3i.grammar.d3iGrammar import *
 from d3i.interpreter.ElementVisitor import *
 
 class Parser:
