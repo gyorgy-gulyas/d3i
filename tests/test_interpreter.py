@@ -163,7 +163,12 @@ domain somedomain {
 domain somedomain {
     context context_1 {
         @decorator_valueobject
-        value_object Address {
+        valueObject Address {
+            @required
+            city:string
+            street:string
+            country:General.Country
+            @required
             zipCode:integer
         }
     }

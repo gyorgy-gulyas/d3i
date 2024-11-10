@@ -83,7 +83,7 @@ class ElementVisitor(d3iGrammarVisitor):
 
         counter = 0
         while True:
-            context_element: d3iGrammar.Context_elementContext = ctx.context_element(
+            context_element = ctx.context_element(
                 (counter))
             if (context_element == None):
                 break
@@ -121,6 +121,7 @@ class ElementVisitor(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#value_object.
     def visitValue_object(self, ctx: d3iGrammar.Value_objectContext):
         result = value_object(self.fileName, ctx.start)
+        result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
         while True:
@@ -167,10 +168,6 @@ class ElementVisitor(d3iGrammarVisitor):
             result.decorators.append(self.visit(decorator))
 
         return result
-
-    # Visit a parse tree produced by d3iGrammar#value_object_member.
-    def visitValue_object_member(self, ctx: d3iGrammar.Value_object_memberContext):
-        return self.visitChildren(ctx)
 
     # Visit a parse tree produced by d3iGrammar#event.
     def visitEvent(self, ctx: d3iGrammar.EventContext):

@@ -21,7 +21,18 @@ class Parser:
     def _parseInternal( self, stream ):
         self.lexer = d3iLexer(stream)
         self.grammar = d3iGrammar(CommonTokenStream(self.lexer))
+
+        # Hozzáadjuk a saját hibafigyelőt
+        error_listener = SyntaxErrorListener()
+        self.grammar.removeErrorListeners()
+        self.grammar.addErrorListener(error_listener)
+            
         self.tree = self.grammar.d3i()
+       
+        if(error_listener.has_error):
+            print(error_listener.error_message)
+            return None
+
         return self._buildElementTree()
 
     def PrintTree( self ):
@@ -30,3 +41,31 @@ class Parser:
     def _buildElementTree( self ):
         visitor = ElementVisitor(self.fileName)
         return visitor.visit(self.tree)
+
+from antlr4.error.ErrorListener import ErrorListener
+
+class SyntaxErrorListener(ErrorListener):
+    def __init__(self):
+        super(SyntaxErrorListener, self).__init__()
+        self.has_error = False  # Ezt használjuk a hiba állapotának nyomon követésére
+        self.error_message = ""
+
+    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
+        self.has_error = True
+        self.error_message += f"Hiba a {line}. sor {column}. oszlopában: {msg}\n"
+        
+
+    def reportAmbiguity(self, recognizer, dfa, startIndex, stopIndex, exact, ambigAlts, configs):
+        self.has_error = True
+        self.error_message += f"reportAmbiguity\n"
+        
+
+    def reportAttemptingFullContext(self, recognizer, dfa, startIndex, stopIndex, conflictingAlts, configs):
+        self.has_error = True
+        self.error_message += f"reportAttemptingFullContext\n"
+        
+
+    def reportContextSensitivity(self, recognizer, dfa, startIndex, stopIndex, prediction, configs):
+        self.has_error = True
+        self.error_message += f"reportAttemptingFullContext\n"
+        
