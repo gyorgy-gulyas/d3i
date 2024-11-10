@@ -197,5 +197,42 @@ domain somedomain {
         self.assertEqual(member.type.Kind, d3i.interpreter.type.Kind.Primitive )
         self.assertEqual(member.type.PrimtiveType, d3i.interpreter.primitive_type.PrimtiveType.Integer )
         
+    def test_value_object_inner_valueobject(self):
+        parser = d3i.interpreter.Parser()
+        root = parser.ParseText( 
+"""
+domain somedomain {
+    context context_1 {
+        @decorator_valueobject
+        valueObject Address {
+            valueObject Inner{
+                inner_1:string
+                inner_2:integer
+            }
+            @required
+            city:string
+            street:string
+            country:General.Country
+            @required
+            zipCode:integer
+        }
+    }
+}
+""")
+        context: d3i.interpreter.context = root.domains[0].contexts[0]
+        value_object:d3i.interpreter.value_object = context.value_objects[0]
+        self.assertEqual(len(value_object.decorators), 1)
+        self.assertEqual(value_object.name, "Address")
+        self.assertEqual(len(value_object.members), 4)
+        value_object_inner:d3i.interpreter.value_object = value_object.internal_value_objects[0]
+        member:d3i.interpreter.value_object_member = value_object_inner.members[0]
+        self.assertEqual(member.name, "inner_1")
+        self.assertEqual(member.type.Kind, d3i.interpreter.type.Kind.Primitive )
+        self.assertEqual(member.type.PrimtiveType, d3i.interpreter.primitive_type.PrimtiveType.String )
+        member:d3i.interpreter.value_object_member = value_object_inner.members[1]
+        self.assertEqual(member.name, "inner_2")
+        self.assertEqual(member.type.Kind, d3i.interpreter.type.Kind.Primitive )
+        self.assertEqual(member.type.PrimtiveType, d3i.interpreter.primitive_type.PrimtiveType.Integer )
+
 if __name__ == "__main__":
     unittest.main()
