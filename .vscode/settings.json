@@ -1,9 +1,11 @@
 {
-    "python.testing.cwd": "${workspaceFolder}/src/",
+    "python.testing.cwd": "${workspaceFolder}",
     "python.testing.unittestArgs": [
         "-v",
+        "-t",
+        "./src",
         "-s",
-        "./../tests",
+        "./src/tests",
         "-p",
         "*test*.py"
     ],
