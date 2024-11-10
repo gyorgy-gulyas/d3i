@@ -4,7 +4,6 @@ from enum import Enum
 
 class base_element:
     def __init__(self, fileName, pos):
-        self.decorators = []
         self.fileName = fileName
         self.line = pos.line
         self.column = pos.column
@@ -13,13 +12,13 @@ class base_element:
 class decorated_base_element(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.decorators = []
+        self.decorators:List[decorator] = []
 
 
 class d3i:
     def __init__(self):
         self.directives = []
-        self.domains = []
+        self.domains:List[domain] = []
 
 
 class directive(decorated_base_element):
@@ -43,13 +42,13 @@ class decorator(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.params = []
+        self.params:List[decorator_param] = []
 
 
 class decorator_param(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.type = None
+        self.kind = None
         self.value = None
 
     class Kind(Enum):
@@ -62,62 +61,61 @@ class decorator_param(base_element):
 class domain(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.decorators = []
         self.name = None
-        self.contexts = []
-        self.domain_events = []
+        self.contexts:List[context] = []
+        self.domain_events:List[event] = []
 
 
 class context(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.enums = []
-        self.value_objects = []
-        self.entities = []
-        self.aggregates = []
-        self.repositories = []
-        self.acls = []
-        self.domain_events = []
-        self.services = []
-        self.iterfaces = []
+        self.enums:List[enum] = []
+        self.value_objects:List[value_object] = []
+        self.entities:List[entity] = []
+        self.aggregates:List[aggregate] = []
+        self.repositories:List[repository] = []
+        self.acls:List[acl] = []
+        self.domain_events:List[event] = []
+        self.services:List[service] = []
+        self.iterfaces:List[interface] = []
 
 
 class enum(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.enum_elements = []
+        self.enum_elements:List[enum_element] = []
 
 
 class enum_element(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.Value = None
+        self.value = None
 
 
 class value_object(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.members = []
-        self.internal_enums = []
-        self.internal_value_objects = []
+        self.members:List[value_object_member] = []
+        self.internal_enums:List[enum] = []
+        self.internal_value_objects:List[value_object] = []
 
 
 class value_object_member(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.Type = None
+        self.type:type = None
 
 
 class event(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.internal_enums = []
-        self.internal_value_objects = []
+        self.internal_enums:List[enum] = []
+        self.internal_value_objects:List[value_object] = []
 
 
 class event_member(decorated_base_element):
@@ -130,9 +128,9 @@ class entity(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.members = []
-        self.internal_enums = []
-        self.internal_value_objects = []
+        self.members:List[entity_member] = []
+        self.internal_enums:List[enum] = []
+        self.internal_value_objects:List[value_object] = []
 
 class entity_member(decorated_base_element):
     def __init__(self, fileName, pos):
@@ -144,9 +142,9 @@ class aggregate(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.internal_entities = []
-        self.internal_enums = []
-        self.internal_value_objects = []
+        self.internal_entities:List[entity] = []
+        self.internal_enums:List[enum] = []
+        self.internal_value_objects:List[value_object] = []
 
 class aggregate_entity(base_element):
     def __init__(self, fileName, pos):
@@ -164,24 +162,24 @@ class service(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.internal_enums = []
-        self.internal_value_objects = []
-        self.operations = []
+        self.operations:List[operation] = []
+        self.internal_enums:List[enum] = []
+        self.internal_value_objects:List[value_object] = []
 
 class interface(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.internal_enums = []
-        self.internal_value_objects = []
-        self.operations = []
+        self.operations:List[operation] = []
+        self.internal_enums:List[enum] = []
+        self.internal_value_objects:List[value_object] = []
 
 class operation(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.operation_params = []
-        self.operation_returns = []
+        self.operation_params:List[operation_param] = []
+        self.operation_returns:List[operation_return] = []
 
 class operation_param(decorated_base_element):
     def __init__(self, fileName, pos):
@@ -199,22 +197,22 @@ class acl(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.internal_enums = []
-        self.internal_value_objects = []
-        self.methods = []
+        self.methods:List[method] = []
+        self.internal_enums:List[enum] = []
+        self.internal_value_objects:List[value_object] = []
 
 class method(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.method_params = []
-        self.return_type = []
+        self.method_params:List[method_param] = []
+        self.return_type = None
 
 class method_param(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.type = []
+        self.type = None
 
 class type(decorated_base_element):
     def __init__(self, fileName, pos):
@@ -247,7 +245,7 @@ class primitive_type(type):
 class reference_type(type):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.reference_name = None 
+        self.reference_name:qualified_name = None 
 
 class list_type(type):
     def __init__(self, fileName, pos):

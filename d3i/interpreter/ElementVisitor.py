@@ -1,3 +1,4 @@
+from decimal import Decimal
 from d3i.grammar.d3iGrammar import *
 from d3i.grammar.d3iGrammarVisitor import *
 from d3i.interpreter.Elements import *
@@ -59,6 +60,7 @@ class ElementVisitor(d3iGrammarVisitor):
                 result.contexts.append(self.visit(domain_element.context()))
             elif (domain_element.event()):
                 result.domain_events.append(self.visit(domain_element.event()))
+            counter = counter + 1
 
         return result
 
@@ -108,6 +110,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (context_element.interface()):
                 result.iterfaces.append(
                     self.visit(context_element.interface()))
+            counter = counter + 1
 
         return result
 
@@ -142,6 +145,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (value_object_element.value_object()):
                 result.internal_value_objects.append(
                     self.visit(value_object_element.value_object()))
+            counter = counter + 1
 
         return result
 
@@ -196,6 +200,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (event_member.value_object()):
                 result.internal_value_objects.append(
                     self.visit(event_member.value_object()))
+            counter = counter + 1
 
         return self.visitChildren(ctx)
 
@@ -246,6 +251,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (entity_element.value_object()):
                 result.internal_value_objects.append(
                     self.visit(entity_element.value_object()))
+            counter = counter + 1
 
         return self.visitChildren(ctx)
 
@@ -297,6 +303,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (aggregate_element.value_object()):
                 result.internal_value_objects.append(
                     self.visit(aggregate_element.value_object()))
+            counter = counter + 1
 
         return result
 
@@ -357,6 +364,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (service_element.value_object()):
                 result.internal_value_objects.append(
                     self.visit(service_element.value_object()))
+            counter = counter + 1
 
         return result
 
@@ -392,6 +400,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (interface_element.value_object()):
                 result.internal_value_objects.append(
                     self.visit(interface_element.value_object()))
+            counter = counter + 1
 
         return result
 
@@ -489,6 +498,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (acl_element.value_object()):
                 result.internal_value_objects.append(
                     self.visit(acl_element.value_object()))
+            counter = counter + 1
 
         return result
 
@@ -617,7 +627,7 @@ class ElementVisitor(d3iGrammarVisitor):
             if (param == None):
                 break
             counter = counter + 1
-            result.params.append(param)
+            result.params.append(self.visit(param))
 
         return result
 
@@ -625,23 +635,24 @@ class ElementVisitor(d3iGrammarVisitor):
     def visitDecorator_param(self, ctx: d3iGrammar.Decorator_paramContext):
         result = decorator_param(self.fileName, ctx.start)
         if (ctx.qualifiedName() != None):
-            result.type = decorator_param.Type.QualifiedName
+            result.kind = decorator_param.Kind.QualifiedName
             result.value = self.visit(ctx.qualifiedName())
         elif (ctx.INTEGER_CONSTANS() != None):
-            result.type = decorator_param.Type.Integer
-            result.value = ctx.INTEGER_CONSTANS()
+            result.kind = decorator_param.Kind.Integer
+            result.value = int(ctx.INTEGER_CONSTANS().getText())
         elif (ctx.NUMBER_CONSTANS() != None):
-            result.type = decorator_param.Type.Number
-            result.value = ctx.NUMBER_CONSTANS()
+            result.kind = decorator_param.Kind.Number
+            result.value = Decimal(ctx.NUMBER_CONSTANS().getText())
         else:
-            result.type = decorator_param.Type.String
-            result.value = ctx.STRING_LITERAL()
+            result.kind = decorator_param.Kind.String
+            result.value = ctx.STRING_LITERAL().getText().strip('"')
 
         return result
 
     # Visit a parse tree produced by d3iGrammar#enum.
     def visitEnum(self, ctx: d3iGrammar.EnumContext):
         result = enum(self.fileName, ctx.start)
+        result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
         while True:
@@ -651,6 +662,7 @@ class ElementVisitor(d3iGrammarVisitor):
             counter = counter + 1
             result.decorators.append(self.visit(decorator))
 
+        counter = 0
         while True:
             enum_element = ctx.enum_element((counter))
             if (enum_element == None):
@@ -663,7 +675,7 @@ class ElementVisitor(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#enum_element.
     def visitEnum_element(self, ctx: d3iGrammar.Enum_elementContext):
         result = enum_element(self.fileName, ctx.start)
-        result.Value = ctx.IDENTIFIER().getText()
+        result.value = ctx.IDENTIFIER().getText()
 
         counter = 0
         while True:
@@ -673,4 +685,4 @@ class ElementVisitor(d3iGrammarVisitor):
             counter = counter + 1
             result.decorators.append(self.visit(decorator))
 
-        return self.visitChildren(ctx)
+        return result
