@@ -30,8 +30,8 @@ context
         | entity
         | aggregate
         | repository
-        | acl
         | event
+        | acl
         | service
         | interface
         ;
@@ -93,7 +93,7 @@ aggregate
         ;
 
 repository
-    : decorator* 'repository' IDENTIFIER ':' IDENTIFIER
+    : decorator* 'repository' IDENTIFIER ':' qualifiedName
     ;
 
 service

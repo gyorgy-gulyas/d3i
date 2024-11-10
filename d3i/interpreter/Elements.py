@@ -142,7 +142,7 @@ class aggregate(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.internal_entities:List[entity] = []
+        self.internal_entities:List[aggregate_entity] = []
         self.internal_enums:List[enum] = []
         self.internal_value_objects:List[value_object] = []
 
@@ -150,13 +150,13 @@ class aggregate_entity(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.isRoot = None
-        self.entity = None
+        self.entity:entity = None
 
 class repository(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.element_name = None
+        self.element_name:qualified_name = None
 
 class service(decorated_base_element):
     def __init__(self, fileName, pos):

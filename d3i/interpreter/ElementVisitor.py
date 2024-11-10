@@ -83,7 +83,7 @@ class ElementVisitor(d3iGrammarVisitor):
 
         counter = 0
         while True:
-            context_element:d3iGrammar.Context_elementContext = ctx.context_element(
+            context_element: d3iGrammar.Context_elementContext = ctx.context_element(
                 (counter))
             if (context_element == None):
                 break
@@ -293,7 +293,7 @@ class ElementVisitor(d3iGrammarVisitor):
                 break
             elif (aggregate_element.aggregate_entity() != None):
                 result.internal_entities.append(
-                    self.visit(aggregate_element))
+                    self.visit(aggregate_element.aggregate_entity()))
             elif (aggregate_element.enum()):
                 result.internal_enums.append(
                     self.visit(aggregate_element.enum()))
@@ -314,14 +314,16 @@ class ElementVisitor(d3iGrammarVisitor):
         result.entity = self.visit(ctx.entity())
         if (ctx.ROOT() != None):
             result.isRoot = True
+        else:
+            result.isRoot = False
 
-        return self.visitChildren(ctx)
+        return result
 
     # Visit a parse tree produced by d3iGrammar#repository.
     def visitRepository(self, ctx: d3iGrammar.RepositoryContext):
         result = repository(self.fileName, ctx.start)
-        result.name = ctx.IDENTIFIER(0).getText()
-        result.element_name = ctx.IDENTIFIER(1).getText()
+        result.name = ctx.IDENTIFIER().getText()
+        result.element_name = self.visit(ctx.qualifiedName())
 
         counter = 0
         while True:
