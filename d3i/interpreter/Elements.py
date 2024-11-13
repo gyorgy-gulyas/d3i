@@ -76,7 +76,7 @@ class context(decorated_base_element):
         self.aggregates:List[aggregate] = []
         self.repositories:List[repository] = []
         self.acls:List[acl] = []
-        self.domain_events:List[event] = []
+        self.context_events:List[event] = []
         self.services:List[service] = []
         self.iterfaces:List[interface] = []
 
@@ -116,12 +116,14 @@ class event(decorated_base_element):
         self.name = None
         self.internal_enums:List[enum] = []
         self.internal_value_objects:List[value_object] = []
+        self.members:List[event_member] = []
 
 
 class event_member(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
+        self.type:type = None
 
 
 class entity(decorated_base_element):
@@ -190,7 +192,7 @@ class operation_param(decorated_base_element):
 class operation_return(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.type = None
+        self.type:type = None
 
 
 class acl(decorated_base_element):
@@ -206,13 +208,13 @@ class method(decorated_base_element):
         super().__init__(fileName, pos)
         self.name = None
         self.method_params:List[method_param] = []
-        self.return_type = None
+        self.return_type:type = None
 
 class method_param(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.type = None
+        self.type:type = None
 
 class type(decorated_base_element):
     def __init__(self, fileName, pos):

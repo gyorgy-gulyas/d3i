@@ -103,7 +103,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (context_element.acl()):
                 result.acls.append(self.visit(context_element.acl()))
             elif (context_element.event()):
-                result.domain_events.append(
+                result.context_events.append(
                     self.visit(context_element.event()))
             elif (context_element.service()):
                 result.services.append(self.visit(context_element.service()))
@@ -184,22 +184,22 @@ class ElementVisitor(d3iGrammarVisitor):
 
         counter = 0
         while True:
-            event_member: d3iGrammar.Event_memberContext = ctx.event_member(
+            event_element: d3iGrammar.Event_elementContext = ctx.event_element(
                 (counter))
-            if (event_member == None):
+            if (event_element == None):
                 break
-            elif (event_member.IDENTIFIER() != None):
+            elif (event_element.event_member() != None):
                 result.members.append(
-                    self._visitValue_object_member(event_member))
-            elif (event_member.enum()):
+                    self.visit(event_element.event_member()))
+            elif (event_element.enum()):
                 result.internal_enums.append(
-                    self.visit(event_member.enum()))
-            elif (event_member.value_object()):
+                    self.visit(event_element.enum()))
+            elif (event_element.value_object()):
                 result.internal_value_objects.append(
-                    self.visit(event_member.value_object()))
+                    self.visit(event_element.value_object()))
             counter = counter + 1
 
-        return self.visitChildren(ctx)
+        return result
 
     # Visit a parse tree produced by d3iGrammar#event_element.
     def visitEvent_element(self, ctx: d3iGrammar.Event_elementContext):
@@ -338,7 +338,7 @@ class ElementVisitor(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#service.
     def visitService(self, ctx: d3iGrammar.ServiceContext):
         result = service(self.fileName, ctx.start)
-        result.name = ctx.IDENTIFIER(0).getText()
+        result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
         while True:
@@ -410,7 +410,7 @@ class ElementVisitor(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#operation.
     def visitOperation(self, ctx: d3iGrammar.OperationContext):
         result = operation(self.fileName, ctx.start)
-        result.name = ctx.IDENTIFIER(0).getText()
+        result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
         while True:
@@ -441,7 +441,7 @@ class ElementVisitor(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#operation_param.
     def visitOperation_param(self, ctx: d3iGrammar.Operation_paramContext):
         result = operation_param(self.fileName, ctx.start)
-        result.name = ctx.IDENTIFIER(0).getText()
+        result.name = ctx.IDENTIFIER().getText()
         result.type = self.visit(ctx.type_())
 
         counter = 0
@@ -472,7 +472,7 @@ class ElementVisitor(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#acl.
     def visitAcl(self, ctx: d3iGrammar.AclContext):
         result = acl(self.fileName, ctx.start)
-        result.name = ctx.IDENTIFIER(0).getText()
+        result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
         while True:
@@ -508,9 +508,9 @@ class ElementVisitor(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#method.
     def visitMethod(self, ctx: d3iGrammar.MethodContext):
         result = method(self.fileName, ctx.start)
-        result.name = ctx.IDENTIFIER(0).getText()
-        if (ctx.type_(0) != None):
-            result.return_type = self.visit(ctx.type_(0))
+        result.name = ctx.IDENTIFIER().getText()
+        if (ctx.type_() != None):
+            result.return_type = self.visit(ctx.type_())
 
         counter = 0
         while True:
@@ -533,8 +533,8 @@ class ElementVisitor(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#method_param.
     def visitMethod_param(self, ctx: d3iGrammar.Method_paramContext):
         result = method_param(self.fileName, ctx.start)
-        result.name = ctx.IDENTIFIER(0).getText()
-        result.type = self.visit(ctx.type_(0))
+        result.name = ctx.IDENTIFIER().getText()
+        result.type = self.visit(ctx.type_())
 
         counter = 0
         while True:

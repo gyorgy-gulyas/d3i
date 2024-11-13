@@ -23,14 +23,14 @@ class Parser:
         self.grammar = d3iGrammar(CommonTokenStream(self.lexer))
 
         # Hozzáadjuk a saját hibafigyelőt
-        error_listener = SyntaxErrorListener()
+        error_listener = SyntaxErrorListener(self.fileName)
         self.grammar.removeErrorListeners()
         self.grammar.addErrorListener(error_listener)
             
         self.tree = self.grammar.d3i()
        
         if(error_listener.has_error):
-            print(error_listener.error_message)
+            error_listener.PrintErrors()
             if(abortWhenError):
                 return None
 
@@ -46,27 +46,31 @@ class Parser:
 from antlr4.error.ErrorListener import ErrorListener
 
 class SyntaxErrorListener(ErrorListener):
-    def __init__(self):
+    def __init__(self,fileName):
         super(SyntaxErrorListener, self).__init__()
+        self.fileName=fileName
         self.has_error = False  # Ezt használjuk a hiba állapotának nyomon követésére
-        self.error_message = ""
+        self.error_messages:List[SyntaxErrorListener.error] = []
 
-    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
-        self.has_error = True
-        self.error_message += f"Hiba a {line}. sor {column}. oszlopában: {msg}\n"
-        
+    def PrintErrors(self):
+        for error in self.error_messages:
+            print( f"{self.fileName}:{error.line}. column {error.column}: {error.message}\n")
+            
 
-    def reportAmbiguity(self, recognizer, dfa, startIndex, stopIndex, exact, ambigAlts, configs):
+    def syntaxError(self, recognizer, offendingSymbol, line, column, message, e):
         self.has_error = True
-        self.error_message += f"reportAmbiguity\n"
-        
+        error:ErrorListener.error = SyntaxErrorListener.error()
+        error.line = line
+        error.column = column
+        error.message = message
+        self.error_messages.append(error)
 
-    def reportAttemptingFullContext(self, recognizer, dfa, startIndex, stopIndex, conflictingAlts, configs):
-        self.has_error = True
-        self.error_message += f"reportAttemptingFullContext\n"
-        
+    class error:
+        def __init__(self):
+            self.line:int=None
+            self.column:int=None
+            self.message:int=None
 
-    def reportContextSensitivity(self, recognizer, dfa, startIndex, stopIndex, prediction, configs):
-        self.has_error = True
-        self.error_message += f"reportAttemptingFullContext\n"
-        
+      
+
+    
