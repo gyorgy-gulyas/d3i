@@ -374,7 +374,7 @@ class ElementVisitor(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#interface.
     def visitInterface(self, ctx: d3iGrammar.InterfaceContext):
         result = interface(self.fileName, ctx.start)
-        result.name = ctx.IDENTIFIER(0).getText()
+        result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
         while True:
