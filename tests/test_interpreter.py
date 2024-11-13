@@ -437,7 +437,7 @@ domain somedomain {
         self.assertEqual(repository.name, "customers")
         self.assertEqual(repository.element_name.getText(), "Customer")
 
-    def test_event(self):
+    def test_context_event(self):
         parser = d3i.interpreter.Parser()
         root = parser.ParseText(
             """
@@ -485,6 +485,56 @@ domain somedomain {
         self.assertEqual(len(member.decorators), 1)
         self.assertEqual(member.type.Kind, d3i.interpreter.type.Kind.Reference)
         self.assertEqual(member.type.reference_name.getText(), "EventData")
+
+    def test_domain_event(self):
+        parser = d3i.interpreter.Parser()
+        root = parser.ParseText(
+            """
+domain somedomain {
+    context Empty {
+    }
+    @decorator
+    event OrderPlaced {
+        valueObject EventData {
+            data_1:string
+            data_1:string
+        }
+        enum Importance {
+            High,
+            Normal,
+            Low
+        }
+
+        orderId:string
+        importance:Importance
+        @decorator_data
+        data:EventData
+    }
+}
+""", abortWhenError=True)
+        domain: d3i.interpreter.domain = root.domains[0]
+        self.assertEqual(len(domain.domain_events), 1)
+        event: d3i.interpreter.event = domain.domain_events[0]
+        self.assertEqual(event.name, "OrderPlaced")
+        self.assertEqual(len(event.members), 3)
+        self.assertEqual(len(event.internal_enums), 1)
+        self.assertEqual(len(event.internal_value_objects), 1)
+        member:d3i.interpreter.event_member = event.members[0]
+        self.assertEqual(member.name, "orderId")
+        self.assertEqual(member.type.Kind, d3i.interpreter.type.Kind.Primitive)
+        self.assertEqual(member.type.PrimtiveType, d3i.interpreter.primitive_type.PrimtiveType.String)
+        self.assertEqual(len(member.decorators), 0)
+        member:d3i.interpreter.event_member = event.members[1]
+        self.assertEqual(member.name, "importance")
+        self.assertEqual(len(member.decorators), 0)
+        self.assertEqual(member.type.Kind, d3i.interpreter.type.Kind.Reference)
+        self.assertEqual(member.type.reference_name.getText(), "Importance")
+        member:d3i.interpreter.event_member = event.members[2]
+        self.assertEqual(member.name, "data")
+        self.assertEqual(len(member.decorators), 1)
+        self.assertEqual(member.type.Kind, d3i.interpreter.type.Kind.Reference)
+        self.assertEqual(member.type.reference_name.getText(), "EventData")
+
 
     def test_acl(self):
         parser = d3i.interpreter.Parser()
