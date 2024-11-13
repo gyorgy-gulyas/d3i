@@ -1,4 +1,4 @@
-# Generated from ./parser/grammar/d3iGrammar.g4 by ANTLR 4.13.2
+# Generated from ./d3i/grammar/d3iGrammar.g4 by ANTLR 4.13.2
 from antlr4 import *
 if "." in __name__:
     from .d3iGrammar import d3iGrammar
@@ -71,6 +71,15 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#value_object_element.
+    def enterValue_object_element(self, ctx:d3iGrammar.Value_object_elementContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#value_object_element.
+    def exitValue_object_element(self, ctx:d3iGrammar.Value_object_elementContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#value_object_member.
     def enterValue_object_member(self, ctx:d3iGrammar.Value_object_memberContext):
         pass
@@ -89,6 +98,15 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#event_element.
+    def enterEvent_element(self, ctx:d3iGrammar.Event_elementContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#event_element.
+    def exitEvent_element(self, ctx:d3iGrammar.Event_elementContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#event_member.
     def enterEvent_member(self, ctx:d3iGrammar.Event_memberContext):
         pass
@@ -104,6 +122,15 @@ class d3iGrammarListener(ParseTreeListener):
 
     # Exit a parse tree produced by d3iGrammar#entity.
     def exitEntity(self, ctx:d3iGrammar.EntityContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#entity_element.
+    def enterEntity_element(self, ctx:d3iGrammar.Entity_elementContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#entity_element.
+    def exitEntity_element(self, ctx:d3iGrammar.Entity_elementContext):
         pass
 
 
@@ -131,6 +158,15 @@ class d3iGrammarListener(ParseTreeListener):
 
     # Exit a parse tree produced by d3iGrammar#aggregate_element.
     def exitAggregate_element(self, ctx:d3iGrammar.Aggregate_elementContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#aggregate_entity.
+    def enterAggregate_entity(self, ctx:d3iGrammar.Aggregate_entityContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#aggregate_entity.
+    def exitAggregate_entity(self, ctx:d3iGrammar.Aggregate_entityContext):
         pass
 
 
@@ -224,21 +260,21 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by d3iGrammar#acl_function.
-    def enterAcl_function(self, ctx:d3iGrammar.Acl_functionContext):
+    # Enter a parse tree produced by d3iGrammar#method.
+    def enterMethod(self, ctx:d3iGrammar.MethodContext):
         pass
 
-    # Exit a parse tree produced by d3iGrammar#acl_function.
-    def exitAcl_function(self, ctx:d3iGrammar.Acl_functionContext):
+    # Exit a parse tree produced by d3iGrammar#method.
+    def exitMethod(self, ctx:d3iGrammar.MethodContext):
         pass
 
 
-    # Enter a parse tree produced by d3iGrammar#acl_function_param.
-    def enterAcl_function_param(self, ctx:d3iGrammar.Acl_function_paramContext):
+    # Enter a parse tree produced by d3iGrammar#method_param.
+    def enterMethod_param(self, ctx:d3iGrammar.Method_paramContext):
         pass
 
-    # Exit a parse tree produced by d3iGrammar#acl_function_param.
-    def exitAcl_function_param(self, ctx:d3iGrammar.Acl_function_paramContext):
+    # Exit a parse tree produced by d3iGrammar#method_param.
+    def exitMethod_param(self, ctx:d3iGrammar.Method_paramContext):
         pass
 
 
@@ -269,12 +305,21 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by d3iGrammar#container_type.
-    def enterContainer_type(self, ctx:d3iGrammar.Container_typeContext):
+    # Enter a parse tree produced by d3iGrammar#list_type.
+    def enterList_type(self, ctx:d3iGrammar.List_typeContext):
         pass
 
-    # Exit a parse tree produced by d3iGrammar#container_type.
-    def exitContainer_type(self, ctx:d3iGrammar.Container_typeContext):
+    # Exit a parse tree produced by d3iGrammar#list_type.
+    def exitList_type(self, ctx:d3iGrammar.List_typeContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#map_type.
+    def enterMap_type(self, ctx:d3iGrammar.Map_typeContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#map_type.
+    def exitMap_type(self, ctx:d3iGrammar.Map_typeContext):
         pass
 
 
