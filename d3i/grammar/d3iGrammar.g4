@@ -117,16 +117,21 @@ interface
         ;
     
 operation
-    : decorator* IDENTIFIER '(' operation_param? (',' operation_param)* ')' operation_return?
+    : decorator* IDENTIFIER '(' operation_param? (',' operation_param)* ')' operation_returns?
     ;
 
     operation_param
         : decorator* IDENTIFIER ':' type
         ;
 
-    operation_return
-        : ':' decorator* type ('|' decorator* type)*
+    operation_returns
+        : '=>' operation_return ('or' operation_return)*
         ;
+    
+        operation_return
+            : decorator* type
+            ;
+
 
 acl
     :  decorator* 'acl' IDENTIFIER '{' acl_element* '}'

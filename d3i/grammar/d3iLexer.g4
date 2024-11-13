@@ -13,7 +13,7 @@ RCURLY : '}' ;
 LBARCKET : '[' ;
 RBRACKET : ']' ;
 AT : '@' ;
-PIPE : '|' ;
+ARROW : '=>' ;
 
 
 // declaration keywords
@@ -31,6 +31,7 @@ REPOSITORY : 'repository' ;
 
 // qualifier keywords
 ROOT : 'root' ;
+OR : 'or' ;
 
 // built-in types
 INTEGER : 'integer' ;
