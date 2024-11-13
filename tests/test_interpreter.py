@@ -565,7 +565,7 @@ domain somedomain {
         operation:d3i.interpreter.operation = service.operations[0]
         self.assertEqual(operation.name, "getOrder")
         self.assertEqual(len(operation.decorators), 1)
-        self.assertEqual(len(operation.method_params), 1)
+        self.assertEqual(len(operation.operation_params), 1)
         operation_param:d3i.interpreter.operation_param = operation.operation_params[0]
         self.assertEqual(operation_param.name, "orderId")
         self.assertEqual(operation_param.type.Kind, d3i.interpreter.type.Kind.Primitive)
@@ -573,11 +573,11 @@ domain somedomain {
         self.assertEqual(len(operation_param.decorators), 1)
         operation_return:d3i.interpreter.operation_return = operation.operation_returns[0]
         self.assertEqual(len(operation_return.decorators), 1)
-        self.assertEqual(len(operation_return.type.Kind), d3i.interpreter.type.Kind.Reference)
+        self.assertEqual(operation_return.type.Kind, d3i.interpreter.type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "OrderData" )
         operation_return:d3i.interpreter.operation_return = operation.operation_returns[1]
         self.assertEqual(len(operation_return.decorators), 1)
-        self.assertEqual(len(operation_return.type.Kind), d3i.interpreter.type.Kind.Reference)
+        self.assertEqual(operation_return.type.Kind, d3i.interpreter.type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "ErrorNotFound" )
 
     def test_interface(self):
@@ -607,8 +607,8 @@ domain somedomain {
 }
 """, abortWhenError=True)
         context: d3i.interpreter.context = root.domains[0].contexts[0]
-        self.assertEqual(len(context.services), 1)
-        interface: d3i.interpreter.interface = context.services[0]
+        self.assertEqual(len(context.interfaces), 1)
+        interface: d3i.interpreter.interface = context.interfaces[0]
         self.assertEqual(interface.name, "OrderService")
         self.assertEqual(len(interface.operations), 1)
         self.assertEqual(len(interface.internal_enums), 1)
@@ -616,7 +616,7 @@ domain somedomain {
         operation:d3i.interpreter.operation = interface.operations[0]
         self.assertEqual(operation.name, "getOrder")
         self.assertEqual(len(operation.decorators), 1)
-        self.assertEqual(len(operation.method_params), 1)
+        self.assertEqual(len(operation.operation_params), 1)
         operation_param:d3i.interpreter.operation_param = operation.operation_params[0]
         self.assertEqual(operation_param.name, "orderId")
         self.assertEqual(operation_param.type.Kind, d3i.interpreter.type.Kind.Primitive)
@@ -624,11 +624,11 @@ domain somedomain {
         self.assertEqual(len(operation_param.decorators), 1)
         operation_return:d3i.interpreter.operation_return = operation.operation_returns[0]
         self.assertEqual(len(operation_return.decorators), 1)
-        self.assertEqual(len(operation_return.type.Kind), d3i.interpreter.type.Kind.Reference)
-        self.assertEqual(operation_return.type.reference_name.getText(), "OrderData" )
+        self.assertEqual(operation_return.type.Kind, d3i.interpreter.type.Kind.Reference)
+        self.assertEqual(operation_return.type.reference_name.getText(), "OrderDTO" )
         operation_return:d3i.interpreter.operation_return = operation.operation_returns[1]
         self.assertEqual(len(operation_return.decorators), 1)
-        self.assertEqual(len(operation_return.type.Kind), d3i.interpreter.type.Kind.Reference)
+        self.assertEqual(operation_return.type.Kind, d3i.interpreter.type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "ErrorNotFound" )
 
 if __name__ == "__main__":

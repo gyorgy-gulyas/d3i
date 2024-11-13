@@ -108,7 +108,7 @@ class ElementVisitor(d3iGrammarVisitor):
             elif (context_element.service()):
                 result.services.append(self.visit(context_element.service()))
             elif (context_element.interface()):
-                result.iterfaces.append(
+                result.interfaces.append(
                     self.visit(context_element.interface()))
             counter = counter + 1
 

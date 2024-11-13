@@ -78,7 +78,7 @@ class context(decorated_base_element):
         self.acls:List[acl] = []
         self.context_events:List[event] = []
         self.services:List[service] = []
-        self.iterfaces:List[interface] = []
+        self.interfaces:List[service] = []
 
 
 class enum(decorated_base_element):

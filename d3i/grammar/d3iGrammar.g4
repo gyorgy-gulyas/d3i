@@ -117,17 +117,13 @@ interface
         ;
     
 operation
-    : decorator* IDENTIFIER '(' operation_param? (',' operation_param)* ')' operation_returns?
+    : decorator* IDENTIFIER '(' operation_param? (',' operation_param)* ')' (':' operation_return* )?
     ;
 
     operation_param
         : decorator* IDENTIFIER ':' type
         ;
 
-    operation_returns
-        : '=>' operation_return ('or' operation_return)*
-        ;
-    
         operation_return
             : decorator* type
             ;
