@@ -4,7 +4,7 @@ parser = d3i.interpreter.Parser()
 d3i = parser.ParseText( """
 domain somedomain {
     context context_1 {
-        valuessbject Address {
+        valueObject Address {
         }
     }
 }

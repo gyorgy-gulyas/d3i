@@ -1,7 +1,7 @@
 from decimal import Decimal
 from d3i.grammar.d3iGrammar import *
 from d3i.grammar.d3iGrammarVisitor import *
-from d3i.interpreter.Elements import *
+from d3i.Elements import *
 
 
 class ElementVisitor(d3iGrammarVisitor):
@@ -10,7 +10,7 @@ class ElementVisitor(d3iGrammarVisitor):
 
     # Visit a parse tree produced by d3iGrammar#d3i.
     def visitD3i(self, ctx: d3iGrammar.D3iContext):
-        result = d3i()
+        result = d3()
         counter = 0
         while True:
             directive = ctx.directive((counter))
