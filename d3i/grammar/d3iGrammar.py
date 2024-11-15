@@ -207,7 +207,7 @@ class d3iGrammar ( Parser ):
     literalNames = [ "<INVALID>", "'.'", "','", "':'", "'('", "')'", "'{'", 
                      "'}'", "'['", "']'", "'@'", "'=>'", "'domain'", "'context'", 
                      "'event'", "'entity'", "'aggregate'", "'service'", 
-                     "'interface'", "'acl'", "'valueObject'", "'enum'", 
+                     "'interface'", "'acl'", "'valueobject'", "'enum'", 
                      "'repository'", "'root'", "'or'", "'integer'", "'number'", 
                      "'float'", "'date'", "'time'", "'dateTime'", "'string'", 
                      "'boolean'", "'bytes'", "'list'", "'map'" ]

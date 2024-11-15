@@ -5,19 +5,19 @@ import d3i
 class TestInterpreter(unittest.TestCase):
 
     def tests_empty_ok(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText("",abortWhenError=True)
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText(""))
         self.assertIsInstance(root, d3i.d3)
         self.assertEqual(0, len(root.directives))
         self.assertEqual(0, len(root.domains))
 
     def test_lines_ok(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText("""
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText("""
 import somedomain
   
   import somedomain
-""",abortWhenError=True)
+"""))
         self.assertIsInstance(root, d3i.d3)
         element: d3i.base_element = root.directives[0]
         self.assertEqual(element.line, 2)
@@ -30,8 +30,8 @@ import somedomain
         self.assertEqual(element.fileName, "internal string")
 
     def test_directive_simple_ok(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText("import somedomain",abortWhenError=True)
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText("import somedomain"))
         self.assertIsInstance(root, d3i.d3)
         self.assertEqual(1, len(root.directives))
         directive: d3i.directive = root.directives[0]
@@ -39,8 +39,8 @@ import somedomain
         self.assertEqual(directive.value.getText(), "somedomain")
 
     def test_directive_qualified_ok(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText("import somedomain.subdomain.subdomain",abortWhenError=True)
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText("import somedomain.subdomain.subdomain"))
         self.assertIsInstance(root, d3i.d3)
         self.assertEqual(1, len(root.directives))
         directive: d3i.directive = root.directives[0]
@@ -49,11 +49,11 @@ import somedomain
                          "somedomain.subdomain.subdomain")
 
     def test_decorator_simple_ok(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText("""
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText("""
 @simple
 domain somedomain {}
-""",abortWhenError=True)
+"""))
         self.assertIsInstance(root, d3i.d3)
         self.assertEqual(1, len(root.domains))
         domain: d3i.domain = root.domains[0]
@@ -62,12 +62,12 @@ domain somedomain {}
         self.assertEqual(decorator.name, "simple")
 
     def test_decorator_multiple_ok(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText("""
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText("""
 @simple_1
 @simple_2
 domain somedomain {}
-""",abortWhenError=True)
+"""))
         self.assertIsInstance(root, d3i.d3)
         self.assertEqual(1, len(root.domains))
         domain: d3i.domain = root.domains[0]
@@ -78,11 +78,11 @@ domain somedomain {}
         self.assertEqual(decorator.name, "simple_2")
 
     def test_decorator_complex_ok(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText("""
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText("""
 @simple( "string", 1, 1.0, identifier.sub.sub )
 domain somedomain {}
-""",abortWhenError=True)
+"""))
         self.assertIsInstance(root, d3i.d3)
         self.assertEqual(1, len(root.domains))
         domain: d3i.domain = root.domains[0]
@@ -108,8 +108,8 @@ domain somedomain {}
         self.assertEqual(param.value.getText(), "identifier.sub.sub")
 
     def test_context_ok(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText(
             """
 domain somedomain {
     @decorator
@@ -119,7 +119,7 @@ domain somedomain {
     context context_2 {
     }
 }
-""",abortWhenError=True)
+"""))
         self.assertIsInstance(root, d3i.d3)
         domain: d3i.domain = root.domains[0]
         self.assertEqual(2, len(domain.contexts))
@@ -131,8 +131,8 @@ domain somedomain {
         self.assertEqual(len(context.decorators), 1)
 
     def test_enum(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText(
             """
 domain somedomain {
     context context_1 {
@@ -148,7 +148,7 @@ domain somedomain {
         }
     }
 }
-""",abortWhenError=True)
+"""))
         domain: d3i.context = root.domains[0].contexts[0]
         enum: d3i.enum = domain.enums[0]
         self.assertEqual(enum.name, "WeekDays")
@@ -163,13 +163,13 @@ domain somedomain {
         self.assertEqual(enum.enum_elements[4].decorators[0].name, "last")
 
     def test_value_object(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText(
             """
 domain somedomain {
     context context_1 {
         @decorator_valueobject
-        valueObject Address {
+        valueobject Address {
             @required
             city:string
             street:string
@@ -179,7 +179,7 @@ domain somedomain {
         }
     }
 }
-""",abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         value_object: d3i.value_object = context.value_objects[0]
         self.assertEqual(len(value_object.decorators), 1)
@@ -208,14 +208,14 @@ domain somedomain {
                          d3i.primitive_type.PrimtiveType.Integer)
 
     def test_value_object_inner_valueobject(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText(
             """
 domain somedomain {
     context context_1 {
         @decorator_valueobject
-        valueObject Address {
-            valueObject Inner{
+        valueobject Address {
+            valueobject Inner{
                 inner_1:string
                 inner_2:integer
             }
@@ -228,7 +228,7 @@ domain somedomain {
         }
     }
 }
-""",abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         value_object: d3i.value_object = context.value_objects[0]
         self.assertEqual(len(value_object.decorators), 1)
@@ -248,13 +248,13 @@ domain somedomain {
                          d3i.primitive_type.PrimtiveType.Integer)
 
     def test_value_object_inner_enum(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText(
             """
 domain somedomain {
     context context_1 {
         @decorator_valueobject
-        valueObject Address {
+        valueobject Address {
             enum InnerEnum{
                 Value1,
                 Value2
@@ -268,7 +268,7 @@ domain somedomain {
         }
     }
 }
-""",abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         value_object: d3i.value_object = context.value_objects[0]
         self.assertEqual(len(value_object.decorators), 1)
@@ -279,8 +279,8 @@ domain somedomain {
         self.assertEqual(len(enum_inner.enum_elements), 2)
 
     def test_entity(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText(
             """
 domain somedomain {
     context context_1 {
@@ -292,7 +292,7 @@ domain somedomain {
         }
     }
 }
-""",abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         entity: d3i.entity = context.entities[0]
         self.assertEqual(len(entity.decorators), 1)
@@ -310,8 +310,8 @@ domain somedomain {
         self.assertEqual(member.type.reference_name.getText(), "Address")
 
     def test_entity_inner_enum(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText(
             """
 domain somedomain {
     context context_1 {
@@ -328,7 +328,7 @@ domain somedomain {
         }
     }
 }
-""",abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         entity: d3i.entity = context.entities[0]
         self.assertEqual(len(entity.decorators), 1)
@@ -339,14 +339,14 @@ domain somedomain {
         self.assertEqual(len(inner_enum.enum_elements), 2)
 
     def test_entity_inner_valueobject(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText(
             """
 domain somedomain {
     context context_1 {
         @decorator_entity
         entity Customer {
-            valueObject Credit {
+            valueobject Credit {
                 limit:decimal
                 currency:Currency
             }
@@ -357,7 +357,7 @@ domain somedomain {
         }
     }
 }
-""",abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         entity: d3i.entity = context.entities[0]
         self.assertEqual(len(entity.decorators), 1)
@@ -368,8 +368,8 @@ domain somedomain {
         self.assertEqual(len(inner_value_object.members), 2)
 
     def test_aggregate(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText(
             """
 domain somedomain {
     context context_1 {
@@ -388,7 +388,7 @@ domain somedomain {
         }
     }
 }
-""",abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         aggregate: d3i.aggregate = context.aggregates[0]
         self.assertEqual(len(aggregate.internal_entities), 2)
@@ -400,8 +400,8 @@ domain somedomain {
         self.assertEqual(order_item.isRoot, False)
         
     def test_repository(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText(
             """
 domain somedomain {
     context context_1 {
@@ -428,7 +428,7 @@ domain somedomain {
         repository customers:Customer
     }
 }
-""",abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         repository: d3i.repository = context.repositories[0]
         self.assertEqual(repository.name, "orders")
@@ -438,14 +438,13 @@ domain somedomain {
         self.assertEqual(repository.element_name.getText(), "Customer")
 
     def test_context_event(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
-            """
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText("""
 domain somedomain {
     context context_1 {
         @decorator
         event OrderPlaced {
-            valueObject EventData {
+            valueobject EventData {
                 data_1:string
                 data_1:string
             }
@@ -462,7 +461,7 @@ domain somedomain {
         }
     }
 }
-""", abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         self.assertEqual(len(context.context_events), 1)
         event: d3i.event = context.context_events[0]
@@ -487,15 +486,14 @@ domain somedomain {
         self.assertEqual(member.type.reference_name.getText(), "EventData")
 
     def test_domain_event(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
-            """
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText("""
 domain somedomain {
     context Empty {
     }
     @decorator
     event OrderPlaced {
-        valueObject EventData {
+        valueobject EventData {
             data_1:string
             data_1:string
         }
@@ -511,7 +509,7 @@ domain somedomain {
         data:EventData
     }
 }
-""", abortWhenError=True)
+"""))
         domain: d3i.domain = root.domains[0]
         self.assertEqual(len(domain.domain_events), 1)
         event: d3i.event = domain.domain_events[0]
@@ -537,14 +535,13 @@ domain somedomain {
 
 
     def test_acl(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
-            """
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText("""
 domain somedomain {
     context context_1 {
         @decorator
         acl CustomerACL {
-            valueObject OrderData {
+            valueobject OrderData {
                 name:string
                 kind:CustomerKind
                 Address:string
@@ -559,7 +556,7 @@ domain somedomain {
         }
     }
 }
-""", abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         self.assertEqual(len(context.acls), 1)
         acl: d3i.acl = context.acls[0]
@@ -580,14 +577,13 @@ domain somedomain {
         self.assertEqual(method.return_type.reference_name.getText(), "OrderData" )
 
     def test_service(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
-            """
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText("""
 domain somedomain {
     context context_1 {
         @decorator
         service OrderService {
-            valueObject OrderData {
+            valueobject OrderData {
                 name:string
                 kind:CustomerKind
                 Address:string
@@ -604,7 +600,7 @@ domain somedomain {
         }
     }
 }
-""", abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         self.assertEqual(len(context.services), 1)
         service: d3i.service = context.services[0]
@@ -631,14 +627,13 @@ domain somedomain {
         self.assertEqual(operation_return.type.reference_name.getText(), "ErrorNotFound" )
 
     def test_interface(self):
-        parser = d3i.interpreter.Parser()
-        root = parser.ParseText(
-            """
+        engine = d3i.Engine()
+        root = engine.Build( d3i.Session.CreateFromText("""
 domain somedomain {
     context context_1 {
         @decorator
         interface OrderService {
-            valueObject OrderDTO {
+            valueobject OrderDTO {
                 name:string
                 kind:CustomerKind
                 Address:string
@@ -655,7 +650,7 @@ domain somedomain {
         }
     }
 }
-""", abortWhenError=True)
+"""))
         context: d3i.context = root.domains[0].contexts[0]
         self.assertEqual(len(context.interfaces), 1)
         interface: d3i.interface = context.interfaces[0]

@@ -25,7 +25,7 @@ AGGREGATE : 'aggregate' ;
 SERVICE : 'service' ;
 INTERFACE : 'interface' ;
 ACL : 'acl' ;
-VALUEOBJECT : 'valueObject' ;
+VALUEOBJECT : 'valueobject' ;
 ENUM : 'enum' ;
 REPOSITORY : 'repository' ;
 

@@ -19,7 +19,7 @@ null
 'service'
 'interface'
 'acl'
-'valueObject'
+'valueobject'
 'enum'
 'repository'
 'root'

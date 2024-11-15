@@ -1,7 +1,7 @@
 parser grammar d3iGrammar;
 options { 
     tokenVocab=d3iLexer; 
-    caseInsensitive = true;
+    caseInsensitive = false;
 }
 
 d3i
@@ -11,7 +11,6 @@ d3i
 directive
     : IDENTIFIER qualifiedName
     ;
-
 domain
     : decorator* 'domain' IDENTIFIER '{' domain_element* '}'
     ;
@@ -37,7 +36,7 @@ context
         ;
 
 value_object
-    : decorator* 'valueObject' IDENTIFIER '{' value_object_element* '}'
+    : decorator* 'valueobject' IDENTIFIER '{' value_object_element* '}'
     ;
 
     value_object_element
