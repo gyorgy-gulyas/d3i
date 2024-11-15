@@ -2,6 +2,9 @@ lexer grammar d3iLexer;
 
 channels { COMMENT_CHANNEL }
 
+options { 
+    caseInsensitive = true;
+}
 // syntax elements
 DOT : '.' ;
 COMMA : ',' ;
@@ -14,6 +17,7 @@ LBARCKET : '[' ;
 RBRACKET : ']' ;
 AT : '@' ;
 ARROW : '=>' ;
+PIPE : '|' ;
 
 
 // declaration keywords
@@ -52,7 +56,7 @@ NUMBER_CONSTANS : [0-9]+'.'[0-9]+ ;
 STRING_LITERAL: '"' .*? '"';
 
 // syntax controllers
-IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]* ;
+IDENTIFIER: [a-z][a-z_0-9]* ;
 WS: [ \t\n\r\f]+ -> skip ;
 
 

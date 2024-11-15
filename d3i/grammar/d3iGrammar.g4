@@ -1,7 +1,7 @@
 parser grammar d3iGrammar;
 options { 
     tokenVocab=d3iLexer; 
-    caseInsensitive = false;
+    caseInsensitive = true;
 }
 
 d3i
@@ -116,7 +116,7 @@ interface
         ;
     
 operation
-    : decorator* IDENTIFIER '(' operation_param? (',' operation_param)* ')' (':' operation_return* )?
+    : decorator* IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' ((':' operation_return )? ('|' operation_return)*)
     ;
 
     operation_param
@@ -139,7 +139,7 @@ acl
         ;
         
         method
-            : decorator* IDENTIFIER '(' method_param? (',' method_param)* ')' ':' type
+            : decorator* IDENTIFIER '(' (method_param? (',' method_param)*) ')' ':' type
             ;
 
             method_param
