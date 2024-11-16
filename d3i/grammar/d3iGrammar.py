@@ -16,9 +16,9 @@ def serializedATN():
         7,20,2,21,7,21,2,22,7,22,2,23,7,23,2,24,7,24,2,25,7,25,2,26,7,26,
         2,27,7,27,2,28,7,28,2,29,7,29,2,30,7,30,2,31,7,31,2,32,7,32,2,33,
         7,33,2,34,7,34,2,35,7,35,2,36,7,36,2,37,7,37,2,38,7,38,2,39,7,39,
-        1,0,5,0,82,8,0,10,0,12,0,85,9,0,1,0,5,0,88,8,0,10,0,12,0,91,9,0,
-        1,0,1,0,1,1,1,1,1,1,1,2,5,2,99,8,2,10,2,12,2,102,9,2,1,2,1,2,1,2,
-        1,2,5,2,108,8,2,10,2,12,2,111,9,2,1,2,1,2,1,3,1,3,3,3,117,8,3,1,
+        1,0,5,0,82,8,0,10,0,12,0,85,9,0,1,0,1,0,1,1,5,1,90,8,1,10,1,12,1,
+        93,9,1,1,1,1,1,1,1,1,1,5,1,99,8,1,10,1,12,1,102,9,1,1,1,5,1,105,
+        8,1,10,1,12,1,108,9,1,1,1,1,1,1,2,1,2,1,2,1,3,1,3,3,3,117,8,3,1,
         4,5,4,120,8,4,10,4,12,4,123,9,4,1,4,1,4,1,4,1,4,5,4,129,8,4,10,4,
         12,4,132,9,4,1,4,1,4,1,5,1,5,1,5,1,5,1,5,1,5,1,5,1,5,1,5,3,5,145,
         8,5,1,6,5,6,148,8,6,10,6,12,6,151,9,6,1,6,1,6,1,6,1,6,5,6,157,8,
@@ -56,7 +56,7 @@ def serializedATN():
         39,5,39,500,8,39,10,39,12,39,503,9,39,1,39,1,39,1,39,0,0,40,0,2,
         4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,
         50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,0,1,1,0,26,34,537,0,
-        83,1,0,0,0,2,94,1,0,0,0,4,100,1,0,0,0,6,116,1,0,0,0,8,121,1,0,0,
+        83,1,0,0,0,2,91,1,0,0,0,4,111,1,0,0,0,6,116,1,0,0,0,8,121,1,0,0,
         0,10,144,1,0,0,0,12,149,1,0,0,0,14,166,1,0,0,0,16,171,1,0,0,0,18,
         181,1,0,0,0,20,198,1,0,0,0,22,203,1,0,0,0,24,213,1,0,0,0,26,230,
         1,0,0,0,28,235,1,0,0,0,30,245,1,0,0,0,32,262,1,0,0,0,34,265,1,0,
@@ -66,14 +66,14 @@ def serializedATN():
         0,0,62,432,1,0,0,0,64,434,1,0,0,0,66,436,1,0,0,0,68,441,1,0,0,0,
         70,448,1,0,0,0,72,471,1,0,0,0,74,477,1,0,0,0,76,482,1,0,0,0,78,501,
         1,0,0,0,80,82,3,2,1,0,81,80,1,0,0,0,82,85,1,0,0,0,83,81,1,0,0,0,
-        83,84,1,0,0,0,84,89,1,0,0,0,85,83,1,0,0,0,86,88,3,4,2,0,87,86,1,
-        0,0,0,88,91,1,0,0,0,89,87,1,0,0,0,89,90,1,0,0,0,90,92,1,0,0,0,91,
-        89,1,0,0,0,92,93,5,0,0,1,93,1,1,0,0,0,94,95,5,40,0,0,95,96,3,70,
-        35,0,96,3,1,0,0,0,97,99,3,72,36,0,98,97,1,0,0,0,99,102,1,0,0,0,100,
-        98,1,0,0,0,100,101,1,0,0,0,101,103,1,0,0,0,102,100,1,0,0,0,103,104,
-        5,13,0,0,104,105,5,40,0,0,105,109,5,6,0,0,106,108,3,6,3,0,107,106,
-        1,0,0,0,108,111,1,0,0,0,109,107,1,0,0,0,109,110,1,0,0,0,110,112,
-        1,0,0,0,111,109,1,0,0,0,112,113,5,7,0,0,113,5,1,0,0,0,114,117,3,
+        83,84,1,0,0,0,84,86,1,0,0,0,85,83,1,0,0,0,86,87,5,0,0,1,87,1,1,0,
+        0,0,88,90,3,72,36,0,89,88,1,0,0,0,90,93,1,0,0,0,91,89,1,0,0,0,91,
+        92,1,0,0,0,92,94,1,0,0,0,93,91,1,0,0,0,94,95,5,13,0,0,95,96,5,40,
+        0,0,96,100,5,6,0,0,97,99,3,4,2,0,98,97,1,0,0,0,99,102,1,0,0,0,100,
+        98,1,0,0,0,100,101,1,0,0,0,101,106,1,0,0,0,102,100,1,0,0,0,103,105,
+        3,6,3,0,104,103,1,0,0,0,105,108,1,0,0,0,106,104,1,0,0,0,106,107,
+        1,0,0,0,107,109,1,0,0,0,108,106,1,0,0,0,109,110,5,7,0,0,110,3,1,
+        0,0,0,111,112,5,40,0,0,112,113,3,70,35,0,113,5,1,0,0,0,114,117,3,
         8,4,0,115,117,3,18,9,0,116,114,1,0,0,0,116,115,1,0,0,0,117,7,1,0,
         0,0,118,120,3,72,36,0,119,118,1,0,0,0,120,123,1,0,0,0,121,119,1,
         0,0,0,121,122,1,0,0,0,122,124,1,0,0,0,123,121,1,0,0,0,124,125,5,
@@ -189,7 +189,7 @@ def serializedATN():
         1,0,0,0,494,496,1,0,0,0,495,493,1,0,0,0,496,497,5,7,0,0,497,77,1,
         0,0,0,498,500,3,72,36,0,499,498,1,0,0,0,500,503,1,0,0,0,501,499,
         1,0,0,0,501,502,1,0,0,0,502,504,1,0,0,0,503,501,1,0,0,0,504,505,
-        5,40,0,0,505,79,1,0,0,0,53,83,89,100,109,116,121,130,144,149,158,
+        5,40,0,0,505,79,1,0,0,0,53,83,91,100,106,116,121,130,144,149,158,
         166,171,181,190,198,203,213,222,230,235,245,254,262,265,272,283,
         292,300,305,314,322,327,333,339,345,351,357,367,375,384,392,397,
         403,409,419,430,453,466,471,477,482,493,501
@@ -224,8 +224,8 @@ class d3iGrammar ( Parser ):
                       "BLOCK_COMMENT" ]
 
     RULE_d3i = 0
-    RULE_directive = 1
-    RULE_domain = 2
+    RULE_domain = 1
+    RULE_directive = 2
     RULE_domain_element = 3
     RULE_context = 4
     RULE_context_element = 5
@@ -264,7 +264,7 @@ class d3iGrammar ( Parser ):
     RULE_enum = 38
     RULE_enum_element = 39
 
-    ruleNames =  [ "d3i", "directive", "domain", "domain_element", "context", 
+    ruleNames =  [ "d3i", "domain", "directive", "domain_element", "context", 
                    "context_element", "value_object", "value_object_element", 
                    "value_object_member", "event", "event_element", "event_member", 
                    "entity", "entity_element", "entity_member", "aggregate", 
@@ -339,13 +339,6 @@ class d3iGrammar ( Parser ):
         def EOF(self):
             return self.getToken(d3iGrammar.EOF, 0)
 
-        def directive(self, i:int=None):
-            if i is None:
-                return self.getTypedRuleContexts(d3iGrammar.DirectiveContext)
-            else:
-                return self.getTypedRuleContext(d3iGrammar.DirectiveContext,i)
-
-
         def domain(self, i:int=None):
             if i is None:
                 return self.getTypedRuleContexts(d3iGrammar.DomainContext)
@@ -383,25 +376,129 @@ class d3iGrammar ( Parser ):
             self.state = 83
             self._errHandler.sync(self)
             _la = self._input.LA(1)
-            while _la==40:
+            while _la==10 or _la==13:
                 self.state = 80
-                self.directive()
+                self.domain()
                 self.state = 85
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
 
-            self.state = 89
+            self.state = 86
+            self.match(d3iGrammar.EOF)
+        except RecognitionException as re:
+            localctx.exception = re
+            self._errHandler.reportError(self, re)
+            self._errHandler.recover(self, re)
+        finally:
+            self.exitRule()
+        return localctx
+
+
+    class DomainContext(ParserRuleContext):
+        __slots__ = 'parser'
+
+        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
+            super().__init__(parent, invokingState)
+            self.parser = parser
+
+        def DOMAIN(self):
+            return self.getToken(d3iGrammar.DOMAIN, 0)
+
+        def IDENTIFIER(self):
+            return self.getToken(d3iGrammar.IDENTIFIER, 0)
+
+        def LCURLY(self):
+            return self.getToken(d3iGrammar.LCURLY, 0)
+
+        def RCURLY(self):
+            return self.getToken(d3iGrammar.RCURLY, 0)
+
+        def decorator(self, i:int=None):
+            if i is None:
+                return self.getTypedRuleContexts(d3iGrammar.DecoratorContext)
+            else:
+                return self.getTypedRuleContext(d3iGrammar.DecoratorContext,i)
+
+
+        def directive(self, i:int=None):
+            if i is None:
+                return self.getTypedRuleContexts(d3iGrammar.DirectiveContext)
+            else:
+                return self.getTypedRuleContext(d3iGrammar.DirectiveContext,i)
+
+
+        def domain_element(self, i:int=None):
+            if i is None:
+                return self.getTypedRuleContexts(d3iGrammar.Domain_elementContext)
+            else:
+                return self.getTypedRuleContext(d3iGrammar.Domain_elementContext,i)
+
+
+        def getRuleIndex(self):
+            return d3iGrammar.RULE_domain
+
+        def enterRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "enterDomain" ):
+                listener.enterDomain(self)
+
+        def exitRule(self, listener:ParseTreeListener):
+            if hasattr( listener, "exitDomain" ):
+                listener.exitDomain(self)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitDomain" ):
+                return visitor.visitDomain(self)
+            else:
+                return visitor.visitChildren(self)
+
+
+
+
+    def domain(self):
+
+        localctx = d3iGrammar.DomainContext(self, self._ctx, self.state)
+        self.enterRule(localctx, 2, self.RULE_domain)
+        self._la = 0 # Token type
+        try:
+            self.enterOuterAlt(localctx, 1)
+            self.state = 91
             self._errHandler.sync(self)
             _la = self._input.LA(1)
-            while _la==10 or _la==13:
-                self.state = 86
-                self.domain()
-                self.state = 91
+            while _la==10:
+                self.state = 88
+                self.decorator()
+                self.state = 93
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
 
-            self.state = 92
-            self.match(d3iGrammar.EOF)
+            self.state = 94
+            self.match(d3iGrammar.DOMAIN)
+            self.state = 95
+            self.match(d3iGrammar.IDENTIFIER)
+            self.state = 96
+            self.match(d3iGrammar.LCURLY)
+            self.state = 100
+            self._errHandler.sync(self)
+            _la = self._input.LA(1)
+            while _la==40:
+                self.state = 97
+                self.directive()
+                self.state = 102
+                self._errHandler.sync(self)
+                _la = self._input.LA(1)
+
+            self.state = 106
+            self._errHandler.sync(self)
+            _la = self._input.LA(1)
+            while (((_la) & ~0x3f) == 0 and ((1 << _la) & 50176) != 0):
+                self.state = 103
+                self.domain_element()
+                self.state = 108
+                self._errHandler.sync(self)
+                _la = self._input.LA(1)
+
+            self.state = 109
+            self.match(d3iGrammar.RCURLY)
         except RecognitionException as re:
             localctx.exception = re
             self._errHandler.reportError(self, re)
@@ -448,110 +545,13 @@ class d3iGrammar ( Parser ):
     def directive(self):
 
         localctx = d3iGrammar.DirectiveContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 2, self.RULE_directive)
+        self.enterRule(localctx, 4, self.RULE_directive)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 94
+            self.state = 111
             self.match(d3iGrammar.IDENTIFIER)
-            self.state = 95
-            self.qualifiedName()
-        except RecognitionException as re:
-            localctx.exception = re
-            self._errHandler.reportError(self, re)
-            self._errHandler.recover(self, re)
-        finally:
-            self.exitRule()
-        return localctx
-
-
-    class DomainContext(ParserRuleContext):
-        __slots__ = 'parser'
-
-        def __init__(self, parser, parent:ParserRuleContext=None, invokingState:int=-1):
-            super().__init__(parent, invokingState)
-            self.parser = parser
-
-        def DOMAIN(self):
-            return self.getToken(d3iGrammar.DOMAIN, 0)
-
-        def IDENTIFIER(self):
-            return self.getToken(d3iGrammar.IDENTIFIER, 0)
-
-        def LCURLY(self):
-            return self.getToken(d3iGrammar.LCURLY, 0)
-
-        def RCURLY(self):
-            return self.getToken(d3iGrammar.RCURLY, 0)
-
-        def decorator(self, i:int=None):
-            if i is None:
-                return self.getTypedRuleContexts(d3iGrammar.DecoratorContext)
-            else:
-                return self.getTypedRuleContext(d3iGrammar.DecoratorContext,i)
-
-
-        def domain_element(self, i:int=None):
-            if i is None:
-                return self.getTypedRuleContexts(d3iGrammar.Domain_elementContext)
-            else:
-                return self.getTypedRuleContext(d3iGrammar.Domain_elementContext,i)
-
-
-        def getRuleIndex(self):
-            return d3iGrammar.RULE_domain
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterDomain" ):
-                listener.enterDomain(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitDomain" ):
-                listener.exitDomain(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitDomain" ):
-                return visitor.visitDomain(self)
-            else:
-                return visitor.visitChildren(self)
-
-
-
-
-    def domain(self):
-
-        localctx = d3iGrammar.DomainContext(self, self._ctx, self.state)
-        self.enterRule(localctx, 4, self.RULE_domain)
-        self._la = 0 # Token type
-        try:
-            self.enterOuterAlt(localctx, 1)
-            self.state = 100
-            self._errHandler.sync(self)
-            _la = self._input.LA(1)
-            while _la==10:
-                self.state = 97
-                self.decorator()
-                self.state = 102
-                self._errHandler.sync(self)
-                _la = self._input.LA(1)
-
-            self.state = 103
-            self.match(d3iGrammar.DOMAIN)
-            self.state = 104
-            self.match(d3iGrammar.IDENTIFIER)
-            self.state = 105
-            self.match(d3iGrammar.LCURLY)
-            self.state = 109
-            self._errHandler.sync(self)
-            _la = self._input.LA(1)
-            while (((_la) & ~0x3f) == 0 and ((1 << _la) & 50176) != 0):
-                self.state = 106
-                self.domain_element()
-                self.state = 111
-                self._errHandler.sync(self)
-                _la = self._input.LA(1)
-
             self.state = 112
-            self.match(d3iGrammar.RCURLY)
+            self.qualifiedName()
         except RecognitionException as re:
             localctx.exception = re
             self._errHandler.reportError(self, re)

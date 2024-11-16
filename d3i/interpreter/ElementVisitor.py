@@ -5,29 +5,22 @@ from d3i.Elements import *
 
 
 class ElementVisitor(d3iGrammarVisitor):
-    def __init__(self, fileName):
-        self.fileName = fileName
+    def __init__(self):
+        self.elementTree = d3()
+        self.fileName:str = ""
 
     # Visit a parse tree produced by d3iGrammar#d3i.
     def visitD3i(self, ctx: d3iGrammar.D3iContext):
-        result = d3()
-        counter = 0
-        while True:
-            directive = ctx.directive((counter))
-            if (directive == None):
-                break
-            counter = counter + 1
-            result.directives.append(self.visit(directive))
-
+      
         counter = 0
         while True:
             domain = ctx.domain((counter))
             if (domain == None):
                 break
             counter = counter + 1
-            result.domains.append(self.visit(domain))
+            self.elementTree.domains.append(self.visit(domain))
 
-        return result
+        return self.elementTree
 
     # Visit a parse tree produced by d3iGrammar#directive.
     def visitDirective(self, ctx: d3iGrammar.DirectiveContext):
@@ -49,6 +42,14 @@ class ElementVisitor(d3iGrammarVisitor):
                 break
             counter = counter + 1
             result.decorators.append(self.visit(decorator))
+
+        counter = 0
+        while True:
+            directive = ctx.directive((counter))
+            if (directive == None):
+                break
+            counter = counter + 1
+            result.directives.append(self.visit(directive))
 
         counter = 0
         while True:

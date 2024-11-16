@@ -5,16 +5,17 @@ options {
 }
 
 d3i
-    : directive* domain* EOF
+    : domain* EOF
     ;
 
-directive
-    : IDENTIFIER qualifiedName
-    ;
 domain
-    : decorator* 'domain' IDENTIFIER '{' domain_element* '}'
+    : decorator* 'domain' IDENTIFIER '{' directive* domain_element* '}'
     ;
 
+    directive
+        : IDENTIFIER qualifiedName
+        ;
+        
     domain_element
         : context
         | event;

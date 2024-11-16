@@ -17,9 +17,7 @@ class decorated_base_element(base_element):
 
 class d3:
     def __init__(self):
-        self.directives = []
         self.domains:List[domain] = []
-
 
 class directive(decorated_base_element):
     def __init__(self, fileName, pos):
@@ -62,6 +60,7 @@ class domain(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
+        self.directives:List[directive] = []
         self.contexts:List[context] = []
         self.domain_events:List[event] = []
 
