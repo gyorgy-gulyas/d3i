@@ -39,8 +39,7 @@ domain somedomain{
         self.assertEqual(1, len(root.domains[0].directives))
         directive: d3i.directive = root.domains[0].directives[0]
         self.assertEqual(directive.keyword, "import")
-        self.assertEqual(directive.value.getText(),
-                         "somedomain.subdomain.subdomain")
+        self.assertEqual(directive.value.getText(), "somedomain.subdomain.subdomain")
 
     def test_decorator_simple_ok(self):
         engine = d3i.Engine()
@@ -91,20 +90,16 @@ domain somedomain {}
         self.assertEqual(decorator.name, "simple")
         self.assertEqual(4, len(decorator.params))
         param: d3i.decorator_param = decorator.params[0]
-        self.assertEqual(
-            param.kind, d3i.decorator_param.Kind.String)
+        self.assertEqual(param.kind, d3i.decorator_param.Kind.String)
         self.assertEqual(param.value, "string")
         param: d3i.decorator_param = decorator.params[1]
-        self.assertEqual(
-            param.kind, d3i.decorator_param.Kind.Integer)
+        self.assertEqual(param.kind, d3i.decorator_param.Kind.Integer)
         self.assertEqual(param.value, 1)
         param: d3i.decorator_param = decorator.params[2]
-        self.assertEqual(
-            param.kind, d3i.decorator_param.Kind.Number)
+        self.assertEqual(param.kind, d3i.decorator_param.Kind.Number)
         self.assertEqual(param.value, 1.0)
         param: d3i.decorator_param = decorator.params[3]
-        self.assertEqual(
-            param.kind, d3i.decorator_param.Kind.QualifiedName)
+        self.assertEqual(param.kind, d3i.decorator_param.Kind.QualifiedName)
         self.assertEqual(param.value.getText(), "identifier.sub.sub")
 
     def test_context_ok(self):
@@ -300,8 +295,7 @@ domain somedomain {
         member: d3i.entity_member = entity.members[0]
         self.assertEqual(member.name, "name")
         self.assertEqual(member.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(member.type.PrimtiveType,
-                         d3i.primitive_type.PrimtiveType.String)
+        self.assertEqual(member.type.PrimtiveType,                         d3i.primitive_type.PrimtiveType.String)
         self.assertEqual(member.decorators[0].name, "required")
         member: d3i.entity_member = entity.members[1]
         self.assertEqual(member.name, "address")

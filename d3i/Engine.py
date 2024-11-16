@@ -47,10 +47,26 @@ class Session:
         for msg in self.diagnostics:
             print(f"{msg.fileName}({msg.line},{msg.column}): {msg.severity} :{msg.message}\n")
 
+    def ReportDiagnostic(self, message, severity, fileName="", line=0, column=0 ):
+        diagnostic: Diagnostic = Diagnostic()
+        diagnostic.severity = severity
+        diagnostic.fileName = fileName
+        diagnostic.line = line
+        diagnostic.column = column
+        diagnostic.message = message
+        self.diagnostics.append(diagnostic)
+
 
 class Engine:
 
     def Build(self, session: Session):
+        self.__create_syntax_trees__(session)
+        self.__create_element_trees__(session)
+        self.__merge_element_trees__(session)
+
+        return session.main
+
+    def Linting(self, session: Session):
         self.__create_syntax_trees__(session)
         self.__create_element_trees__(session)
         self.__merge_element_trees__(session)
@@ -87,7 +103,7 @@ class Engine:
         for elementTree in session.elementTrees:
             for domain in elementTree.domains:
                 # find domain in merged
-                domain_already:d3i.domain = self.__find_domain_by_name__(session.main.domains, domain.name)
+                domain_already: d3i.domain = self.__find_domain_by_name__(session.main.domains, domain.name)
                 if (domain_already == None):
                     # append domain to merged
                     session.main.domains.append(domain)
@@ -96,7 +112,8 @@ class Engine:
                     domain_already.domain_events.extend(domain.domain_events)
                     for context in domain.contexts:
                         # find context in merged
-                        context_already: d3i.context = self.__find_context_by_name__(domain_already.contexts,context.name)
+                        context_already: d3i.context = self.__find_context_by_name__(
+                            domain_already.contexts, context.name)
                         if (context_already == None):
                             domain.contexts.append(context)
                         else:
@@ -110,21 +127,21 @@ class Engine:
                             context_already.interfaces.extend(context.interfaces)
 
         return session.HasErrror()
-    
+
     @staticmethod
-    def __find_domain_by_name__( domains, name ):
+    def __find_domain_by_name__(domains, name):
         for domain in domains:
-            if( domain.name == name ):
+            if (domain.name == name):
                 return domain
-        
+
         return None
 
     @staticmethod
-    def __find_context_by_name__( contexts, name ):
+    def __find_context_by_name__(contexts, name):
         for context in contexts:
-            if( context.name == name ):
+            if (context.name == name):
                 return context
-        
+
         return None
 
     class __syntaxErrorListener__(ErrorListener):
@@ -135,6 +152,9 @@ class Engine:
 
         def syntaxError(self, recognizer, offendingSymbol, line, column, message, e):
             self.has_error = True
+
+            self.session.ReportDiagnostic()
+
             error: Diagnostic = Diagnostic()
             error.severity = Diagnostic.Severity.Error
             error.fileName = self.fileName
