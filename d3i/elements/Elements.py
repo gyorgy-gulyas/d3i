@@ -24,13 +24,6 @@ class scoped_base_element(decorated_base_element):
         self.internal_value_objects: List[value_object] = []
 
 
-class directive(decorated_base_element):
-    def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
-        self.keyword = None
-        self.value = None
-
-
 class qualified_name(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
@@ -81,10 +74,22 @@ class domain(decorated_base_element):
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitDomain(self, parentData)
+        for directive in self.directives:
+            directive.visit(self, visitor, data)
         for context in self.contexts:
             context.visit(self, visitor, data)
         for event in self.domain_events:
             event.visit(self, visitor, data)
+
+
+class directive(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.keyword = None
+        self.value = None
+
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitDirective(self, parentData)
 
 
 class context(decorated_base_element):
@@ -130,7 +135,7 @@ class enum(decorated_base_element):
         self.enum_elements: List[enum_element] = []
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitEnum(self, parent, parentData)
+        data = visitor.visitEnum(self,  parentData)
         for enum_element in self.enum_elements:
             enum_element.visit(self, visitor, data)
 
@@ -151,7 +156,7 @@ class value_object(scoped_base_element):
         self.members: List[value_object_member] = []
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitValueObject(self, parent, parentData)
+        data = visitor.visitValueObject(self, parentData)
         for member in self.members:
             member.visit(self, visitor, data)
         for internal_enum in self.internal_enums:
@@ -285,7 +290,7 @@ class interface(scoped_base_element):
         self.operations: List[operation] = []
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitInterface(self, parent, parentData)
+        data = visitor.visitInterface(self, parentData)
         for operation in self.operations:
             operation.visit(self, visitor, data)
         for internal_enum in self.internal_enums:
@@ -302,7 +307,7 @@ class operation(decorated_base_element):
         self.operation_returns: List[operation_return] = []
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitOperation(self, parent, parentData)
+        data = visitor.visitOperation(self, parentData)
         for operation_param in self.operation_params:
             operation_param.visit(self, visitor, data)
         for operation_return in self.operation_returns:

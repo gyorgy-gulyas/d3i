@@ -1,5 +1,6 @@
 import unittest
 import d3i
+from d3i.emitter import *
 
 
 class TestBuild(unittest.TestCase):
@@ -681,6 +682,11 @@ domain somedomain {
         self.assertEqual(len(operation_return.decorators), 1)
         self.assertEqual(operation_return.type.Kind, d3i.type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "ErrorNotFound")
+
+        jsonEmmiter=JsonEmitter()
+        data = root.visit(jsonEmmiter,None)
+        jsonString  = json.dumps(data,indent=4)
+        print(jsonString)
 
 
 if __name__ == "__main__":

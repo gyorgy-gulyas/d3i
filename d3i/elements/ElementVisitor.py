@@ -62,10 +62,10 @@ class ElementVisitor:
     def visitOperation(self, operation: operation, parentData: Any) -> Any:
         pass
 
-    def visitOperationParam(self, operation_param: operation_param, parentOpeartion: operation, parentData: Any) -> Any:
+    def visitOperationParam(self, operation_param: operation_param, parentOperation: operation, parentData: Any) -> Any:
         pass
 
-    def visitOperationReturn(self, operation_return: operation_return, parentOpeartion: operation, parentData: Any) -> Any:
+    def visitOperationReturn(self, operation_return: operation_return, parentOperation: operation, parentData: Any) -> Any:
         pass
 
     def visitMethod(self, method: method, parentData: Any) -> Any:
