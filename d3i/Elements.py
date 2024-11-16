@@ -1,6 +1,6 @@
+from __future__ import annotations
 from typing import List
 from enum import Enum
-from BaseVisitor import BaseVisitor
 
 
 class base_element:
@@ -27,10 +27,10 @@ class d3:
     def __init__(self):
         self.domains: List[domain] = []
 
-    def visit(self, session, visitor: BaseVisitor):
-        visitor.visitd3(self, session)
+    def visit(self, visitor: BaseVisitor):
+        visitor.visitd3(self)
         for domain in self.domains:
-            domain.visit(self, session, visitor)
+            domain.visit(self, visitor)
 
 
 class directive(decorated_base_element):
@@ -78,11 +78,11 @@ class domain(decorated_base_element):
         self.domain_events: List[event] = []
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitDomain(self, session)
+        visitor.visitDomain(self)
         for context in self.contexts:
-            context.visit(self, session, visitor)
+            context.visit(self, visitor)
         for event in self.domain_events:
-            event.visit(self, session, visitor)
+            event.visit(self, visitor)
 
 
 class context(decorated_base_element):
@@ -100,25 +100,25 @@ class context(decorated_base_element):
         self.interfaces: List[service] = []
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitContext(self, session)
+        visitor.visitContext(self)
         for enum in self.enums:
-            enum.visit(self, session, visitor)
+            enum.visit(self, visitor)
         for value_object in self.value_objects:
-            value_object.visit(self, session, visitor)
+            value_object.visit(self, visitor)
         for entity in self.entities:
-            entity.visit(self, session, visitor)
+            entity.visit(self, visitor)
         for aggregate in self.aggregates:
-            aggregate.visit(self, session, visitor)
+            aggregate.visit(self, visitor)
         for repository in self.repositories:
-            repository.visit(self, session, visitor)
+            repository.visit(self, visitor)
         for acl in self.acls:
-            acl.visit(self, session, visitor)
+            acl.visit(self, visitor)
         for event in self.context_events:
-            event.visit(self, session, visitor)
+            event.visit(self, visitor)
         for service in self.services:
-            service.visit(self, session, visitor)
+            service.visit(self, visitor)
         for interface in self.interfaces:
-            interface.visit(self, session, visitor)
+            interface.visit(self, visitor)
 
 
 class enum(decorated_base_element):
@@ -128,9 +128,9 @@ class enum(decorated_base_element):
         self.enum_elements: List[enum_element] = []
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEnum(self, session, parent)
+        visitor.visitEnum(self, parent)
         for enum_element in self.enum_elements:
-            enum_element.visit(self, session, visitor)
+            enum_element.visit(self, visitor)
 
 
 class enum_element(decorated_base_element):
@@ -139,7 +139,7 @@ class enum_element(decorated_base_element):
         self.value = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEnumElement(self, session, parent)
+        visitor.visitEnumElement(self, parent)
 
 
 class value_object(scoped_base_element):
@@ -149,13 +149,13 @@ class value_object(scoped_base_element):
         self.members: List[value_object_member] = []
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitValueObject(self, session, parent)
+        visitor.visitValueObject(self, parent)
         for member in self.members:
-            member.visit(self, session, visitor)
+            member.visit(self, visitor)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, session, visitor)
+            internal_enum.visit(self, visitor)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, session, visitor)
+            internal_value_object.visit(self, visitor)
 
 
 class value_object_member(decorated_base_element):
@@ -165,8 +165,8 @@ class value_object_member(decorated_base_element):
         self.type: type = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitValueObjectMember(self, session, parent)
-        self.type.visit(self, session, visitor)
+        visitor.visitValueObjectMember(self, parent)
+        self.type.visit(self, visitor)
 
 
 class event(scoped_base_element):
@@ -176,13 +176,13 @@ class event(scoped_base_element):
         self.members: List[event_member] = []
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEvent(self, session, parent)
+        visitor.visitEvent(self, parent)
         for member in self.members:
-            member.visit(self, session, visitor)
+            member.visit(self, visitor)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, session, visitor)
+            internal_enum.visit(self, visitor)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, session, visitor)
+            internal_value_object.visit(self, visitor)
 
 
 class event_member(decorated_base_element):
@@ -192,8 +192,8 @@ class event_member(decorated_base_element):
         self.type: type = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEventMember(self, session, parent)
-        self.type.visit(self, session, visitor)
+        visitor.visitEventMember(self, parent)
+        self.type.visit(self, visitor)
 
 
 class entity(scoped_base_element):
@@ -203,13 +203,13 @@ class entity(scoped_base_element):
         self.members: List[entity_member] = []
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEnity(self, session, parent)
+        visitor.visitEnity(self, parent)
         for member in self.members:
-            member.visit(self, session, visitor)
+            member.visit(self, visitor)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, session, visitor)
+            internal_enum.visit(self, visitor)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, session, visitor)
+            internal_value_object.visit(self, visitor)
 
 
 class entity_member(decorated_base_element):
@@ -219,8 +219,8 @@ class entity_member(decorated_base_element):
         self.type = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEnityMember(self, session, parent)
-        self.type.visit(self, session, visitor)
+        visitor.visitEnityMember(self, parent)
+        self.type.visit(self, visitor)
 
 
 class aggregate(scoped_base_element):
@@ -230,13 +230,13 @@ class aggregate(scoped_base_element):
         self.internal_entities: List[aggregate_entity] = []
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitAggregate(self, session, parent)
+        visitor.visitAggregate(self, parent)
         for aggregate_entity in self.internal_entities:
-            aggregate_entity.visit(self, session, visitor)
+            aggregate_entity.visit(self, visitor)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, session, visitor)
+            internal_enum.visit(self, visitor)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, session, visitor)
+            internal_value_object.visit(self, visitor)
 
 
 class aggregate_entity(base_element):
@@ -246,8 +246,8 @@ class aggregate_entity(base_element):
         self.entity: entity = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitAggregateEntity(self, session, parent)
-        self.entity.visit(self, session, visitor)
+        visitor.visitAggregateEntity(self, parent)
+        self.entity.visit(self, visitor)
 
 
 class repository(decorated_base_element):
@@ -257,7 +257,7 @@ class repository(decorated_base_element):
         self.element_name: qualified_name = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitRepository(self, session, parent)
+        visitor.visitRepository(self, parent)
 
 
 class service(scoped_base_element):
@@ -267,13 +267,13 @@ class service(scoped_base_element):
         self.operations: List[operation] = []
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitService(self, session, parent)
+        visitor.visitService(self, parent)
         for operation in self.operations:
-            operation.visit(self, session, visitor)
+            operation.visit(self, visitor)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, session, visitor)
+            internal_enum.visit(self, visitor)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, session, visitor)
+            internal_value_object.visit(self, visitor)
 
 
 class interface(scoped_base_element):
@@ -283,13 +283,13 @@ class interface(scoped_base_element):
         self.operations: List[operation] = []
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitInterface(self, session, parent)
+        visitor.visitInterface(self, parent)
         for operation in self.operations:
-            operation.visit(self, session, visitor)
+            operation.visit(self, visitor)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, session, visitor)
+            internal_enum.visit(self, visitor)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, session, visitor)
+            internal_value_object.visit(self, visitor)
 
 
 class operation(decorated_base_element):
@@ -300,11 +300,11 @@ class operation(decorated_base_element):
         self.operation_returns: List[operation_return] = []
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitOperation(self, session, parent)
+        visitor.visitOperation(self, parent)
         for operation_param in self.operation_params:
-            operation_param.visit(self, session, visitor)
+            operation_param.visit(self, visitor)
         for operation_return in self.operation_returns:
-            operation_return.visit(self, session, visitor)
+            operation_return.visit(self, visitor)
 
 
 class operation_param(decorated_base_element):
@@ -314,8 +314,8 @@ class operation_param(decorated_base_element):
         self.type = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitOperationParam(self, session, parent)
-        self.type.visit(self, session, visitor)
+        visitor.visitOperationParam(self, parent)
+        self.type.visit(self, visitor)
 
 
 class operation_return(decorated_base_element):
@@ -324,8 +324,8 @@ class operation_return(decorated_base_element):
         self.type: type = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitOperationReturn(self, session, parent)
-        self.type.visit(self, session, visitor)
+        visitor.visitOperationReturn(self, parent)
+        self.type.visit(self, visitor)
 
 
 class acl(scoped_base_element):
@@ -335,13 +335,13 @@ class acl(scoped_base_element):
         self.methods: List[method] = []
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitAcl(self, session, parent)
+        visitor.visitAcl(self, parent)
         for method in self.methods:
-            method.visit(self, session, visitor)
+            method.visit(self, visitor)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, session, visitor)
+            internal_enum.visit(self, visitor)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, session, visitor)
+            internal_value_object.visit(self, visitor)
 
 
 class method(decorated_base_element):
@@ -352,10 +352,10 @@ class method(decorated_base_element):
         self.return_type: type = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitMethod(self, session, parent)
+        visitor.visitMethod(self, parent)
         for method_param in self.method_params:
-            method_param.visit(self, session, visitor)
-        self.return_type.visit(self, session, visitor)
+            method_param.visit(self, visitor)
+        self.return_type.visit(self, visitor)
 
 
 class method_param(decorated_base_element):
@@ -365,8 +365,8 @@ class method_param(decorated_base_element):
         self.type: type = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitMethodParam(self, session, parent)
-        self.type.visit(self, session, visitor)
+        visitor.visitMethodParam(self, parent)
+        self.type.visit(self, visitor)
 
 
 class type(decorated_base_element):
@@ -382,7 +382,7 @@ class type(decorated_base_element):
         Map = 2
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        #has been overwritten in specialized type class
+        # has been overwritten in specialized type class
         pass
 
 
@@ -403,8 +403,9 @@ class primitive_type(type):
         Bytes = 8,
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitPrimitiveType(self, session)
+        visitor.visitPrimitiveType(self)
         pass
+
 
 class reference_type(type):
     def __init__(self, fileName, pos):
@@ -412,7 +413,7 @@ class reference_type(type):
         self.reference_name: qualified_name = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitReferenceType(self, session)
+        visitor.visitReferenceType(self)
 
 
 class list_type(type):
@@ -421,8 +422,9 @@ class list_type(type):
         self.item_type = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitListType(self, session)
-        self.item_type.visit(self, session, visitor)
+        visitor.visitListType(self)
+        self.item_type.visit(self, visitor)
+
 
 class map_type(type):
     def __init__(self, fileName, pos):
@@ -431,6 +433,90 @@ class map_type(type):
         self.value_type = None
 
     def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitMapType(self, session)
-        self.key_type.visit(self, session, visitor)
-        self.value_type.visit(self, session, visitor)
+        visitor.visitMapType(self)
+        self.key_type.visit(self, visitor)
+        self.value_type.visit(self, visitor)
+
+
+class BaseVisitor:
+
+    def visitd3(self, d3: domain):
+        pass
+
+    def visitDomain(self, domain: domain):
+        pass
+
+    def visitDirective(self, directive: directive):
+        pass
+
+    def visitContext(self, context: context):
+        pass
+
+    def visitEvent(self, event: event):
+        pass
+
+    def visitEventMember(self, eventMember: event_member, parentEvent: event):
+        pass
+
+    def visitEnum(self, domain: enum):
+        pass
+
+    def visitEnumElement(self, enum_element: enum_element, parentEnum: enum):
+        pass
+
+    def visitValueObject(self, value_object: value_object):
+        pass
+
+    def visitValueObjectMember(self, domain: value_object_member, parentValueObject: value_object):
+        pass
+
+    def visitEnity(self, entity: entity):
+        pass
+
+    def visitEnityMember(self, entity: entity_member, parentEntity: entity):
+        pass
+
+    def visitAggregate(self, aggregate: aggregate):
+        pass
+
+    def visitAggregateEntity(self, aggregate: aggregate_entity, parentAggregate: aggregate):
+        pass
+
+    def visitRepository(self, repository: repository):
+        pass
+
+    def visitAcl(self, acl: acl):
+        pass
+
+    def visitService(self, service: service):
+        pass
+
+    def visitInterface(self, interface: interface):
+        pass
+
+    def visitOperation(self, operation: operation):
+        pass
+
+    def visitOperationParam(self, operation_param: operation_param, parentOpeartion: operation):
+        pass
+
+    def visitOperationReturn(self, operation_return: operation_return, parentOpeartion: operation):
+        pass
+
+    def visitMethod(self, method: method):
+        pass
+
+    def visitMethodParam(self, method_param: method_param, parentMethod: method):
+        pass
+
+    def visitPrimitiveType(self, primtiveType: primitive_type):
+        pass
+
+    def visitReferenceType(self, reference_type: reference_type):
+        pass
+
+    def visitListType(self, list_type: list_type):
+        pass
+
+    def visitMapType(self, map_type: map_type):
+        pass

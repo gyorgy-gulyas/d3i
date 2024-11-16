@@ -4,7 +4,7 @@ from d3i.grammar.d3iLexer import *
 from d3i.grammar.d3iGrammar import *
 from d3i.interpreter.ElementVisitor import *
 import d3i
-
+import json
 
 class Source:
     def __init__(self):
@@ -60,13 +60,6 @@ class Session:
 class Engine:
 
     def Build(self, session: Session):
-        self.__create_syntax_trees__(session)
-        self.__create_element_trees__(session)
-        self.__merge_element_trees__(session)
-
-        return session.main
-
-    def Linting(self, session: Session):
         self.__create_syntax_trees__(session)
         self.__create_element_trees__(session)
         self.__merge_element_trees__(session)
