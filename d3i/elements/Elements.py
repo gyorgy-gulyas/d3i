@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List
 from enum import Enum
+from d3i.elements.ElementVisitor import *
 
 
 class base_element:
@@ -21,16 +22,6 @@ class scoped_base_element(decorated_base_element):
         super().__init__(fileName, pos)
         self.internal_enums: List[enum] = []
         self.internal_value_objects: List[value_object] = []
-
-
-class d3:
-    def __init__(self):
-        self.domains: List[domain] = []
-
-    def visit(self, visitor: BaseVisitor):
-        visitor.visitd3(self)
-        for domain in self.domains:
-            domain.visit(self, visitor)
 
 
 class directive(decorated_base_element):
@@ -69,6 +60,17 @@ class decorator_param(base_element):
         String = 3
 
 
+class d3:
+    def __init__(self):
+        self.domains: List[domain] = []
+
+    def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
+        data = visitor.visitd3(self, parentData)
+        for domain in self.domains:
+            domain.visit(self, visitor, data)
+        return data
+
+
 class domain(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
@@ -77,12 +79,12 @@ class domain(decorated_base_element):
         self.contexts: List[context] = []
         self.domain_events: List[event] = []
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitDomain(self)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitDomain(self, parentData)
         for context in self.contexts:
-            context.visit(self, visitor)
+            context.visit(self, visitor, data)
         for event in self.domain_events:
-            event.visit(self, visitor)
+            event.visit(self, visitor, data)
 
 
 class context(decorated_base_element):
@@ -99,26 +101,26 @@ class context(decorated_base_element):
         self.services: List[service] = []
         self.interfaces: List[service] = []
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitContext(self)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitContext(self, parentData)
         for enum in self.enums:
-            enum.visit(self, visitor)
+            enum.visit(self, visitor, data)
         for value_object in self.value_objects:
-            value_object.visit(self, visitor)
+            value_object.visit(self, visitor, data)
         for entity in self.entities:
-            entity.visit(self, visitor)
+            entity.visit(self, visitor, data)
         for aggregate in self.aggregates:
-            aggregate.visit(self, visitor)
+            aggregate.visit(self, visitor, data)
         for repository in self.repositories:
-            repository.visit(self, visitor)
+            repository.visit(self, visitor, data)
         for acl in self.acls:
-            acl.visit(self, visitor)
+            acl.visit(self, visitor, data)
         for event in self.context_events:
-            event.visit(self, visitor)
+            event.visit(self, visitor, data)
         for service in self.services:
-            service.visit(self, visitor)
+            service.visit(self, visitor, data)
         for interface in self.interfaces:
-            interface.visit(self, visitor)
+            interface.visit(self, visitor, data)
 
 
 class enum(decorated_base_element):
@@ -127,10 +129,10 @@ class enum(decorated_base_element):
         self.name = None
         self.enum_elements: List[enum_element] = []
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEnum(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitEnum(self, parent, parentData)
         for enum_element in self.enum_elements:
-            enum_element.visit(self, visitor)
+            enum_element.visit(self, visitor, data)
 
 
 class enum_element(decorated_base_element):
@@ -138,8 +140,8 @@ class enum_element(decorated_base_element):
         super().__init__(fileName, pos)
         self.value = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEnumElement(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitEnumElement(self, parent, parentData)
 
 
 class value_object(scoped_base_element):
@@ -148,14 +150,14 @@ class value_object(scoped_base_element):
         self.name = None
         self.members: List[value_object_member] = []
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitValueObject(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitValueObject(self, parent, parentData)
         for member in self.members:
-            member.visit(self, visitor)
+            member.visit(self, visitor, data)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, visitor)
+            internal_enum.visit(self, visitor, data)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, visitor)
+            internal_value_object.visit(self, visitor, data)
 
 
 class value_object_member(decorated_base_element):
@@ -164,9 +166,9 @@ class value_object_member(decorated_base_element):
         self.name = None
         self.type: type = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitValueObjectMember(self, parent)
-        self.type.visit(self, visitor)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitValueObjectMember(self, parent, parentData)
+        self.type.visit(self, visitor, data)
 
 
 class event(scoped_base_element):
@@ -175,14 +177,14 @@ class event(scoped_base_element):
         self.name = None
         self.members: List[event_member] = []
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEvent(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitEvent(self, parent, parentData)
         for member in self.members:
-            member.visit(self, visitor)
+            member.visit(self, visitor, data)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, visitor)
+            internal_enum.visit(self, visitor, data)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, visitor)
+            internal_value_object.visit(self, visitor, data)
 
 
 class event_member(decorated_base_element):
@@ -191,9 +193,9 @@ class event_member(decorated_base_element):
         self.name = None
         self.type: type = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEventMember(self, parent)
-        self.type.visit(self, visitor)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitEventMember(self, parent, parentData)
+        self.type.visit(self, visitor, data)
 
 
 class entity(scoped_base_element):
@@ -202,25 +204,25 @@ class entity(scoped_base_element):
         self.name = None
         self.members: List[entity_member] = []
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEnity(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitEnity(self, parent, parentData)
         for member in self.members:
-            member.visit(self, visitor)
+            member.visit(self, visitor, data)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, visitor)
+            internal_enum.visit(self, visitor, data)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, visitor)
+            internal_value_object.visit(self, visitor, data)
 
 
 class entity_member(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.type = None
+        self.type: type = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitEnityMember(self, parent)
-        self.type.visit(self, visitor)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitEnityMember(self, parent, parentData)
+        self.type.visit(self, visitor, data)
 
 
 class aggregate(scoped_base_element):
@@ -229,14 +231,14 @@ class aggregate(scoped_base_element):
         self.name = None
         self.internal_entities: List[aggregate_entity] = []
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitAggregate(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitAggregate(self, parent, parentData)
         for aggregate_entity in self.internal_entities:
-            aggregate_entity.visit(self, visitor)
+            aggregate_entity.visit(self, visitor, data)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, visitor)
+            internal_enum.visit(self, visitor, data)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, visitor)
+            internal_value_object.visit(self, visitor, data)
 
 
 class aggregate_entity(base_element):
@@ -245,9 +247,9 @@ class aggregate_entity(base_element):
         self.isRoot = None
         self.entity: entity = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitAggregateEntity(self, parent)
-        self.entity.visit(self, visitor)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitAggregateEntity(self, parent, parentData)
+        self.entity.visit(self, visitor, data)
 
 
 class repository(decorated_base_element):
@@ -256,8 +258,8 @@ class repository(decorated_base_element):
         self.name = None
         self.element_name: qualified_name = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitRepository(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitRepository(self, parent, parentData)
 
 
 class service(scoped_base_element):
@@ -266,14 +268,14 @@ class service(scoped_base_element):
         self.name = None
         self.operations: List[operation] = []
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitService(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitService(self, parent, parentData)
         for operation in self.operations:
-            operation.visit(self, visitor)
+            operation.visit(self, visitor, data)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, visitor)
+            internal_enum.visit(self, visitor, data)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, visitor)
+            internal_value_object.visit(self, visitor, data)
 
 
 class interface(scoped_base_element):
@@ -282,14 +284,14 @@ class interface(scoped_base_element):
         self.name = None
         self.operations: List[operation] = []
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitInterface(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitInterface(self, parent, parentData)
         for operation in self.operations:
-            operation.visit(self, visitor)
+            operation.visit(self, visitor, data)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, visitor)
+            internal_enum.visit(self, visitor, data)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, visitor)
+            internal_value_object.visit(self, visitor, data)
 
 
 class operation(decorated_base_element):
@@ -299,12 +301,12 @@ class operation(decorated_base_element):
         self.operation_params: List[operation_param] = []
         self.operation_returns: List[operation_return] = []
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitOperation(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitOperation(self, parent, parentData)
         for operation_param in self.operation_params:
-            operation_param.visit(self, visitor)
+            operation_param.visit(self, visitor, data)
         for operation_return in self.operation_returns:
-            operation_return.visit(self, visitor)
+            operation_return.visit(self, visitor, data)
 
 
 class operation_param(decorated_base_element):
@@ -313,9 +315,9 @@ class operation_param(decorated_base_element):
         self.name = None
         self.type = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitOperationParam(self, parent)
-        self.type.visit(self, visitor)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitOperationParam(self, parent, parentData)
+        self.type.visit(self, visitor, data)
 
 
 class operation_return(decorated_base_element):
@@ -323,9 +325,9 @@ class operation_return(decorated_base_element):
         super().__init__(fileName, pos)
         self.type: type = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitOperationReturn(self, parent)
-        self.type.visit(self, visitor)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitOperationReturn(self, parent, parentData)
+        self.type.visit(self, visitor, data)
 
 
 class acl(scoped_base_element):
@@ -334,14 +336,14 @@ class acl(scoped_base_element):
         self.name = None
         self.methods: List[method] = []
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitAcl(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitAcl(self, parent, parentData)
         for method in self.methods:
-            method.visit(self, visitor)
+            method.visit(self, visitor, data)
         for internal_enum in self.internal_enums:
-            internal_enum.visit(self, visitor)
+            internal_enum.visit(self, visitor, data)
         for internal_value_object in self.internal_value_objects:
-            internal_value_object.visit(self, visitor)
+            internal_value_object.visit(self, visitor, data)
 
 
 class method(decorated_base_element):
@@ -351,11 +353,11 @@ class method(decorated_base_element):
         self.method_params: List[method_param] = []
         self.return_type: type = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitMethod(self, parent)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitMethod(self, parent, parentData)
         for method_param in self.method_params:
-            method_param.visit(self, visitor)
-        self.return_type.visit(self, visitor)
+            method_param.visit(self, visitor, data)
+        self.return_type.visit(self, visitor, data)
 
 
 class method_param(decorated_base_element):
@@ -364,9 +366,9 @@ class method_param(decorated_base_element):
         self.name = None
         self.type: type = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitMethodParam(self, parent)
-        self.type.visit(self, visitor)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitMethodParam(self, parent, parentData)
+        self.type.visit(self, visitor, data)
 
 
 class type(decorated_base_element):
@@ -381,7 +383,7 @@ class type(decorated_base_element):
         List = 2
         Map = 2
 
-    def visit(self, parent, session, visitor: BaseVisitor):
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         # has been overwritten in specialized type class
         pass
 
@@ -402,9 +404,8 @@ class primitive_type(type):
         Boolean = 7,
         Bytes = 8,
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitPrimitiveType(self)
-        pass
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitPrimitiveType(self, parentData)
 
 
 class reference_type(type):
@@ -412,8 +413,8 @@ class reference_type(type):
         super().__init__(fileName, pos)
         self.reference_name: qualified_name = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitReferenceType(self)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitReferenceType(self, parentData)
 
 
 class list_type(type):
@@ -421,9 +422,9 @@ class list_type(type):
         super().__init__(fileName, pos)
         self.item_type = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitListType(self)
-        self.item_type.visit(self, visitor)
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitListType(self, parentData)
+        self.item_type.visit(self, visitor, data)
 
 
 class map_type(type):
@@ -432,91 +433,7 @@ class map_type(type):
         self.key_type = None
         self.value_type = None
 
-    def visit(self, parent, session, visitor: BaseVisitor):
-        visitor.visitMapType(self)
-        self.key_type.visit(self, visitor)
-        self.value_type.visit(self, visitor)
-
-
-class BaseVisitor:
-
-    def visitd3(self, d3: domain):
-        pass
-
-    def visitDomain(self, domain: domain):
-        pass
-
-    def visitDirective(self, directive: directive):
-        pass
-
-    def visitContext(self, context: context):
-        pass
-
-    def visitEvent(self, event: event):
-        pass
-
-    def visitEventMember(self, eventMember: event_member, parentEvent: event):
-        pass
-
-    def visitEnum(self, domain: enum):
-        pass
-
-    def visitEnumElement(self, enum_element: enum_element, parentEnum: enum):
-        pass
-
-    def visitValueObject(self, value_object: value_object):
-        pass
-
-    def visitValueObjectMember(self, domain: value_object_member, parentValueObject: value_object):
-        pass
-
-    def visitEnity(self, entity: entity):
-        pass
-
-    def visitEnityMember(self, entity: entity_member, parentEntity: entity):
-        pass
-
-    def visitAggregate(self, aggregate: aggregate):
-        pass
-
-    def visitAggregateEntity(self, aggregate: aggregate_entity, parentAggregate: aggregate):
-        pass
-
-    def visitRepository(self, repository: repository):
-        pass
-
-    def visitAcl(self, acl: acl):
-        pass
-
-    def visitService(self, service: service):
-        pass
-
-    def visitInterface(self, interface: interface):
-        pass
-
-    def visitOperation(self, operation: operation):
-        pass
-
-    def visitOperationParam(self, operation_param: operation_param, parentOpeartion: operation):
-        pass
-
-    def visitOperationReturn(self, operation_return: operation_return, parentOpeartion: operation):
-        pass
-
-    def visitMethod(self, method: method):
-        pass
-
-    def visitMethodParam(self, method_param: method_param, parentMethod: method):
-        pass
-
-    def visitPrimitiveType(self, primtiveType: primitive_type):
-        pass
-
-    def visitReferenceType(self, reference_type: reference_type):
-        pass
-
-    def visitListType(self, list_type: list_type):
-        pass
-
-    def visitMapType(self, map_type: map_type):
-        pass
+    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitMapType(self, parentData)
+        self.key_type.visit(self, visitor, data)
+        self.value_type.visit(self, visitor, data)

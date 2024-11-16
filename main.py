@@ -1,6 +1,6 @@
 import d3i
 
-parser = d3i.interpreter.Parser()
+parser = d3i.elements.Parser()
 d3i = parser.ParseText( """
 domain somedomain {
     context context_1 {

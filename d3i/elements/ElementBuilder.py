@@ -1,10 +1,10 @@
 from decimal import Decimal
 from d3i.grammar.d3iGrammar import *
 from d3i.grammar.d3iGrammarVisitor import *
-from d3i.Elements import *
+from d3i.elements.Elements import *
 
 
-class ElementVisitor(d3iGrammarVisitor):
+class ElementBuilder(d3iGrammarVisitor):
     def __init__(self):
         self.elementTree = d3()
         self.fileName:str = ""

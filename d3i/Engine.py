@@ -2,7 +2,7 @@ from antlr4.error.ErrorListener import ErrorListener
 from antlr4 import *
 from d3i.grammar.d3iLexer import *
 from d3i.grammar.d3iGrammar import *
-from d3i.interpreter.ElementVisitor import *
+from d3i.elements.ElementBuilder import *
 import d3i
 import json
 
@@ -82,7 +82,7 @@ class Engine:
         return session.HasErrror()
 
     def __create_element_trees__(self, session: Session):
-        visitor = ElementVisitor()
+        visitor = ElementBuilder()
         for syntaxTree in session.syntaxTrees:
             visitor.fileName = syntaxTree.source.fileName
             elementTree = visitor.visit(syntaxTree)
