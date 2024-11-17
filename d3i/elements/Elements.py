@@ -299,7 +299,7 @@ class repository(decorated_base_element):
         self.element_name: qualified_name = None
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitRepository(self, parent, parentData)
+        data = visitor.visitRepository(self, parentData)
         super().visit(visitor, data)
 
 

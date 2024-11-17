@@ -1509,5 +1509,96 @@ domain SomeDomain {
         diff = jsondiff.diff(result, expected, syntax='symmetric')
         self.assertEqual(0, len(diff))
 
+    def tests_repository_ok(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext {
+        @storage( "mongo" )
+        repository orders:Order
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        jsonEmmiter = JsonEmitter()
+        data = root.visit(jsonEmmiter, None)
+        result = json.dumps(data, indent=4)
+        expected = """{
+    "$type": "d3i.d3",
+    "domains": [
+        {
+            "$type": "d3i.domain",
+            "name": "SomeDomain",
+            "decorators": [],
+            "directives": [],
+            "contexts": [
+                {
+                    "$type": "d3i.context",
+                    "name": "OrderContext",
+                    "decorators": [],
+                    "enums": [],
+                    "value_objects": [],
+                    "entities": [],
+                    "aggregates": [],
+                    "repositories": [
+                        {
+                            "$type": "d3i.repository",
+                            "name": "orders",
+                            "element_name": "Order",
+                            "decorators": [
+                                {
+                                    "$type": "d3i.decorator",
+                                    "name": "storage",
+                                    "params": [
+                                        {
+                                            "$type": "d3i.decorator_param",
+                                            "kind": "Kind.String",
+                                            "value": "mongo",
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 4,
+                                                "column": 18
+                                            }
+                                        }
+                                    ],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 4,
+                                        "column": 8
+                                    }
+                                }
+                            ],
+                            "location": {
+                                "fileName": "internal string",
+                                "line": 4,
+                                "column": 8
+                            }
+                        }
+                    ],
+                    "acls": [],
+                    "context_events": [],
+                    "services": [],
+                    "interfaces": [],
+                    "location": {
+                        "fileName": "internal string",
+                        "line": 3,
+                        "column": 4
+                    }
+                }
+            ],
+            "domain_events": [],
+            "location": {
+                "fileName": "internal string",
+                "line": 2,
+                "column": 0
+            }
+        }
+    ]
+}"""
+        diff = jsondiff.diff(result, expected, syntax='symmetric')
+        self.assertEqual(0, len(diff))
+
 if __name__ == "__main__":
     unittest.main()

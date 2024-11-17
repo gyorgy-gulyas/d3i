@@ -171,7 +171,13 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         return data
 
     def visitRepository(self, repository: repository, parentData: Any) -> Any:
-        pass
+        data = {
+            "$type": "d3i.repository",
+            "name": repository.name,
+            "element_name": repository.element_name.getText(),
+        }
+        parentData["repositories"].append(data)
+        return data
 
     def visitAcl(self, acl: acl, parentData: Any) -> Any:
         pass
