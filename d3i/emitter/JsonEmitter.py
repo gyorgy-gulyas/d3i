@@ -135,7 +135,12 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "internal_enums": [],
             "internal_value_objects": []
         }
-        parentData["entities"].append(data)
+
+        if isinstance(parentElement, context):
+            parentData["entities"].append(data)
+        elif isinstance(parentElement, aggregate_entity):
+            parentData["entity"] = data
+        
         return data
 
     def visitEnityMember(self, entity_member: entity_member, parentEntity: entity, parentData: Any) -> Any:
@@ -147,10 +152,23 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         return data
 
     def visitAggregate(self, aggregate: aggregate, parentData: Any) -> Any:
-        pass
+        data = {
+            "$type": "d3i.aggregate",
+            "name": aggregate.name,
+            "internal_entities": [],
+            "internal_enums": [],
+            "internal_value_objects": []
+        }
+        parentData["aggregates"].append(data)
+        return data
 
-    def visitAggregateEntity(self, aggregate: aggregate_entity, parentAggregate: aggregate, parentData: Any) -> Any:
-        pass
+    def visitAggregateEntity(self, aggregate_entity: aggregate_entity, parentAggregate: aggregate, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.aggregate_entity",
+            "isRoot": str(aggregate_entity.isRoot),
+        }
+        parentData["internal_entities"].append(data)
+        return data
 
     def visitRepository(self, repository: repository, parentData: Any) -> Any:
         pass

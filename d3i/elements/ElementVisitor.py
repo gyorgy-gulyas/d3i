@@ -44,7 +44,7 @@ class ElementVisitor:
     def visitAggregate(self, aggregate: aggregate, parentData: Any) -> Any:
         pass
 
-    def visitAggregateEntity(self, aggregate: aggregate_entity, parentAggregate: aggregate, parentData: Any) -> Any:
+    def visitAggregateEntity(self, aggregate_entity: aggregate_entity, parentAggregate: aggregate, parentData: Any) -> Any:
         pass
 
     def visitRepository(self, repository: repository, parentData: Any) -> Any:

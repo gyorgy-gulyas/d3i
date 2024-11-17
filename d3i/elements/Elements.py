@@ -270,7 +270,7 @@ class aggregate(scoped_base_element):
         self.internal_entities: List[aggregate_entity] = []
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitAggregate(self, parent, parentData)
+        data = visitor.visitAggregate(self, parentData)
         super().visit(visitor, data)
         for aggregate_entity in self.internal_entities:
             aggregate_entity.visit(self, visitor, data)
@@ -288,8 +288,8 @@ class aggregate_entity(base_element):
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitAggregateEntity(self, parent, parentData)
-        super().visit(visitor, data)
         self.entity.visit(self, visitor, data)
+        super().visit(visitor, data)
 
 
 class repository(decorated_base_element):
