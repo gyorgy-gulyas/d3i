@@ -554,33 +554,33 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#primitive_type.
     def visitPrimitive_type(self, ctx: d3iGrammar.Primitive_typeContext):
         result = primitive_type(self.fileName, ctx.start)
-        result.Kind = type.Kind.Primitive
+        result.kind = type.Kind.Primitive
 
         if (ctx.INTEGER() != None):
-            result.PrimtiveType = primitive_type.PrimtiveType.Integer
+            result.primtiveKind = primitive_type.PrimtiveKind.Integer
         elif (ctx.NUMBER() != None):
-            result.PrimtiveType = primitive_type.PrimtiveType.Number
+            result.primtiveKind = primitive_type.PrimtiveKind.Number
         elif (ctx.FLOAT() != None):
-            result.PrimtiveType = primitive_type.PrimtiveType.Float
+            result.primtiveKind = primitive_type.PrimtiveKind.Float
         elif (ctx.DATE() != None):
-            result.PrimtiveType = primitive_type.PrimtiveType.Date
+            result.primtiveKind = primitive_type.PrimtiveKind.Date
         elif (ctx.TIME() != None):
-            result.PrimtiveType = primitive_type.PrimtiveType.Time
+            result.primtiveKind = primitive_type.PrimtiveKind.Time
         elif (ctx.DATETIME() != None):
-            result.PrimtiveType = primitive_type.PrimtiveType.DateTime
+            result.primtiveKind = primitive_type.PrimtiveKind.DateTime
         elif (ctx.STRING() != None):
-            result.PrimtiveType = primitive_type.PrimtiveType.String
+            result.primtiveKind = primitive_type.PrimtiveKind.String
         elif (ctx.BOOLEAN() != None):
-            result.PrimtiveType = primitive_type.PrimtiveType.Boolean
+            result.primtiveKind = primitive_type.PrimtiveKind.Boolean
         elif (ctx.BYTES() != None):
-            result.PrimtiveType = primitive_type.PrimtiveType.Bytes
+            result.primtiveKind = primitive_type.PrimtiveKind.Bytes
 
         return result
 
     # Visit a parse tree produced by d3iGrammar#reference_type.
     def visitReference_type(self, ctx: d3iGrammar.Reference_typeContext):
         result = reference_type(self.fileName, ctx.start)
-        result.Kind = type.Kind.Reference
+        result.kind = type.Kind.Reference
         result.reference_name = self.visit(ctx.qualifiedName())
 
         return result
@@ -588,7 +588,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#list_type.
     def visitList_type(self, ctx: d3iGrammar.List_typeContext):
         result = list_type(self.fileName, ctx.start)
-        result.Kind = type.Kind.List
+        result.kind = type.Kind.List
         result.item_type = self.visit(ctx.type_())
 
         return result
@@ -596,7 +596,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#map_type.
     def visitMap_type(self, ctx: d3iGrammar.Map_typeContext):
         result = map_type(self.fileName, ctx.start)
-        result.Kind = type.Kind.Map
+        result.kind = type.Kind.Map
         result.key_type = self.visit(ctx.type_(0))
         result.value_type = self.visit(ctx.type_(1))
 

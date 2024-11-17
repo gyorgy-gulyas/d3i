@@ -183,7 +183,7 @@ class value_object(scoped_base_element):
         self.members: List[value_object_member] = []
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitValueObject(self, parentData)
+        data = visitor.visitValueObject(self, parent, parentData)
         super().visit(visitor, data)
         for member in self.members:
             member.visit(self, visitor, data)
@@ -202,7 +202,7 @@ class value_object_member(decorated_base_element):
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitValueObjectMember(self, parent, parentData)
         super().visit(visitor, data)
-        self.type.visit(self, visitor, data)
+        self.type.visit(visitor, data, "type")
 
 
 class event(scoped_base_element):
@@ -231,7 +231,7 @@ class event_member(decorated_base_element):
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEventMember(self, parent, parentData)
         super().visit(visitor, data)
-        self.type.visit(self, visitor, data)
+        self.type.visit(visitor, data, "type")
 
 
 class entity(scoped_base_element):
@@ -259,8 +259,8 @@ class entity_member(decorated_base_element):
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEnityMember(self, parent, parentData)
+        self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
-        self.type.visit(self, visitor, data)
 
 
 class aggregate(scoped_base_element):
@@ -345,7 +345,7 @@ class operation(decorated_base_element):
         self.operation_returns: List[operation_return] = []
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitOperation(self, parentData)
+        data = visitor.visitOperation(self, parent, parentData)
         super().visit(visitor, data)
         for operation_param in self.operation_params:
             operation_param.visit(self, visitor, data)
@@ -362,7 +362,7 @@ class operation_param(decorated_base_element):
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitOperationParam(self, parent, parentData)
         super().visit(visitor, data)
-        self.type.visit(self, visitor, data)
+        self.type.visit(visitor, data, "type")
 
 
 class operation_return(decorated_base_element):
@@ -373,7 +373,7 @@ class operation_return(decorated_base_element):
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitOperationReturn(self, parent, parentData)
         super().visit(visitor, data)
-        self.type.visit(self, visitor, data)
+        self.type.visit(visitor, data, "type")
 
 
 class acl(scoped_base_element):
@@ -417,32 +417,44 @@ class method_param(decorated_base_element):
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitMethodParam(self, parent, parentData)
         super().visit(visitor, data)
-        self.type.visit(self, visitor, data)
+        self.type.visit(visitor, data, "type")
 
 
-class type(decorated_base_element):
+class type(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.kind = None
+        self.kind: type.Kind = None
 
     class Kind(Enum):
         Primitive = 1
         Reference = 2
-        List = 2
-        Map = 2
+        List = 3
+        Map = 4
 
-    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        # has been overwritten in specialized type class
-        pass
+    def visit(self, visitor: ElementVisitor, parentData: Any, memberName: str):
+        match self.kind:
+            case type.Kind.Primitive:
+                data = visitor.visitPrimitiveType(self, parentData, memberName)
+            case type.Kind.Reference:
+                data = visitor.visitReferenceType(self, parentData, memberName)
+            case type.Kind.List:
+                data = visitor.visitListType(self, parentData, memberName)
+                self.item_type.visit(visitor, data, "item_type")
+            case type.Kind.Map:
+                data = visitor.visitMapType(self, parentData, memberName)
+                self.key_type.visit(visitor, data, "key_type")
+                self.value_type.visit(visitor, data, "value_type")
+
+        super().visit(visitor, data)
 
 
 class primitive_type(type):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.PrimtiveType = None
+        self.primtiveKind: primitive_type.PrimtiveKind = None
 
-    class PrimtiveType(Enum):
+    class PrimtiveKind(Enum):
         Integer = 1
         Number = 2
         Float = 2
@@ -453,19 +465,11 @@ class primitive_type(type):
         Boolean = 7,
         Bytes = 8,
 
-    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitPrimitiveType(self, parentData)
-        super().visit(visitor, data)
-
 
 class reference_type(type):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.reference_name: qualified_name = None
-
-    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitReferenceType(self, parentData)
-        super().visit(visitor, data)
 
 
 class list_type(type):
@@ -473,20 +477,9 @@ class list_type(type):
         super().__init__(fileName, pos)
         self.item_type = None
 
-    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitListType(self, parentData)
-        super().visit(visitor, data)
-        self.item_type.visit(self, visitor, data)
-
 
 class map_type(type):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.key_type = None
         self.value_type = None
-
-    def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitMapType(self, parentData)
-        super().visit(visitor, data)
-        self.key_type.visit(self, visitor, data)
-        self.value_type.visit(self, visitor, data)

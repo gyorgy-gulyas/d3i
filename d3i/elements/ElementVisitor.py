@@ -17,7 +17,7 @@ class ElementVisitor:
     def visitContext(self, context: context, parentData: Any) -> Any:
         pass
 
-    def visitEvent(self, event: event, parentElement:Any, parentData: Any) -> Any:
+    def visitEvent(self, event: event, parentElement: Any, parentData: Any) -> Any:
         pass
 
     def visitEventMember(self, eventMember: event_member, parentEvent: event, parentData: Any) -> Any:
@@ -29,16 +29,16 @@ class ElementVisitor:
     def visitEnumElement(self, enum_element: enum_element, parentEnum: enum, parentData: Any) -> Any:
         pass
 
-    def visitValueObject(self, value_object: value_object, parentData: Any) -> Any:
+    def visitValueObject(self, value_object: value_object, parentElement: Any, parentData: Any) -> Any:
         pass
 
-    def visitValueObjectMember(self, domain: value_object_member, parentValueObject: value_object, parentData: Any) -> Any:
+    def visitValueObjectMember(self, value_object_member: value_object_member, parentValueObject: value_object, parentData: Any) -> Any:
         pass
 
-    def visitEnity(self, entity: entity, parentData: Any) -> Any:
+    def visitEnity(self, entity: entity, parentElement: Any, parentData: Any) -> Any:
         pass
 
-    def visitEnityMember(self, entity: entity_member, parentEntity: entity, parentData: Any) -> Any:
+    def visitEnityMember(self, entity_member: entity_member, parentEntity: entity, parentData: Any) -> Any:
         pass
 
     def visitAggregate(self, aggregate: aggregate, parentData: Any) -> Any:
@@ -59,7 +59,7 @@ class ElementVisitor:
     def visitInterface(self, interface: interface, parentData: Any) -> Any:
         pass
 
-    def visitOperation(self, operation: operation, parentData: Any) -> Any:
+    def visitOperation(self, operation: operation, parentElement: Any, parentData: Any) -> Any:
         pass
 
     def visitOperationParam(self, operation_param: operation_param, parentOperation: operation, parentData: Any) -> Any:
@@ -68,10 +68,13 @@ class ElementVisitor:
     def visitOperationReturn(self, operation_return: operation_return, parentOperation: operation, parentData: Any) -> Any:
         pass
 
-    def visitMethod(self, method: method, parentData: Any) -> Any:
+    def visitMethod(self, method: method, parentElement: Any, parentData: Any) -> Any:
         pass
 
     def visitMethodParam(self, method_param: method_param, parentMethod: method, parentData: Any) -> Any:
+        pass
+
+    def visitType(self, type: type, parentData: Any, memberName: str) -> Any:
         pass
 
     def visitPrimitiveType(self, primtiveType: primitive_type, parentData: Any) -> Any:

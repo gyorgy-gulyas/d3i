@@ -103,17 +103,48 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         parentData["enum_elements"].append(data)
         return data
 
-    def visitValueObject(self, value_object: value_object, parentData: Any) -> Any:
-        pass
+    def visitValueObject(self, value_object: value_object, parentElement: Any, parentData: Any) -> Any:
+        if isinstance(parentElement, context):
+            key = "value_objects"
+        else:
+            key = "internal_value_objects"
 
-    def visitValueObjectMember(self, domain: value_object_member, parentValueObject: value_object, parentData: Any) -> Any:
-        pass
+        data = {
+            "$type": "d3i.value_object",
+            "name": value_object.name,
+            "members": [],
+            "internal_enums": [],
+            "internal_value_objects": []
+        }
+        parentData[key].append(data)
+        return data
 
-    def visitEnity(self, entity: entity, parentData: Any) -> Any:
-        pass
+    def visitValueObjectMember(self, value_object_member: value_object_member, parentValueObject: value_object, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.value_object_member",
+            "name": value_object_member.name,
+        }
+        parentData["members"].append(data)
+        return data
 
-    def visitEnityMember(self, entity: entity_member, parentEntity: entity, parentData: Any) -> Any:
-        pass
+    def visitEnity(self, entity: entity, parentElement: Any, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.entity",
+            "name": entity.name,
+            "members": [],
+            "internal_enums": [],
+            "internal_value_objects": []
+        }
+        parentData["entities"].append(data)
+        return data
+
+    def visitEnityMember(self, entity_member: entity_member, parentEntity: entity, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.entity_member",
+            "name": entity_member.name,
+        }
+        parentData["members"].append(data)
+        return data
 
     def visitAggregate(self, aggregate: aggregate, parentData: Any) -> Any:
         pass
@@ -133,7 +164,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
     def visitInterface(self, interface: interface, parentData: Any) -> Any:
         pass
 
-    def visitOperation(self, operation: operation, parentData: Any) -> Any:
+    def visitOperation(self, operation: operation, parentElement: Any, parentData: Any) -> Any:
         pass
 
     def visitOperationParam(self, operation_param: operation_param, parentOperation: operation, parentData: Any) -> Any:
@@ -142,23 +173,55 @@ class JsonEmitter(d3i.elements.ElementVisitor):
     def visitOperationReturn(self, operation_return: operation_return, parentOperation: operation, parentData: Any) -> Any:
         pass
 
-    def visitMethod(self, method: method, parentData: Any) -> Any:
+    def visitMethod(self, method: method, parentElement: Any, parentData: Any) -> Any:
         pass
 
     def visitMethodParam(self, method_param: method_param, parentMethod: method, parentData: Any) -> Any:
         pass
 
-    def visitPrimitiveType(self, primtiveType: primitive_type, parentData: Any) -> Any:
-        pass
+    def visitType(self, type: type, parentData: Any, memberName: str) -> Any:
+        data = {
+            "kind": str(type.kind)
+        }
+        parentData[memberName] = data
+        return data
 
-    def visitReferenceType(self, reference_type: reference_type, parentData: Any) -> Any:
-        pass
+    def visitPrimitiveType(self, primtiveType: primitive_type, parentData: Any, memberName: str) -> Any:
+        data = {
+            "$type": "d3i.primitive_type",
+            "kind": str(primtiveType.kind),
+            "primtiveKind": str(primtiveType.primtiveKind)
+        }
+        parentData[memberName] = data
+        return data
 
-    def visitListType(self, list_type: list_type, parentData: Any) -> Any:
-        pass
+    def visitReferenceType(self, reference_type: reference_type, parentData: Any, memberName: str) -> Any:
+        data = {
+            "$type": "d3i.reference_type",
+            "kind": str(reference_type.kind),
+            "reference_name": str(reference_type.reference_name.getText())
+        }
+        parentData[memberName] = data
+        return data
 
-    def visitMapType(self, map_type: map_type, parentData: Any) -> Any:
-        pass
+    def visitListType(self, list_type: list_type, parentData: Any, memberName: str) -> Any:
+        data = {
+            "$type": "d3i.list_type",
+            "kind": str(list_type.kind),
+            "item_type": {}
+        }
+        parentData[memberName] = data
+        return data
+
+    def visitMapType(self, map_type: map_type, parentData: Any, memberName: str) -> Any:
+        data = {
+            "$type": "d3i.list_type",
+            "kind": str(map_type.kind),
+            "key_type": {},
+            "value_type": {}
+        }
+        parentData[memberName] = data
+        return data
 
     def visitDecoratedElement(self, decorated_element: decorated_base_element, parentData: Any) -> Any:
         data = []
