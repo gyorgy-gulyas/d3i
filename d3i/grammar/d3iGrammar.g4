@@ -9,7 +9,7 @@ d3i
     ;
 
 domain
-    : decorator* 'domain' IDENTIFIER '{' directive* domain_element* '}'
+    : directive* decorator* 'domain' IDENTIFIER '{' domain_element* '}'
     ;
 
     directive

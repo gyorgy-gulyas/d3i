@@ -17,13 +17,13 @@ class ElementVisitor:
     def visitContext(self, context: context, parentData: Any) -> Any:
         pass
 
-    def visitEvent(self, event: event, parentData: Any) -> Any:
+    def visitEvent(self, event: event, parentElement:Any, parentData: Any) -> Any:
         pass
 
     def visitEventMember(self, eventMember: event_member, parentEvent: event, parentData: Any) -> Any:
         pass
 
-    def visitEnum(self, domain: enum, parentData: Any) -> Any:
+    def visitEnum(self, enum: enum, parentElement: Any,  parentData: Any) -> Any:
         pass
 
     def visitEnumElement(self, enum_element: enum_element, parentEnum: enum, parentData: Any) -> Any:
@@ -84,4 +84,16 @@ class ElementVisitor:
         pass
 
     def visitMapType(self, map_type: map_type, parentData: Any) -> Any:
+        pass
+
+    def visitDecoratedElement(self, decorated_element: decorated_base_element, parentData: Any) -> Any:
+        pass
+
+    def visitDecorator(self, decorator: decorator, parentData: Any) -> Any:
+        pass
+
+    def visitDecoratorParam(self, decorator_param: decorator_param, parentData: Any) -> Any:
+        pass
+
+    def visitBaseElement(self, base_element: base_element, parentData: Any) -> Any:
         pass

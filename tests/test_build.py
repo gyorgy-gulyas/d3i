@@ -31,8 +31,8 @@ domain somedomain{
         engine = d3i.Engine()
         session = d3i.Session()
         session.AddSource(d3i.Source.CreateFromText("""
+import somedomain.subdomain.subdomain
 domain somedomain{
-    import somedomain.subdomain.subdomain
 }
 """))
         root = engine.Build(session)
@@ -79,7 +79,7 @@ domain somedomain {}
         engine = d3i.Engine()
         session = d3i.Session()
         session.AddSource(d3i.Source.CreateFromText("""
-@simple( "string", 1, 1.0, identifier.sub.sub )
+@simple( "string", 1, 3.14, identifier.sub.sub )
 domain somedomain {}
 """))
         root = engine.Build(session)
@@ -98,7 +98,7 @@ domain somedomain {}
         self.assertEqual(param.value, 1)
         param: d3i.decorator_param = decorator.params[2]
         self.assertEqual(param.kind, d3i.decorator_param.Kind.Number)
-        self.assertEqual(param.value, 1.0)
+        self.assertEqual(param.value, Decimal('3.14'))
         param: d3i.decorator_param = decorator.params[3]
         self.assertEqual(param.kind, d3i.decorator_param.Kind.QualifiedName)
         self.assertEqual(param.value.getText(), "identifier.sub.sub")
@@ -682,11 +682,6 @@ domain somedomain {
         self.assertEqual(len(operation_return.decorators), 1)
         self.assertEqual(operation_return.type.Kind, d3i.type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "ErrorNotFound")
-
-        jsonEmmiter=JsonEmitter()
-        data = root.visit(jsonEmmiter,None)
-        jsonString  = json.dumps(data,indent=4)
-        print(jsonString)
 
 
 if __name__ == "__main__":

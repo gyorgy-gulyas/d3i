@@ -144,18 +144,7 @@ class Engine:
             self.session = session
 
         def syntaxError(self, recognizer, offendingSymbol, line, column, message, e):
-            self.has_error = True
-
-            self.session.ReportDiagnostic()
-
-            error: Diagnostic = Diagnostic()
-            error.severity = Diagnostic.Severity.Error
-            error.fileName = self.fileName
-            error.line = line
-            error.column = column
-            error.message = message
-            self.session.diagnostics.append(error)
-
+            self.session.ReportDiagnostic(message,Diagnostic.Severity.Error,self.fileName,line,column)
 
 class Diagnostic:
     def __init__(self):
