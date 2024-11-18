@@ -202,7 +202,15 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         return data
 
     def visitInterface(self, interface: interface, parentData: Any) -> Any:
-        pass
+        data = {
+            "$type": "d3i.interface",
+            "name": interface.name,
+            "operations": [],
+            "internal_enums": [],
+            "internal_value_objects": []
+        }
+        parentData["services"].append(data)
+        return data
 
     def visitOperation(self, operation: operation, parentElement: Any, parentData: Any) -> Any:
         data = {

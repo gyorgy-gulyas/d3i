@@ -186,21 +186,21 @@ domain somedomain {
         self.assertEqual(len(value_object.members), 4)
         member: d3i.value_object_member = value_object.members[0]
         self.assertEqual(member.name, "city")
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(member.type.PrimtiveType, d3i.primitive_type.PrimtiveType.String)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
         self.assertEqual(member.decorators[0].name, "required")
         member: d3i.value_object_member = value_object.members[1]
         self.assertEqual(member.name, "street")
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(member.type.PrimtiveType, d3i.primitive_type.PrimtiveType.String)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
         member: d3i.value_object_member = value_object.members[2]
         self.assertEqual(member.name, "country")
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Reference)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(member.type.reference_name.getText(), "General.Country")
         member: d3i.value_object_member = value_object.members[3]
         self.assertEqual(member.name, "zipCode")
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(member.type.PrimtiveType, d3i.primitive_type.PrimtiveType.Integer)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, d3i.primitive_type.PrimtiveKind.Integer)
 
     def test_value_object_inner_valueobject(self):
         engine = d3i.Engine()
@@ -233,12 +233,12 @@ domain somedomain {
         value_object_inner: d3i.value_object = value_object.internal_value_objects[0]
         member: d3i.value_object_member = value_object_inner.members[0]
         self.assertEqual(member.name, "inner_1")
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(member.type.PrimtiveType, d3i.primitive_type.PrimtiveType.String)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
         member: d3i.value_object_member = value_object_inner.members[1]
         self.assertEqual(member.name, "inner_2")
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(member.type.PrimtiveType, d3i.primitive_type.PrimtiveType.Integer)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, d3i.primitive_type.PrimtiveKind.Integer)
 
     def test_value_object_inner_enum(self):
         engine = d3i.Engine()
@@ -295,12 +295,12 @@ domain somedomain {
         self.assertEqual(len(entity.members), 2)
         member: d3i.entity_member = entity.members[0]
         self.assertEqual(member.name, "name")
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(member.type.PrimtiveType,                         d3i.primitive_type.PrimtiveType.String)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
         self.assertEqual(member.decorators[0].name, "required")
         member: d3i.entity_member = entity.members[1]
         self.assertEqual(member.name, "address")
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Reference)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(member.type.reference_name.getText(), "Address")
 
     def test_entity_inner_enum(self):
@@ -471,18 +471,18 @@ domain somedomain {
         self.assertEqual(len(event.internal_value_objects), 1)
         member: d3i.event_member = event.members[0]
         self.assertEqual(member.name, "orderId")
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(member.type.PrimtiveType, d3i.primitive_type.PrimtiveType.String)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
         self.assertEqual(len(member.decorators), 0)
         member: d3i.event_member = event.members[1]
         self.assertEqual(member.name, "importance")
         self.assertEqual(len(member.decorators), 0)
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Reference)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(member.type.reference_name.getText(), "Importance")
         member: d3i.event_member = event.members[2]
         self.assertEqual(member.name, "data")
         self.assertEqual(len(member.decorators), 1)
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Reference)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(member.type.reference_name.getText(), "EventData")
 
     def test_domain_event(self):
@@ -521,18 +521,18 @@ domain somedomain {
         self.assertEqual(len(event.internal_value_objects), 1)
         member: d3i.event_member = event.members[0]
         self.assertEqual(member.name, "orderId")
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(member.type.PrimtiveType, d3i.primitive_type.PrimtiveType.String)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
         self.assertEqual(len(member.decorators), 0)
         member: d3i.event_member = event.members[1]
         self.assertEqual(member.name, "importance")
         self.assertEqual(len(member.decorators), 0)
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Reference)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(member.type.reference_name.getText(), "Importance")
         member: d3i.event_member = event.members[2]
         self.assertEqual(member.name, "data")
         self.assertEqual(len(member.decorators), 1)
-        self.assertEqual(member.type.Kind, d3i.type.Kind.Reference)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(member.type.reference_name.getText(), "EventData")
 
     def test_acl(self):
@@ -573,10 +573,10 @@ domain somedomain {
         self.assertEqual(len(method.method_params), 1)
         method_param: d3i.method_param = method.method_params[0]
         self.assertEqual(method_param.name, "customerId")
-        self.assertEqual(method_param.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(method_param.type.PrimtiveType, d3i.primitive_type.PrimtiveType.String)
+        self.assertEqual(method_param.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(method_param.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
         self.assertEqual(len(method_param.decorators), 1)
-        self.assertEqual(method.return_type.Kind, d3i.type.Kind.Reference)
+        self.assertEqual(method.return_type.kind, d3i.type.Kind.Reference)
         self.assertEqual(method.return_type.reference_name.getText(), "OrderData")
 
     def test_service(self):
@@ -619,16 +619,16 @@ domain somedomain {
         self.assertEqual(len(operation.operation_params), 1)
         operation_param: d3i.operation_param = operation.operation_params[0]
         self.assertEqual(operation_param.name, "orderId")
-        self.assertEqual(operation_param.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(operation_param.type.PrimtiveType, d3i.primitive_type.PrimtiveType.String)
+        self.assertEqual(operation_param.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(operation_param.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
         self.assertEqual(len(operation_param.decorators), 1)
         operation_return: d3i.operation_return = operation.operation_returns[0]
         self.assertEqual(len(operation_return.decorators), 1)
-        self.assertEqual(operation_return.type.Kind, d3i.type.Kind.Reference)
+        self.assertEqual(operation_return.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "OrderData")
         operation_return: d3i.operation_return = operation.operation_returns[1]
         self.assertEqual(len(operation_return.decorators), 1)
-        self.assertEqual(operation_return.type.Kind, d3i.type.Kind.Reference)
+        self.assertEqual(operation_return.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "ErrorNotFound")
 
     def test_interface(self):
@@ -671,16 +671,16 @@ domain somedomain {
         self.assertEqual(len(operation.operation_params), 1)
         operation_param: d3i.operation_param = operation.operation_params[0]
         self.assertEqual(operation_param.name, "orderId")
-        self.assertEqual(operation_param.type.Kind, d3i.type.Kind.Primitive)
-        self.assertEqual(operation_param.type.PrimtiveType, d3i.primitive_type.PrimtiveType.String)
+        self.assertEqual(operation_param.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(operation_param.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
         self.assertEqual(len(operation_param.decorators), 1)
         operation_return: d3i.operation_return = operation.operation_returns[0]
         self.assertEqual(len(operation_return.decorators), 1)
-        self.assertEqual(operation_return.type.Kind, d3i.type.Kind.Reference)
+        self.assertEqual(operation_return.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "OrderDTO")
         operation_return: d3i.operation_return = operation.operation_returns[1]
         self.assertEqual(len(operation_return.decorators), 1)
-        self.assertEqual(operation_return.type.Kind, d3i.type.Kind.Reference)
+        self.assertEqual(operation_return.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "ErrorNotFound")
 
 
