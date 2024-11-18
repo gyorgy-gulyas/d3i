@@ -14,13 +14,13 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by d3iGrammar#directive.
-    def visitDirective(self, ctx:d3iGrammar.DirectiveContext):
+    # Visit a parse tree produced by d3iGrammar#domain.
+    def visitDomain(self, ctx:d3iGrammar.DomainContext):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by d3iGrammar#domain.
-    def visitDomain(self, ctx:d3iGrammar.DomainContext):
+    # Visit a parse tree produced by d3iGrammar#directive.
+    def visitDirective(self, ctx:d3iGrammar.DirectiveContext):
         return self.visitChildren(ctx)
 
 

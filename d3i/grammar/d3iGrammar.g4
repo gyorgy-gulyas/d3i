@@ -5,17 +5,17 @@ options {
 }
 
 d3i
-    : directive* domain* EOF
-    ;
-
-directive
-    : IDENTIFIER qualifiedName
+    : domain* EOF
     ;
 
 domain
-    : decorator* 'domain' IDENTIFIER '{' domain_element* '}'
+    : directive* decorator* 'domain' IDENTIFIER '{' domain_element* '}'
     ;
 
+    directive
+        : IDENTIFIER qualifiedName
+        ;
+        
     domain_element
         : context
         | event;
@@ -37,7 +37,7 @@ context
         ;
 
 value_object
-    : decorator* 'valueObject' IDENTIFIER '{' value_object_element* '}'
+    : decorator* 'valueobject' IDENTIFIER '{' value_object_element* '}'
     ;
 
     value_object_element
@@ -117,7 +117,7 @@ interface
         ;
     
 operation
-    : decorator* IDENTIFIER '(' operation_param? (',' operation_param)* ')' (':' operation_return* )?
+    : decorator* IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' ((':' operation_return )? ('|' operation_return)*)
     ;
 
     operation_param
@@ -140,7 +140,7 @@ acl
         ;
         
         method
-            : decorator* IDENTIFIER '(' method_param? (',' method_param)* ')' ':' type
+            : decorator* IDENTIFIER '(' (method_param? (',' method_param)*) ')' ':' type
             ;
 
             method_param

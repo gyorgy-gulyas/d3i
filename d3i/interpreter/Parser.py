@@ -23,7 +23,7 @@ class Parser:
         self.grammar = d3iGrammar(CommonTokenStream(self.lexer))
 
         # Hozzáadjuk a saját hibafigyelőt
-        error_listener = SyntaxErrorListener(self.fileName)
+        error_listener = _ErrorListener(self.fileName)
         self.grammar.removeErrorListeners()
         self.grammar.addErrorListener(error_listener)
             
@@ -45,12 +45,12 @@ class Parser:
 
 from antlr4.error.ErrorListener import ErrorListener
 
-class SyntaxErrorListener(ErrorListener):
+class _ErrorListener(ErrorListener):
     def __init__(self,fileName):
-        super(SyntaxErrorListener, self).__init__()
+        super(_ErrorListener, self).__init__()
         self.fileName=fileName
         self.has_error = False  # Ezt használjuk a hiba állapotának nyomon követésére
-        self.error_messages:List[SyntaxErrorListener.error] = []
+        self.error_messages:List[_ErrorListener.error] = []
 
     def PrintErrors(self):
         for error in self.error_messages:
@@ -59,7 +59,7 @@ class SyntaxErrorListener(ErrorListener):
 
     def syntaxError(self, recognizer, offendingSymbol, line, column, message, e):
         self.has_error = True
-        error:ErrorListener.error = SyntaxErrorListener.error()
+        error:ErrorListener.error = _ErrorListener.error()
         error.line = line
         error.column = column
         error.message = message
