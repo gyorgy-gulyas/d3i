@@ -482,9 +482,11 @@ domain SomeDomain {
 """))
         root = engine.Build(session)
 
+
         jsonEmmiter = JsonEmitter()
         data = root.visit(jsonEmmiter, None)
         result = json.dumps(data, indent=4)
+
         expected = """{
     "$type": "d3i.d3",
     "domains": [
@@ -507,6 +509,16 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "country",
+                                    "type": {
+                                        "$type": "d3i.reference_type",
+                                        "kind": "Kind.Reference",
+                                        "reference_name": "Country",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 17,
+                                            "column": 20
+                                        }
+                                    },
                                     "decorators": [
                                         {
                                             "$type": "d3i.decorator",
@@ -534,21 +546,21 @@ domain SomeDomain {
                                         "fileName": "internal string",
                                         "line": 16,
                                         "column": 12
-                                    },
-                                    "type": {
-                                        "$type": "d3i.reference_type",
-                                        "kind": "Kind.Reference",
-                                        "reference_name": "Country",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 17,
-                                            "column": 20
-                                        }
                                     }
                                 },
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "address",
+                                    "type": {
+                                        "$type": "d3i.primitive_type",
+                                        "kind": "Kind.Primitive",
+                                        "primtiveKind": "PrimtiveKind.String",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 19,
+                                            "column": 20
+                                        }
+                                    },
                                     "decorators": [
                                         {
                                             "$type": "d3i.decorator",
@@ -576,27 +588,11 @@ domain SomeDomain {
                                         "fileName": "internal string",
                                         "line": 18,
                                         "column": 12
-                                    },
-                                    "type": {
-                                        "$type": "d3i.primitive_type",
-                                        "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.String",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 19,
-                                            "column": 20
-                                        }
                                     }
                                 },
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "zipCode",
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 20,
-                                        "column": 12
-                                    },
                                     "type": {
                                         "$type": "d3i.reference_type",
                                         "kind": "Kind.Reference",
@@ -606,6 +602,12 @@ domain SomeDomain {
                                             "line": 20,
                                             "column": 20
                                         }
+                                    },
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 20,
+                                        "column": 12
                                     }
                                 }
                             ],
@@ -651,12 +653,6 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "data_1",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 12,
-                                                "column": 16
-                                            },
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -666,17 +662,17 @@ domain SomeDomain {
                                                     "line": 12,
                                                     "column": 23
                                                 }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 12,
+                                                "column": 16
                                             }
                                         },
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "data_2",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 13,
-                                                "column": 16
-                                            },
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -686,6 +682,12 @@ domain SomeDomain {
                                                     "line": 13,
                                                     "column": 23
                                                 }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 13,
+                                                "column": 16
                                             }
                                         }
                                     ],
@@ -975,12 +977,6 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "country",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 12,
-                                                "column": 16
-                                            },
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
@@ -990,17 +986,17 @@ domain SomeDomain {
                                                     "line": 12,
                                                     "column": 24
                                                 }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 12,
+                                                "column": 16
                                             }
                                         },
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "address",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 13,
-                                                "column": 16
-                                            },
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -1010,17 +1006,17 @@ domain SomeDomain {
                                                     "line": 13,
                                                     "column": 24
                                                 }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 13,
+                                                "column": 16
                                             }
                                         },
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "zipCode",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 14,
-                                                "column": 16
-                                            },
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
@@ -1030,6 +1026,12 @@ domain SomeDomain {
                                                     "line": 14,
                                                     "column": 24
                                                 }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 14,
+                                                "column": 16
                                             }
                                         }
                                     ],
@@ -1377,12 +1379,6 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "country",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 12,
-                                                "column": 16
-                                            },
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
@@ -1392,17 +1388,17 @@ domain SomeDomain {
                                                     "line": 12,
                                                     "column": 24
                                                 }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 12,
+                                                "column": 16
                                             }
                                         },
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "address",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 13,
-                                                "column": 16
-                                            },
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -1412,17 +1408,17 @@ domain SomeDomain {
                                                     "line": 13,
                                                     "column": 24
                                                 }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 13,
+                                                "column": 16
                                             }
                                         },
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "zipCode",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 14,
-                                                "column": 16
-                                            },
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
@@ -1432,6 +1428,12 @@ domain SomeDomain {
                                                     "line": 14,
                                                     "column": 24
                                                 }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 14,
+                                                "column": 16
                                             }
                                         }
                                     ],
@@ -1758,12 +1760,6 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "address",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 11,
-                                                "column": 16
-                                            },
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -1773,17 +1769,17 @@ domain SomeDomain {
                                                     "line": 11,
                                                     "column": 24
                                                 }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 11,
+                                                "column": 16
                                             }
                                         },
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "type",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 12,
-                                                "column": 16
-                                            },
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
@@ -1793,6 +1789,12 @@ domain SomeDomain {
                                                     "line": 12,
                                                     "column": 21
                                                 }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 12,
+                                                "column": 16
                                             }
                                         }
                                     ],
