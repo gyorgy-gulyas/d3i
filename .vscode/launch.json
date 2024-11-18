@@ -11,7 +11,7 @@
             "justMyCode": false,
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["-i", "hello", "-e", "szia"],
+            "args": ["-i", "tests/test.d3", "-v"],
             "envFile": "${workspaceRoot}/.env"
         }
     ]
