@@ -180,7 +180,15 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         return data
 
     def visitAcl(self, acl: acl, parentData: Any) -> Any:
-        pass
+        data = {
+            "$type": "d3i.acl",
+            "name": acl.name,
+            "methods": [],
+            "internal_enums": [],
+            "internal_value_objects": []
+        }
+        parentData["acls"].append(data)
+        return data
 
     def visitService(self, service: service, parentData: Any) -> Any:
         pass
@@ -198,10 +206,23 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         pass
 
     def visitMethod(self, method: method, parentElement: Any, parentData: Any) -> Any:
-        pass
+        data = {
+            "$type": "d3i.method",
+            "name": method.name,
+            "method_params": [],
+            "return_type": {},
+        }
+        parentData["methods"].append(data)
+        return data
 
     def visitMethodParam(self, method_param: method_param, parentMethod: method, parentData: Any) -> Any:
-        pass
+        data = {
+            "$type": "d3i.method_param",
+            "name": method_param.name,
+            "type": {},
+        }
+        parentData["method_params"].append(data)
+        return data
 
     def visitType(self, type: type, parentData: Any, memberName: str) -> Any:
         data = {

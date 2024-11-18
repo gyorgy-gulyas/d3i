@@ -383,7 +383,7 @@ class acl(scoped_base_element):
         self.methods: List[method] = []
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitAcl(self, parent, parentData)
+        data = visitor.visitAcl(self, parentData)
         super().visit(visitor, data)
         for method in self.methods:
             method.visit(self, visitor, data)
@@ -402,10 +402,10 @@ class method(decorated_base_element):
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitMethod(self, parent, parentData)
-        super().visit(visitor, data)
         for method_param in self.method_params:
             method_param.visit(self, visitor, data)
-        self.return_type.visit(self, visitor, data)
+        self.return_type.visit(visitor, data, "return_type")
+        super().visit(visitor, data)
 
 
 class method_param(decorated_base_element):
@@ -416,8 +416,8 @@ class method_param(decorated_base_element):
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitMethodParam(self, parent, parentData)
-        super().visit(visitor, data)
         self.type.visit(visitor, data, "type")
+        super().visit(visitor, data)
 
 
 class type(base_element):
