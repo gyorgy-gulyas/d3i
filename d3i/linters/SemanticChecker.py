@@ -70,9 +70,28 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitValueObject(self, value_object: value_object, parentData: Any) -> Any:
-        pass
+        if isinstance(value_object.parent, context):
+            parent_context: context = value_object.parent
+            for neighbour in parent_context.value_objects:
+                if (neighbour is value_object):
+                    continue
+                if (neighbour.name == value_object.name):
+                    self.__error__(value_object, f"A value object '{value_object.name}' with this name already exists in {neighbour.locationText()}.")
+        elif isinstance(value_object.parent, scoped_base_element):
+            parent_scope: scoped_base_element = value_object.parent
+            for neighbour in parent_scope.internal_value_objects:
+                if (neighbour is value_object):
+                    continue
+                if (neighbour.name == value_object.name):
+                    self.__error__(value_object, f"A value object '{value_object.name}' with this name already exists in {neighbour.locationText()}.")
 
     def visitValueObjectMember(self, value_object_member: value_object_member, parentData: Any) -> Any:
+        parent_value_object: value_object = value_object_member.parent
+        for neighbour in parent_value_object.members:
+            if (neighbour is value_object_member):
+                continue
+            if (neighbour.name == value_object_member.name):
+                self.__error__(value_object_member, f"An member '{value_object_member.name}' with this value already exists in {neighbour.locationText()}.")
         pass
 
     def visitEnity(self, entity: entity, parentData: Any) -> Any:

@@ -122,7 +122,6 @@ domain SomeDomain {
         self.assertTrue("TheEnum" in session.diagnostics[1].toText())
         self.assertTrue("(7,8)" in session.diagnostics[1].toText())
 
-
     def test_same_name_inner_enum_fail(self):
         engine = d3i.Engine()
         session = d3i.Session()
@@ -180,6 +179,90 @@ domain SomeDomain {
         self.assertTrue("(5,12)" in session.diagnostics[0].toText())
         self.assertTrue("TheValue" in session.diagnostics[1].toText())
         self.assertTrue("(6,12)" in session.diagnostics[1].toText())
+
+
+    def test_same_name_context_valueobject_fail(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext{
+        valueobject TheValueObject {
+        }
+        valueobject TheValueObject {
+        }
+        valueobject OtherValueObject {
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        self.assertFalse(session.HasErrror())
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 2)
+        x = session.diagnostics[0].toText()
+        self.assertTrue("TheValueObject" in session.diagnostics[0].toText())
+        self.assertTrue("(4,8)" in session.diagnostics[0].toText())
+        self.assertTrue("TheValueObject" in session.diagnostics[1].toText())
+        self.assertTrue("(7,8)" in session.diagnostics[1].toText())
+
+    def test_same_name_inner_valueobject_fail(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext{
+        service OrderService { 
+            valueobject TheValueobject {
+            }
+            valueobject TheValueobject {
+            }
+            valueobject OtherValueObject {
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        self.assertFalse(session.HasErrror())
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 2)
+        x = session.diagnostics[0].toText()
+        self.assertTrue("TheValueObject" in session.diagnostics[0].toText())
+        self.assertTrue("(5,12)" in session.diagnostics[0].toText())
+        self.assertTrue("TheValueObject" in session.diagnostics[1].toText())
+        self.assertTrue("(8,12)" in session.diagnostics[1].toText())
+
+    def test_same_name_valueobject_element_fail(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext{
+        valueobject SomeValueobject {
+            TheMember:string
+            TheMember:number
+            OtherMember:date
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        self.assertFalse(session.HasErrror())
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 2)
+        x = session.diagnostics[0].toText()
+        self.assertTrue("TheMember" in session.diagnostics[0].toText())
+        self.assertTrue("(5,12)" in session.diagnostics[0].toText())
+        self.assertTrue("TheMember" in session.diagnostics[1].toText())
+        self.assertTrue("(6,12)" in session.diagnostics[1].toText())
+
 
 if __name__ == "__main__":
     unittest.main()
