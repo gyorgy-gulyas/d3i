@@ -1858,6 +1858,366 @@ domain SomeDomain {
         diff = jsondiff.diff(result, expected, syntax='symmetric')
         self.assertEqual(0, len(diff))
 
+    def tests_service_ok(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext {
+        @decoration( "value" )
+        service OrderService {
+            enum PartnerType {
+                Customer,    
+                PrivatePerson
+            }
+            valueobject OrderData {
+                address:string
+                type:PartnerType
+            }
+
+            @post
+            getOrder( @required orderId: string ) 
+                : @status(200) OrderData
+                | @status(404) ErrorNotFound
+
+            @put
+            closeAllOrder()
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        jsonEmmiter = JsonEmitter()
+        data = root.visit(jsonEmmiter, None)
+        result = json.dumps(data, indent=4)
+        expected = """{
+    "$type": "d3i.d3",
+    "domains": [
+        {
+            "$type": "d3i.domain",
+            "name": "SomeDomain",
+            "decorators": [],
+            "directives": [],
+            "contexts": [
+                {
+                    "$type": "d3i.context",
+                    "name": "OrderContext",
+                    "decorators": [],
+                    "enums": [],
+                    "value_objects": [],
+                    "entities": [],
+                    "aggregates": [],
+                    "repositories": [],
+                    "acls": [],
+                    "context_events": [],
+                    "services": [
+                        {
+                            "$type": "d3i.service",
+                            "name": "OrderService",
+                            "operations": [
+                                {
+                                    "$type": "d3i.operation",
+                                    "name": "getOrder",
+                                    "operation_params": [
+                                        {
+                                            "$type": "d3i.operation_param",
+                                            "name": "orderId",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 16,
+                                                    "column": 41
+                                                }
+                                            },
+                                            "decorators": [
+                                                {
+                                                    "$type": "d3i.decorator",
+                                                    "name": "required",
+                                                    "params": [],
+                                                    "location": {
+                                                        "fileName": "internal string",
+                                                        "line": 16,
+                                                        "column": 22
+                                                    }
+                                                }
+                                            ],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 16,
+                                                "column": 22
+                                            }
+                                        }
+                                    ],
+                                    "operation_returns": [
+                                        {
+                                            "$type": "d3i.operation_return",
+                                            "type": {
+                                                "$type": "d3i.reference_type",
+                                                "kind": "Kind.Reference",
+                                                "reference_name": "OrderData",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 17,
+                                                    "column": 31
+                                                }
+                                            },
+                                            "decorators": [
+                                                {
+                                                    "$type": "d3i.decorator",
+                                                    "name": "status",
+                                                    "params": [
+                                                        {
+                                                            "$type": "d3i.decorator_param",
+                                                            "kind": "Kind.Integer",
+                                                            "value": "200",
+                                                            "location": {
+                                                                "fileName": "internal string",
+                                                                "line": 17,
+                                                                "column": 26
+                                                            }
+                                                        }
+                                                    ],
+                                                    "location": {
+                                                        "fileName": "internal string",
+                                                        "line": 17,
+                                                        "column": 18
+                                                    }
+                                                }
+                                            ],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 17,
+                                                "column": 18
+                                            }
+                                        },
+                                        {
+                                            "$type": "d3i.operation_return",
+                                            "type": {
+                                                "$type": "d3i.reference_type",
+                                                "kind": "Kind.Reference",
+                                                "reference_name": "ErrorNotFound",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 18,
+                                                    "column": 31
+                                                }
+                                            },
+                                            "decorators": [
+                                                {
+                                                    "$type": "d3i.decorator",
+                                                    "name": "status",
+                                                    "params": [
+                                                        {
+                                                            "$type": "d3i.decorator_param",
+                                                            "kind": "Kind.Integer",
+                                                            "value": "404",
+                                                            "location": {
+                                                                "fileName": "internal string",
+                                                                "line": 18,
+                                                                "column": 26
+                                                            }
+                                                        }
+                                                    ],
+                                                    "location": {
+                                                        "fileName": "internal string",
+                                                        "line": 18,
+                                                        "column": 18
+                                                    }
+                                                }
+                                            ],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 18,
+                                                "column": 18
+                                            }
+                                        }
+                                    ],
+                                    "decorators": [
+                                        {
+                                            "$type": "d3i.decorator",
+                                            "name": "post",
+                                            "params": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 15,
+                                                "column": 12
+                                            }
+                                        }
+                                    ],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 15,
+                                        "column": 12
+                                    }
+                                },
+                                {
+                                    "$type": "d3i.operation",
+                                    "name": "closeAllOrder",
+                                    "operation_params": [],
+                                    "operation_returns": [],
+                                    "decorators": [
+                                        {
+                                            "$type": "d3i.decorator",
+                                            "name": "put",
+                                            "params": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 20,
+                                                "column": 12
+                                            }
+                                        }
+                                    ],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 20,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "internal_enums": [
+                                {
+                                    "$type": "d3i.enum",
+                                    "name": "PartnerType",
+                                    "enum_elements": [
+                                        {
+                                            "$type": "d3i.enum_element",
+                                            "name": "Customer",
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 7,
+                                                "column": 16
+                                            }
+                                        },
+                                        {
+                                            "$type": "d3i.enum_element",
+                                            "name": "PrivatePerson",
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 8,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 6,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "internal_value_objects": [
+                                {
+                                    "$type": "d3i.value_object",
+                                    "name": "OrderData",
+                                    "members": [
+                                        {
+                                            "$type": "d3i.value_object_member",
+                                            "name": "address",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 11,
+                                                    "column": 24
+                                                }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 11,
+                                                "column": 16
+                                            }
+                                        },
+                                        {
+                                            "$type": "d3i.value_object_member",
+                                            "name": "type",
+                                            "type": {
+                                                "$type": "d3i.reference_type",
+                                                "kind": "Kind.Reference",
+                                                "reference_name": "PartnerType",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 12,
+                                                    "column": 21
+                                                }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 12,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "internal_enums": [],
+                                    "internal_value_objects": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 10,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "decorators": [
+                                {
+                                    "$type": "d3i.decorator",
+                                    "name": "decoration",
+                                    "params": [
+                                        {
+                                            "$type": "d3i.decorator_param",
+                                            "kind": "Kind.String",
+                                            "value": "value",
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 4,
+                                                "column": 21
+                                            }
+                                        }
+                                    ],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 4,
+                                        "column": 8
+                                    }
+                                }
+                            ],
+                            "location": {
+                                "fileName": "internal string",
+                                "line": 4,
+                                "column": 8
+                            }
+                        }
+                    ],
+                    "interfaces": [],
+                    "location": {
+                        "fileName": "internal string",
+                        "line": 3,
+                        "column": 4
+                    }
+                }
+            ],
+            "domain_events": [],
+            "location": {
+                "fileName": "internal string",
+                "line": 2,
+                "column": 0
+            }
+        }
+    ]
+}"""
+        diff = jsondiff.diff(result, expected, syntax='symmetric')
+        self.assertEqual(0, len(diff))
+
 
 if __name__ == "__main__":
     unittest.main()

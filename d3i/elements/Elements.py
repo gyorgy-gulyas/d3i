@@ -201,8 +201,9 @@ class value_object_member(decorated_base_element):
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitValueObjectMember(self, parent, parentData)
+        if( self.type != None ):
+            self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
-        self.type.visit(visitor, data, "type")
 
 
 class event(scoped_base_element):
@@ -230,8 +231,9 @@ class event_member(decorated_base_element):
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEventMember(self, parent, parentData)
+        if( self.type != None ):
+            self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
-        self.type.visit(visitor, data, "type")
 
 
 class entity(scoped_base_element):
@@ -259,7 +261,8 @@ class entity_member(decorated_base_element):
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEnityMember(self, parent, parentData)
-        self.type.visit(visitor, data, "type")
+        if( self.type != None ):
+            self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
 
 
@@ -310,7 +313,7 @@ class service(scoped_base_element):
         self.operations: List[operation] = []
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitService(self, parent, parentData)
+        data = visitor.visitService(self, parentData)
         super().visit(visitor, data)
         for operation in self.operations:
             operation.visit(self, visitor, data)
@@ -361,8 +364,9 @@ class operation_param(decorated_base_element):
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitOperationParam(self, parent, parentData)
+        if(self.type != None):
+            self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
-        self.type.visit(visitor, data, "type")
 
 
 class operation_return(decorated_base_element):
@@ -372,8 +376,9 @@ class operation_return(decorated_base_element):
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitOperationReturn(self, parent, parentData)
+        if( self.type != None ):
+            self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
-        self.type.visit(visitor, data, "type")
 
 
 class acl(scoped_base_element):
@@ -404,7 +409,8 @@ class method(decorated_base_element):
         data = visitor.visitMethod(self, parent, parentData)
         for method_param in self.method_params:
             method_param.visit(self, visitor, data)
-        self.return_type.visit(visitor, data, "return_type")
+        if( self.return_type != None ):
+            self.return_type.visit(visitor, data, "return_type")
         super().visit(visitor, data)
 
 
@@ -416,7 +422,8 @@ class method_param(decorated_base_element):
 
     def visit(self, parent, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitMethodParam(self, parent, parentData)
-        self.type.visit(visitor, data, "type")
+        if( self.type != None ):
+            self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
 
 
@@ -440,11 +447,14 @@ class type(base_element):
                 data = visitor.visitReferenceType(self, parentData, memberName)
             case type.Kind.List:
                 data = visitor.visitListType(self, parentData, memberName)
-                self.item_type.visit(visitor, data, "item_type")
+                if( self.item_type != None ):
+                    self.item_type.visit(visitor, data, "item_type")
             case type.Kind.Map:
                 data = visitor.visitMapType(self, parentData, memberName)
-                self.key_type.visit(visitor, data, "key_type")
-                self.value_type.visit(visitor, data, "value_type")
+                if( self.key_type != None ):
+                    self.key_type.visit(visitor, data, "key_type")
+                if( self.value_type != None ):
+                    self.value_type.visit(visitor, data, "value_type")
 
         super().visit(visitor, data)
 

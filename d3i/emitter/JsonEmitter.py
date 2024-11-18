@@ -191,19 +191,45 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         return data
 
     def visitService(self, service: service, parentData: Any) -> Any:
-        pass
+        data = {
+            "$type": "d3i.service",
+            "name": service.name,
+            "operations": [],
+            "internal_enums": [],
+            "internal_value_objects": []
+        }
+        parentData["services"].append(data)
+        return data
 
     def visitInterface(self, interface: interface, parentData: Any) -> Any:
         pass
 
     def visitOperation(self, operation: operation, parentElement: Any, parentData: Any) -> Any:
-        pass
+        data = {
+            "$type": "d3i.operation",
+            "name": operation.name,
+            "operation_params": [],
+            "operation_returns": [],
+        }
+        parentData["operations"].append(data)
+        return data
 
     def visitOperationParam(self, operation_param: operation_param, parentOperation: operation, parentData: Any) -> Any:
-        pass
+        data = {
+            "$type": "d3i.operation_param",
+            "name": operation_param.name,
+            "type": {},
+        }
+        parentData["operation_params"].append(data)
+        return data
 
     def visitOperationReturn(self, operation_return: operation_return, parentOperation: operation, parentData: Any) -> Any:
-        pass
+        data = {
+            "$type": "d3i.operation_return",
+            "type": {},
+        }
+        parentData["operation_returns"].append(data)
+        return data
 
     def visitMethod(self, method: method, parentElement: Any, parentData: Any) -> Any:
         data = {

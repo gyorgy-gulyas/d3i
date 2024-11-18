@@ -443,7 +443,8 @@ class ElementBuilder(d3iGrammarVisitor):
     def visitOperation_param(self, ctx: d3iGrammar.Operation_paramContext):
         result = operation_param(self.fileName, ctx.start)
         result.name = ctx.IDENTIFIER().getText()
-        result.type = self.visit(ctx.type_())
+        if(ctx.type_() != None):
+            result.type = self.visit(ctx.type_())
 
         counter = 0
         while True:
