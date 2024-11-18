@@ -1,6 +1,17 @@
+import json
+import os
 from typing import Any
 import d3i.elements.ElementVisitor
 from d3i.elements.Elements import *
+from d3i.Engine import Session
+
+def DoEmit( session:Session, output_dir:str):
+    jsonEmmiter = JsonEmitter()
+    data = session.main.visit(jsonEmmiter, None)
+    json_result = json.dumps(data, indent=4)
+    with open(os.path.join(output_dir, "main.json"), "w") as file:
+        file.write(json_result)
+    return json_result
 
 
 class JsonEmitter(d3i.elements.ElementVisitor):
@@ -339,3 +350,4 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             return data
         else:
             return None
+

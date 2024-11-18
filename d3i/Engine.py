@@ -40,12 +40,15 @@ class Session:
 
     def HasErrror(self):
         if (len(self.diagnostics) > 0):
-            return False
-        return True
+            return True
+        return False
 
     def PrintErrors(self):
         for msg in self.diagnostics:
             print(f"{msg.fileName}({msg.line},{msg.column}): {msg.severity} :{msg.message}\n")
+
+    def ClearErrors(self):
+        self.diagnostics.clear()
 
     def ReportDiagnostic(self, message, severity, fileName="", line=0, column=0 ):
         diagnostic: Diagnostic = Diagnostic()
