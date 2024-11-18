@@ -192,7 +192,7 @@ decorator
         | STRING_LITERAL
         ;
 enum
-    : decorator* 'enum' IDENTIFIER '{' enum_element (',' enum_element)* '}'
+    : decorator* 'enum' IDENTIFIER '{' enum_element? (',' enum_element)* '}'
     ;
 
     enum_element

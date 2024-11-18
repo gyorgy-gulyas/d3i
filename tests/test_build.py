@@ -1,11 +1,11 @@
 import unittest
 import d3i
-from d3i.emitter import *
+from d3i.emitters import *
 
 
 class TestBuild(unittest.TestCase):
 
-    def tests_empty_ok(self):
+    def test_empty_ok(self):
         engine = d3i.Engine()
         session = d3i.Session()
         session.AddSource(d3i.Source.CreateFromText(""))

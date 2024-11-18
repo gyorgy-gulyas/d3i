@@ -57,8 +57,7 @@ if(args.verbose):
 root = engine.Build(session)
 
 if(session.HasErrror() == True):
-    if(args.verbose):
-        session.PrintErrors()
+    session.PrintErrors()
     if(args.abort_on_error):
         exit( "abort on error is enabled, process is aborted")
 else:
@@ -74,8 +73,7 @@ for linter_file in args.linter:
     module.DoLint( session )
 
 if(session.HasErrror() == True):
-    if(args.verbose):
-        session.PrintErrors()
+    session.PrintErrors()
     if(args.abort_on_error):
         exit( "abort on error is enabled, prcess is aborted")
 #endregion process inputs
@@ -88,8 +86,7 @@ for emitter_file in args.emitter:
     print(module.DoEmit( session, args.output_dir ))
 
 if(session.HasErrror() == True):
-    if(args.verbose):
-        session.PrintErrors()
+    session.PrintErrors()
     if(args.abort_on_error):
         exit( "abort on error is enabled, process is aborted")
 #endregion process inputs

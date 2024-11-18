@@ -4,7 +4,6 @@ from d3i.grammar.d3iLexer import *
 from d3i.grammar.d3iGrammar import *
 from d3i.elements.ElementBuilder import *
 import d3i
-import json
 
 class Source:
     def __init__(self):
@@ -45,7 +44,7 @@ class Session:
 
     def PrintErrors(self):
         for msg in self.diagnostics:
-            print(f"{msg.fileName}({msg.line},{msg.column}): {msg.severity} :{msg.message}\n")
+            print(f"{msg.toText()}\n")
 
     def ClearErrors(self):
         self.diagnostics.clear()
@@ -157,7 +156,11 @@ class Diagnostic:
         self.column: int = None
         self.message: int = None
 
+    def toText(self):
+        return f"{self.fileName}({self.line},{self.column}): {self.severity} :{self.message}\n"
+    
     class Severity(Enum):
         Message = 1,
         Warning = 2,
         Error = 3,
+        
