@@ -95,7 +95,26 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitEnity(self, entity: entity, parentData: Any) -> Any:
-        pass
+        if isinstance(entity.parent, context):
+            parent_context: context = entity.parent
+        elif isinstance(entity.parent, aggregate_entity):
+            parent_aggregate: aggregate = entity.parent.parent
+            parent_context = parent_aggregate.parent 
+        
+        #collect all neighbour entities
+        neighbour_entities = []
+        for neighbour in parent_context.entities:
+            neighbour_entities.append(neighbour)
+        for aggr in parent_context.aggregates:
+            for aggr_entity in aggr.internal_entities:
+                neighbour_entities.append(aggr_entity.entity)
+
+        for neighbour in neighbour_entities:
+            if (neighbour is entity):
+                continue
+            if (neighbour.name == entity.name):
+                self.__error__(entity, f"An entity '{entity.name}' with this name already exists in {neighbour.locationText()}.")
+
 
     def visitEnityMember(self, entity_member: entity_member, parentData: Any) -> Any:
         pass

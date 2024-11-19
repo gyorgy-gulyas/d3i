@@ -118,7 +118,7 @@ class ElementBuilder(d3iGrammarVisitor):
                 result.entities.append(child)
             elif (context_element.aggregate() != None):
                 child = self.visit(context_element.aggregate())
-                child.paremt = result
+                child.parent = result
                 result.aggregates.append(child)
             elif (context_element.repository() != None):
                 child = self.visit(context_element.repository())
