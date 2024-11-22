@@ -18,7 +18,7 @@ domain
         
     domain_element
         : context
-        | event;
+        ;
     
 context
     :  decorator* 'context' IDENTIFIER '{' context_element* '}'
@@ -30,7 +30,6 @@ context
         | entity
         | aggregate
         | repository
-        | event
         | acl
         | service
         | interface
@@ -104,6 +103,7 @@ service
         : operation
         | enum
         | value_object
+        | event
         ;
 
 interface
@@ -114,6 +114,7 @@ interface
         : operation
         | enum
         | value_object
+        | event
         ;
     
 operation
@@ -136,16 +137,9 @@ acl
     acl_element
         : enum
         | value_object
-        | method
+        | operation
         ;
-        
-        method
-            : decorator* IDENTIFIER '(' (method_param? (',' method_param)*) ')' ':' type
-            ;
-
-            method_param
-                : decorator* IDENTIFIER ':' type
-                ;
+       
 type
     : primitive_type
     | reference_type

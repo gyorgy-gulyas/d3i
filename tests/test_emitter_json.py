@@ -1652,13 +1652,13 @@ domain SomeDomain {
                         {
                             "$type": "d3i.acl",
                             "name": "partnerACL",
-                            "methods": [
+                            "operations": [
                                 {
-                                    "$type": "d3i.method",
+                                    "$type": "d3i.operation",
                                     "name": "getPartnerData",
-                                    "method_params": [
+                                    "operation_params": [
                                         {
-                                            "$type": "d3i.method_param",
+                                            "$type": "d3i.operation_param",
                                             "name": "partnerId",
                                             "type": {
                                                 "$type": "d3i.primitive_type",
@@ -1689,16 +1689,27 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "return_type": {
-                                        "$type": "d3i.reference_type",
-                                        "kind": "Kind.Reference",
-                                        "reference_name": "PartnerData",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 16,
-                                            "column": 60
+                                    "operation_returns": [
+                                        {
+                                            "$type": "d3i.operation_return",
+                                            "type": {
+                                                "$type": "d3i.reference_type",
+                                                "kind": "Kind.Reference",
+                                                "reference_name": "PartnerData",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 16,
+                                                    "column": 60
+                                                }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 16,
+                                                "column": 60
+                                            }
                                         }
-                                    },
+                                    ],
                                     "decorators": [
                                         {
                                             "$type": "d3i.decorator",
@@ -1876,6 +1887,9 @@ domain SomeDomain {
                 address:string
                 type:PartnerType
             }
+            event OrderPlaced {
+                orderId:string
+            }
 
             @post
             getOrder( @required orderId: string ) 
@@ -1931,7 +1945,7 @@ domain SomeDomain {
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 16,
+                                                    "line": 19,
                                                     "column": 41
                                                 }
                                             },
@@ -1942,14 +1956,14 @@ domain SomeDomain {
                                                     "params": [],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 16,
+                                                        "line": 19,
                                                         "column": 22
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 16,
+                                                "line": 19,
                                                 "column": 22
                                             }
                                         }
@@ -1963,7 +1977,7 @@ domain SomeDomain {
                                                 "reference_name": "OrderData",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 17,
+                                                    "line": 20,
                                                     "column": 31
                                                 }
                                             },
@@ -1978,21 +1992,21 @@ domain SomeDomain {
                                                             "value": "200",
                                                             "location": {
                                                                 "fileName": "internal string",
-                                                                "line": 17,
+                                                                "line": 20,
                                                                 "column": 26
                                                             }
                                                         }
                                                     ],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 17,
+                                                        "line": 20,
                                                         "column": 18
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 17,
+                                                "line": 20,
                                                 "column": 18
                                             }
                                         },
@@ -2004,7 +2018,7 @@ domain SomeDomain {
                                                 "reference_name": "ErrorNotFound",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 18,
+                                                    "line": 21,
                                                     "column": 31
                                                 }
                                             },
@@ -2019,21 +2033,21 @@ domain SomeDomain {
                                                             "value": "404",
                                                             "location": {
                                                                 "fileName": "internal string",
-                                                                "line": 18,
+                                                                "line": 21,
                                                                 "column": 26
                                                             }
                                                         }
                                                     ],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 18,
+                                                        "line": 21,
                                                         "column": 18
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 18,
+                                                "line": 21,
                                                 "column": 18
                                             }
                                         }
@@ -2045,14 +2059,14 @@ domain SomeDomain {
                                             "params": [],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 15,
+                                                "line": 18,
                                                 "column": 12
                                             }
                                         }
                                     ],
                                     "location": {
                                         "fileName": "internal string",
-                                        "line": 15,
+                                        "line": 18,
                                         "column": 12
                                     }
                                 },
@@ -2068,14 +2082,48 @@ domain SomeDomain {
                                             "params": [],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 20,
+                                                "line": 23,
                                                 "column": 12
                                             }
                                         }
                                     ],
                                     "location": {
                                         "fileName": "internal string",
-                                        "line": 20,
+                                        "line": 23,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "events": [
+                                {
+                                    "$type": "d3i.event",
+                                    "name": "OrderPlaced",
+                                    "members": [
+                                        {
+                                            "$type": "d3i.event_member",
+                                            "name": "orderId",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 15,
+                                                    "column": 24
+                                                }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 15,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 14,
                                         "column": 12
                                     }
                                 }
@@ -2236,6 +2284,9 @@ domain SomeDomain {
                 address:string
                 type:PartnerType
             }
+            event OrderPlaced {
+                orderId:string
+            }
 
             @post
             getOrder( @required orderId: string ) 
@@ -2291,7 +2342,7 @@ domain SomeDomain {
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 16,
+                                                    "line": 19,
                                                     "column": 41
                                                 }
                                             },
@@ -2302,14 +2353,14 @@ domain SomeDomain {
                                                     "params": [],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 16,
+                                                        "line": 19,
                                                         "column": 22
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 16,
+                                                "line": 19,
                                                 "column": 22
                                             }
                                         }
@@ -2323,7 +2374,7 @@ domain SomeDomain {
                                                 "reference_name": "OrderData",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 17,
+                                                    "line": 20,
                                                     "column": 31
                                                 }
                                             },
@@ -2338,21 +2389,21 @@ domain SomeDomain {
                                                             "value": "200",
                                                             "location": {
                                                                 "fileName": "internal string",
-                                                                "line": 17,
+                                                                "line": 20,
                                                                 "column": 26
                                                             }
                                                         }
                                                     ],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 17,
+                                                        "line": 20,
                                                         "column": 18
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 17,
+                                                "line": 20,
                                                 "column": 18
                                             }
                                         },
@@ -2364,7 +2415,7 @@ domain SomeDomain {
                                                 "reference_name": "ErrorNotFound",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 18,
+                                                    "line": 21,
                                                     "column": 31
                                                 }
                                             },
@@ -2379,21 +2430,21 @@ domain SomeDomain {
                                                             "value": "404",
                                                             "location": {
                                                                 "fileName": "internal string",
-                                                                "line": 18,
+                                                                "line": 21,
                                                                 "column": 26
                                                             }
                                                         }
                                                     ],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 18,
+                                                        "line": 21,
                                                         "column": 18
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 18,
+                                                "line": 21,
                                                 "column": 18
                                             }
                                         }
@@ -2405,14 +2456,14 @@ domain SomeDomain {
                                             "params": [],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 15,
+                                                "line": 18,
                                                 "column": 12
                                             }
                                         }
                                     ],
                                     "location": {
                                         "fileName": "internal string",
-                                        "line": 15,
+                                        "line": 18,
                                         "column": 12
                                     }
                                 },
@@ -2428,14 +2479,48 @@ domain SomeDomain {
                                             "params": [],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 20,
+                                                "line": 23,
                                                 "column": 12
                                             }
                                         }
                                     ],
                                     "location": {
                                         "fileName": "internal string",
-                                        "line": 20,
+                                        "line": 23,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "events": [
+                                {
+                                    "$type": "d3i.event",
+                                    "name": "OrderPlaced",
+                                    "members": [
+                                        {
+                                            "$type": "d3i.event_member",
+                                            "name": "orderId",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 15,
+                                                    "column": 24
+                                                }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 15,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 14,
                                         "column": 12
                                     }
                                 }

@@ -93,16 +93,12 @@ class Engine:
             syntaxTree.source = source
             session.syntaxTrees.append(syntaxTree)
 
-        return session.HasErrror()
-
     def __create_element_trees__(self, session: Session):
         visitor = ElementBuilder()
         for syntaxTree in session.syntaxTrees:
             visitor.fileName = syntaxTree.source.fileName
             elementTree = visitor.visit(syntaxTree)
             session.elementTrees.append(elementTree)
-
-        return session.HasErrror()
 
     def __merge_element_trees__(self, session: Session):
         session.main = d3()
@@ -132,8 +128,6 @@ class Engine:
                             context_already.context_events.extend(context.context_events)
                             context_already.services.extend(context.services)
                             context_already.interfaces.extend(context.interfaces)
-
-        return session.HasErrror()
 
     @staticmethod
     def __find_domain_by_name__(domains, name):

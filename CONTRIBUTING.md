@@ -28,6 +28,12 @@ Follow these steps to set up a local development environment:
     ```bash
     python -m unittest discover
     ```
+3. **Use Visual Studio Code**:
+
+    ```bash
+    code .
+    ```
+
 
 ## Contribution Workflow
 

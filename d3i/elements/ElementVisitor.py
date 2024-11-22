@@ -67,12 +67,6 @@ class ElementVisitor:
     def visitOperationReturn(self, operation_return: operation_return, parentData: Any) -> Any:
         pass
 
-    def visitMethod(self, method: method, parentData: Any) -> Any:
-        pass
-
-    def visitMethodParam(self, method_param: method_param, parentData: Any) -> Any:
-        pass
-
     def visitType(self, type: type, parentData: Any, memberName: str) -> Any:
         pass
 

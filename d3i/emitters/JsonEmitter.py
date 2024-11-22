@@ -67,20 +67,12 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         return data
 
     def visitEvent(self, event: event, parentData: Any) -> Any:
-
-        if isinstance(event.parent, context):
-            key = "context_events"
-        elif isinstance(event.parent, domain):
-            key = "domain_events"
-        else:
-            key = "events"
-
         data = {
             "$type": "d3i.event",
             "name": event.name,
-            "members": event.name
+            "members": []
         }
-        parentData[key].append(data)
+        parentData["events"].append(data)
         return data
 
     def visitEventMember(self, eventMember: event_member, parentData: Any) -> Any:
@@ -194,7 +186,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.acl",
             "name": acl.name,
-            "methods": [],
+            "operations": [],
             "internal_enums": [],
             "internal_value_objects": []
         }
@@ -206,6 +198,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "$type": "d3i.service",
             "name": service.name,
             "operations": [],
+            "events": [],
             "internal_enums": [],
             "internal_value_objects": []
         }
@@ -217,6 +210,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "$type": "d3i.interface",
             "name": interface.name,
             "operations": [],
+            "events": [],
             "internal_enums": [],
             "internal_value_objects": []
         }
@@ -248,25 +242,6 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "type": {},
         }
         parentData["operation_returns"].append(data)
-        return data
-
-    def visitMethod(self, method: method, parentData: Any) -> Any:
-        data = {
-            "$type": "d3i.method",
-            "name": method.name,
-            "method_params": [],
-            "return_type": {},
-        }
-        parentData["methods"].append(data)
-        return data
-
-    def visitMethodParam(self, method_param: method_param, parentData: Any) -> Any:
-        data = {
-            "$type": "d3i.method_param",
-            "name": method_param.name,
-            "type": {},
-        }
-        parentData["method_params"].append(data)
         return data
 
     def visitType(self, type: type, parentData: Any, memberName: str) -> Any:

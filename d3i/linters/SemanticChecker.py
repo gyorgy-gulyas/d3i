@@ -20,16 +20,16 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitEvent(self, event: event, parentData: Any) -> Any:
-        if isinstance(event.parent, context):
-            parent_context: context = event.parent
-            for neighbour in parent_context.context_events:
+        if isinstance(event.parent, interface):
+            parent_interface: interface = event.parent
+            for neighbour in parent_interface.events:
                 if (neighbour is event):
                     continue
                 if (neighbour.name == event.name):
                     self.__error__(event, f"An event '{event.name}' with this name already exists in {neighbour.locationText()}.")
-        elif isinstance(event.parent, domain):
-            parent_domain: domain = event.parent
-            for neighbour in parent_domain.domain_events:
+        elif isinstance(event.parent, service):
+            parent_service: service = event.parent
+            for neighbour in parent_service.events:
                 if (neighbour is event):
                     continue
                 if (neighbour.name == event.name):
@@ -144,12 +144,6 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitOperationReturn(self, operation_return: operation_return, parentData: Any) -> Any:
-        pass
-
-    def visitMethod(self, method: method, parentData: Any) -> Any:
-        pass
-
-    def visitMethodParam(self, method_param: method_param, parentData: Any) -> Any:
         pass
 
     def visitType(self, type: type, parentData: Any, memberName: str) -> Any:

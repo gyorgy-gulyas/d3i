@@ -435,36 +435,38 @@ domain somedomain {
         self.assertEqual(repository.name, "customers")
         self.assertEqual(repository.element_name.getText(), "Customer")
 
-    def test_context_event(self):
+    def test_service_event(self):
         engine = d3i.Engine()
         session = d3i.Session()
         session.AddSource(d3i.Source.CreateFromText("""
 domain somedomain {
     context context_1 {
         @decorator
-        event OrderPlaced {
-            valueobject EventData {
-                data_1:string
-                data_1:string
-            }
-            enum Importance {
-                High,
-                Normal,
-                Low
-            }
+        service OrderService{
+            event OrderPlaced {
+                valueobject EventData {
+                    data_1:string
+                    data_1:string
+                }
+                enum Importance {
+                    High,
+                    Normal,
+                    Low
+                }
 
-            orderId:string
-            importance:Importance
-            @decorator_data
-            data:EventData
+                orderId:string
+                importance:Importance
+                @decorator_data
+                data:EventData
+            }
         }
     }
 }
 """))
         root = engine.Build(session)
         context: d3i.context = root.domains[0].contexts[0]
-        self.assertEqual(len(context.context_events), 1)
-        event: d3i.event = context.context_events[0]
+        self.assertEqual(len(context.services[0].events), 1)
+        event: d3i.event = context.services[0].events[0]
         self.assertEqual(event.name, "OrderPlaced")
         self.assertEqual(len(event.members), 3)
         self.assertEqual(len(event.internal_enums), 1)
@@ -485,36 +487,38 @@ domain somedomain {
         self.assertEqual(member.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(member.type.reference_name.getText(), "EventData")
 
-    def test_domain_event(self):
+    def test_inerface_event(self):
         engine = d3i.Engine()
         session = d3i.Session()
         session.AddSource(d3i.Source.CreateFromText("""
 domain somedomain {
-    context Empty {
-    }
-    @decorator
-    event OrderPlaced {
-        valueobject EventData {
-            data_1:string
-            data_1:string
-        }
-        enum Importance {
-            High,
-            Normal,
-            Low
-        }
+    context context_1 {
+        @decorator
+        interface IOrderService{
+            event OrderPlaced {
+                valueobject EventData {
+                    data_1:string
+                    data_1:string
+                }
+                enum Importance {
+                    High,
+                    Normal,
+                    Low
+                }
 
-        orderId:string
-        importance:Importance
-        @decorator_data
-        data:EventData
+                orderId:string
+                importance:Importance
+                @decorator_data
+                data:EventData
+            }
+        }
     }
 }
 """))
         root = engine.Build(session)
-        domain: d3i.domain = root.domains[0]
-        self.assertEqual(len(domain.domain_events), 1)
-        event: d3i.event = domain.domain_events[0]
+        context: d3i.context = root.domains[0].contexts[0]
+        self.assertEqual(len(context.interfaces[0].events), 1)
+        event: d3i.event = context.interfaces[0].events[0]
         self.assertEqual(event.name, "OrderPlaced")
         self.assertEqual(len(event.members), 3)
         self.assertEqual(len(event.internal_enums), 1)
@@ -534,6 +538,7 @@ domain somedomain {
         self.assertEqual(len(member.decorators), 1)
         self.assertEqual(member.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(member.type.reference_name.getText(), "EventData")
+
 
     def test_acl(self):
         engine = d3i.Engine()
@@ -564,20 +569,20 @@ domain somedomain {
         self.assertEqual(len(context.acls), 1)
         acl: d3i.acl = context.acls[0]
         self.assertEqual(acl.name, "CustomerACL")
-        self.assertEqual(len(acl.methods), 1)
+        self.assertEqual(len(acl.operations), 1)
         self.assertEqual(len(acl.internal_enums), 1)
         self.assertEqual(len(acl.internal_value_objects), 1)
-        method: d3i.method = acl.methods[0]
-        self.assertEqual(method.name, "getOrderData")
-        self.assertEqual(len(method.decorators), 1)
-        self.assertEqual(len(method.method_params), 1)
-        method_param: d3i.method_param = method.method_params[0]
-        self.assertEqual(method_param.name, "customerId")
-        self.assertEqual(method_param.type.kind, d3i.type.Kind.Primitive)
-        self.assertEqual(method_param.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
-        self.assertEqual(len(method_param.decorators), 1)
-        self.assertEqual(method.return_type.kind, d3i.type.Kind.Reference)
-        self.assertEqual(method.return_type.reference_name.getText(), "OrderData")
+        operation: d3i.operation = acl.operations[0]
+        self.assertEqual(operation.name, "getOrderData")
+        self.assertEqual(len(operation.decorators), 1)
+        self.assertEqual(len(operation.operation_params), 1)
+        operation_param: d3i.operation_param = operation.operation_params[0]
+        self.assertEqual(operation_param.name, "customerId")
+        self.assertEqual(operation_param.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(operation_param.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
+        self.assertEqual(len(operation_param.decorators), 1)
+        self.assertEqual(operation.operation_returns[0].type.kind, d3i.type.Kind.Reference)
+        self.assertEqual(operation.operation_returns[0].type.reference_name.getText(), "OrderData")
 
     def test_service(self):
         engine = d3i.Engine()
@@ -683,6 +688,56 @@ domain somedomain {
         self.assertEqual(operation_return.type.kind, d3i.type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "ErrorNotFound")
 
+
+def test_context_event(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        @decorator
+        event OrderPlaced {
+            valueobject EventData {
+                data_1:string
+                data_1:string
+            }
+            enum Importance {
+                High,
+                Normal,
+                Low
+            }
+
+            orderId:string
+            importance:Importance
+            @decorator_data
+            data:EventData
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: d3i.context = root.domains[0].contexts[0]
+        self.assertEqual(len(context.context_events), 1)
+        event: d3i.event = context.context_events[0]
+        self.assertEqual(event.name, "OrderPlaced")
+        self.assertEqual(len(event.members), 3)
+        self.assertEqual(len(event.internal_enums), 1)
+        self.assertEqual(len(event.internal_value_objects), 1)
+        member: d3i.event_member = event.members[0]
+        self.assertEqual(member.name, "orderId")
+        self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
+        self.assertEqual(len(member.decorators), 0)
+        member: d3i.event_member = event.members[1]
+        self.assertEqual(member.name, "importance")
+        self.assertEqual(len(member.decorators), 0)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Reference)
+        self.assertEqual(member.type.reference_name.getText(), "Importance")
+        member: d3i.event_member = event.members[2]
+        self.assertEqual(member.name, "data")
+        self.assertEqual(len(member.decorators), 1)
+        self.assertEqual(member.type.kind, d3i.type.Kind.Reference)
+        self.assertEqual(member.type.reference_name.getText(), "EventData")
 
 if __name__ == "__main__":
     unittest.main()

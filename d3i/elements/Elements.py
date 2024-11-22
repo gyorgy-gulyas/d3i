@@ -96,7 +96,6 @@ class domain(decorated_base_element):
         self.name = None
         self.directives: List[directive] = []
         self.contexts: List[context] = []
-        self.domain_events: List[event] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitDomain(self, parentData)
@@ -105,9 +104,6 @@ class domain(decorated_base_element):
             directive.visit(visitor, data)
         for context in self.contexts:
             context.visit(visitor, data)
-        for event in self.domain_events:
-            event.visit(visitor, data)
-
 
 class directive(base_element):
     def __init__(self, fileName, pos):
@@ -130,9 +126,8 @@ class context(decorated_base_element):
         self.aggregates: List[aggregate] = []
         self.repositories: List[repository] = []
         self.acls: List[acl] = []
-        self.context_events: List[event] = []
         self.services: List[service] = []
-        self.interfaces: List[service] = []
+        self.interfaces: List[interface] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitContext(self, parentData)
@@ -149,8 +144,6 @@ class context(decorated_base_element):
             repository.visit(visitor, data)
         for acl in self.acls:
             acl.visit(visitor, data)
-        for event in self.context_events:
-            event.visit(visitor, data)
         for service in self.services:
             service.visit(visitor, data)
         for interface in self.interfaces:
@@ -315,12 +308,15 @@ class service(scoped_base_element):
         super().__init__(fileName, pos)
         self.name = None
         self.operations: List[operation] = []
+        self.events: List[event] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitService(self, parentData)
         super().visit(visitor, data)
         for operation in self.operations:
             operation.visit(visitor, data)
+        for event in self.events:
+            event.visit(visitor, data)
         for internal_enum in self.internal_enums:
             internal_enum.visit(visitor, data)
         for internal_value_object in self.internal_value_objects:
@@ -332,12 +328,15 @@ class interface(scoped_base_element):
         super().__init__(fileName, pos)
         self.name = None
         self.operations: List[operation] = []
+        self.events: List[event] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitInterface(self, parentData)
         super().visit(visitor, data)
         for operation in self.operations:
             operation.visit(visitor, data)
+        for event in self.events:
+            event.visit(visitor, data)
         for internal_enum in self.internal_enums:
             internal_enum.visit(visitor, data)
         for internal_value_object in self.internal_value_objects:
@@ -389,47 +388,17 @@ class acl(scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name = None
-        self.methods: List[method] = []
+        self.operations: List[operation] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitAcl(self, parentData)
         super().visit(visitor, data)
-        for method in self.methods:
-            method.visit(visitor, data)
+        for operation in self.operations:
+            operation.visit(visitor, data)
         for internal_enum in self.internal_enums:
             internal_enum.visit(visitor, data)
         for internal_value_object in self.internal_value_objects:
             internal_value_object.visit(visitor, data)
-
-
-class method(decorated_base_element):
-    def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
-        self.name = None
-        self.method_params: List[method_param] = []
-        self.return_type: type = None
-
-    def visit(self, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitMethod(self, parentData)
-        for method_param in self.method_params:
-            method_param.visit(visitor, data)
-        if (self.return_type != None):
-            self.return_type.visit(visitor, data, "return_type")
-        super().visit(visitor, data)
-
-
-class method_param(decorated_base_element):
-    def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
-        self.name = None
-        self.type: type = None
-
-    def visit(self, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitMethodParam(self, parentData)
-        if (self.type != None):
-            self.type.visit(visitor, data, "type")
-        super().visit(visitor, data)
-
 
 class type(base_element):
     def __init__(self, fileName, pos):

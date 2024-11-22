@@ -128,10 +128,6 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(context_element.acl())
                 child.parent = result
                 result.acls.append(child)
-            elif (context_element.event()):
-                child = self.visit(context_element.event())
-                child.parent = result
-                result.context_events.append(child)
             elif (context_element.service()):
                 child = self.visit(context_element.service())
                 child.parent = result
@@ -440,6 +436,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(service_element.operation())
                 child.parent = result
                 result.operations.append(child)
+            elif (service_element.event() != None):
+                child = self.visit(service_element.event())
+                child.parent = result
+                result.events.append(child)
             elif (service_element.enum()):
                 child = self.visit(service_element.enum())
                 child.parent = result
@@ -482,6 +482,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(interface_element.operation())
                 child.parent = result
                 result.operations.append(child)
+            elif (interface_element.event() != None):
+                child = self.visit(interface_element.event())
+                child.parent = result
+                result.events.append(child)
             elif (interface_element.enum()):
                 child = self.visit(interface_element.enum())
                 child.parent = result
@@ -595,10 +599,10 @@ class ElementBuilder(d3iGrammarVisitor):
             acl_element: d3iGrammar.Acl_elementContext = ctx.acl_element((counter))
             if (acl_element == None):
                 break
-            elif (acl_element.method() != None):
-                child = self.visit(acl_element.method())
+            elif (acl_element.operation() != None):
+                child = self.visit(acl_element.operation())
                 child.parent = result
-                result.methods.append(child)
+                result.operations.append(child)
             elif (acl_element.enum()):
                 child = self.visit(acl_element.enum())
                 child.parent = result
@@ -614,58 +618,6 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#acl_element.
     def visitAcl_element(self, ctx: d3iGrammar.Acl_elementContext):
         return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by d3iGrammar#method.
-    def visitMethod(self, ctx: d3iGrammar.MethodContext):
-        result = method(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.return_type = self.visit(ctx.type_())
-            result.return_type.parent = result
-
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
-
-        counter = 0
-        while True:
-            method_param = ctx.method_param((counter))
-            if (method_param == None):
-                break
-            counter = counter + 1
-            child = self.visit(method_param)
-            child.parent = result
-            result.method_params.append(child)
-
-        return result
-
-    # Visit a parse tree produced by d3iGrammar#method_param.
-    def visitMethod_param(self, ctx: d3iGrammar.Method_paramContext):
-        result = method_param(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
-
-        return result
 
     # Visit a parse tree produced by d3iGrammar#type.
     def visitType(self, ctx: d3iGrammar.TypeContext):

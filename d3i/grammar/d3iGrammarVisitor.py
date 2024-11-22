@@ -149,16 +149,6 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by d3iGrammar#method.
-    def visitMethod(self, ctx:d3iGrammar.MethodContext):
-        return self.visitChildren(ctx)
-
-
-    # Visit a parse tree produced by d3iGrammar#method_param.
-    def visitMethod_param(self, ctx:d3iGrammar.Method_paramContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by d3iGrammar#type.
     def visitType(self, ctx:d3iGrammar.TypeContext):
         return self.visitChildren(ctx)
