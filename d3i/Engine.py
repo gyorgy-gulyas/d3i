@@ -37,16 +37,28 @@ class Session:
     def AddSource(self, source: Source):
         self.sources.append(source)
 
-    def HasErrror(self):
+    def HasDiagnostic(self):
         if (len(self.diagnostics) > 0):
             return True
         return False
 
-    def PrintErrors(self):
+    def HasAnyError(self):
+        for msg in self.diagnostics:
+            if(msg.severity == Diagnostic.Severity.Error):
+                return True
+        return False
+
+    def HasAnyWarning(self):
+        for msg in self.diagnostics:
+            if(msg.severity == Diagnostic.Severity.Warning):
+                return True
+        return False
+
+    def PrintDiagnostics(self):
         for msg in self.diagnostics:
             print(f"{msg.toText()}\n")
 
-    def ClearErrors(self):
+    def ClearDiagnostics(self):
         self.diagnostics.clear()
 
     def ReportDiagnostic(self, message, severity, fileName="", line=0, column=0 ):

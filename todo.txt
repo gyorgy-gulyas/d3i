@@ -1,0 +1,1 @@
+entity  közvetlenül a context alatt nem megengedett

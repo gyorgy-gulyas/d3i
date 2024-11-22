@@ -3,6 +3,7 @@
 Thank you for your interest in contributing to the DDD Interpreter (D3I) project! Your support and expertise are invaluable for improving this tool. The following guidelines will help ensure that your contributions are well-integrated into the project.
 
 ## How to Contribute
+
 1. **Reporting Bugs**: If you encounter any bugs, please open an issue with a clear description of the problem, steps to reproduce, and any error messages you encountered.
 2. **Suggesting Enhancements**: We welcome new feature suggestions! Open an issue labeled as a "Feature Request" and describe the enhancement or idea in detail.
 3. **Submitting Code Changes**: You can contribute to the codebase by fixing bugs, adding features, or improving documentation. Please ensure your changes adhere to the project’s guidelines.
@@ -17,18 +18,12 @@ Follow these steps to set up a local development environment:
     cd d3i
     ```
 
-2. **Create a Virtual Environment**:
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate  # On Windows, use `venv\\Scripts\\activate`
-    ```
-
-3. **Install Dependencies**:
+2. **Install Dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
 
-4. **Run Tests**:
+3. **Run Tests**:
     Ensure that existing tests pass before making new changes:
     ```bash
     python -m unittest discover
@@ -37,9 +32,9 @@ Follow these steps to set up a local development environment:
 ## Contribution Workflow
 
 1. **Fork the Repository**: Create a personal fork of the repository on GitHub.
-2. **Create a Branch**: Name the branch according to the feature or fix (e.g., `feature/add-aggregate-support` or `fix/event-parsing`).
+2. **Create a Branch**: Name the branch according to the feature or fix (e.g., `feature/add-java-support` or `fix/event-parsing`).
 3. **Make Your Changes**: Implement your changes on the branch, ensuring that code is clean and well-documented.
-4. **Run Tests**: Run the test suite to confirm that everything works as expected.
+4. **Run Tests**: Run the all the tests to confirm that everything works as expected.
 5. **Commit and Push**: Commit your changes with clear and concise messages. Push the branch to your fork.
 6. **Open a Pull Request**: Go to the main repository and open a pull request, describing the changes made.
 
@@ -55,7 +50,7 @@ If you have any questions, feel free to reach out via the issues section or disc
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the same MIT License as the project.
+By contributing, you agree that your contributions will be licensed under the same license as the project. see content of the LICENSE file
 
 ---
 
