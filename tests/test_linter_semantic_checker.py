@@ -720,6 +720,7 @@ domain SomeDomain {
                 member_2: vo_inner.enum_inner
                 member_3: enum_out
                 member_4: TheService.vo_out.vo_inner.enum_inner
+                member_5: external["java.util.map.HashMap<Int>"]
             }    
             enum enum_out{
             }    

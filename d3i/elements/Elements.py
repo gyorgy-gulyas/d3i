@@ -469,6 +469,7 @@ class primitive_type(type):
 class reference_type(type):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
+        self.isExternal = False
         self.reference_name: qualified_name = None
 
 

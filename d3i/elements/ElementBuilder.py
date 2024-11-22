@@ -27,17 +27,17 @@ class ElementBuilder(d3iGrammarVisitor):
         result = directive(self.fileName, ctx.start)
         if (ctx.IDENTIFIER() != None):
             result.keyword = ctx.IDENTIFIER().getText()
-        if(ctx.qualifiedName() != None):
+        if (ctx.qualifiedName() != None):
             result.value = self.visit(ctx.qualifiedName())
             result.value.parent = result
-            
+
         return result
 
     # Visit a parse tree produced by d3iGrammar#domain.
     def visitDomain(self, ctx: d3iGrammar.DomainContext):
         result = domain(self.fileName, ctx.start)
         ctx.start.line
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -85,7 +85,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#context.
     def visitContext(self, ctx: d3iGrammar.ContextContext):
         result = context(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -143,7 +143,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#value_object.
     def visitValue_object(self, ctx: d3iGrammar.Value_objectContext):
         result = value_object(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -185,12 +185,12 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#value_object_member.
     def visitValue_object_member(self, ctx: d3iGrammar.Value_object_memberContext):
         result = value_object_member(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
-        if(ctx.type_() != None):
+        if (ctx.type_() != None):
             result.type = self.visit(ctx.type_())
             result.type.parent = result
-            
+
         counter = 0
         while True:
             decorator = ctx.decorator((counter))
@@ -206,7 +206,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#event.
     def visitEvent(self, ctx: d3iGrammar.EventContext):
         result = event(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -248,9 +248,9 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#event_member.
     def visitEvent_member(self, ctx: d3iGrammar.Event_memberContext):
         result = event_member(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
-        if(ctx.type_() != None):
+        if (ctx.type_() != None):
             result.type = self.visit(ctx.type_())
             result.type.parent = result
 
@@ -269,7 +269,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#entity.
     def visitEntity(self, ctx: d3iGrammar.EntityContext):
         result = entity(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -311,9 +311,9 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#entity_member.
     def visitEntity_member(self, ctx: d3iGrammar.Entity_memberContext):
         result = entity_member(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
-        if(ctx.type_() != None):
+        if (ctx.type_() != None):
             result.type = self.visit(ctx.type_())
             result.type.parent = result
 
@@ -332,7 +332,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#aggregate.
     def visitAggregate(self, ctx: d3iGrammar.AggregateContext):
         result = aggregate(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -388,9 +388,9 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#repository.
     def visitRepository(self, ctx: d3iGrammar.RepositoryContext):
         result = repository(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER(0) != None):
+        if (ctx.IDENTIFIER(0) != None):
             result.name = ctx.IDENTIFIER(0).getText()
-        if(ctx.IDENTIFIER(1) != None):
+        if (ctx.IDENTIFIER(1) != None):
             result.referenced_name = ctx.IDENTIFIER(1).getText()
 
         counter = 0
@@ -408,7 +408,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#service.
     def visitService(self, ctx: d3iGrammar.ServiceContext):
         result = service(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -454,7 +454,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#interface.
     def visitInterface(self, ctx: d3iGrammar.InterfaceContext):
         result = interface(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -500,7 +500,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#operation.
     def visitOperation(self, ctx: d3iGrammar.OperationContext):
         result = operation(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -538,7 +538,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#operation_param.
     def visitOperation_param(self, ctx: d3iGrammar.Operation_paramContext):
         result = operation_param(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
         if (ctx.type_() != None):
             result.type = self.visit(ctx.type_())
@@ -576,7 +576,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#acl.
     def visitAcl(self, ctx: d3iGrammar.AclContext):
         result = acl(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -648,7 +648,13 @@ class ElementBuilder(d3iGrammarVisitor):
     def visitReference_type(self, ctx: d3iGrammar.Reference_typeContext):
         result = reference_type(self.fileName, ctx.start)
         result.kind = type.Kind.Reference
-        result.reference_name = self.visit(ctx.qualifiedName())
+        if (ctx.qualifiedName() != None):
+            result.isExternal = False
+            result.reference_name = self.visit(ctx.qualifiedName())
+        elif (ctx.EXTERNAL() != None):
+            result.isExternal = True
+            result.reference_name = qualified_name(self.fileName, ctx.start)
+            result.reference_name.names.append(ctx.STRING_LITERAL().getText().strip('"'))
 
         return result
 
@@ -686,7 +692,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#decorator.
     def visitDecorator(self, ctx: d3iGrammar.DecoratorContext):
         result = decorator(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -722,7 +728,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#enum.
     def visitEnum(self, ctx: d3iGrammar.EnumContext):
         result = enum(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
@@ -750,7 +756,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#enum_element.
     def visitEnum_element(self, ctx: d3iGrammar.Enum_elementContext):
         result = enum_element(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
+        if (ctx.IDENTIFIER() != None):
             result.value = ctx.IDENTIFIER().getText()
 
         counter = 0

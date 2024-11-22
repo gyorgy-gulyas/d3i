@@ -264,6 +264,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.reference_type",
             "kind": str(reference_type.kind),
+            "isExternal": reference_type.isExternal,
             "reference_name": str(reference_type.reference_name.getText())
         }
         parentData[memberName] = data

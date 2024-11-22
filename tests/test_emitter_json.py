@@ -475,7 +475,8 @@ domain SomeDomain {
             country:Country
             @max_length( 100 )
             address:string
-            zipCode:ineger
+            zipCode:integer
+            private_member:external["java.util.map.HashMap<>"]
         }
     }
 }
@@ -512,6 +513,7 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.reference_type",
                                         "kind": "Kind.Reference",
+                                        "isExternal": false,
                                         "reference_name": "Country",
                                         "location": {
                                             "fileName": "internal string",
@@ -594,9 +596,9 @@ domain SomeDomain {
                                     "$type": "d3i.value_object_member",
                                     "name": "zipCode",
                                     "type": {
-                                        "$type": "d3i.reference_type",
-                                        "kind": "Kind.Reference",
-                                        "reference_name": "ineger",
+                                        "$type": "d3i.primitive_type",
+                                        "kind": "Kind.Primitive",
+                                        "primtiveKind": "PrimtiveKind.Integer",
                                         "location": {
                                             "fileName": "internal string",
                                             "line": 20,
@@ -607,6 +609,27 @@ domain SomeDomain {
                                     "location": {
                                         "fileName": "internal string",
                                         "line": 20,
+                                        "column": 12
+                                    }
+                                },
+                                {
+                                    "$type": "d3i.value_object_member",
+                                    "name": "private_member",
+                                    "type": {
+                                        "$type": "d3i.reference_type",
+                                        "kind": "Kind.Reference",
+                                        "isExternal": true,
+                                        "reference_name": "java.util.map.HashMap<>",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 21,
+                                            "column": 27
+                                        }
+                                    },
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 21,
                                         "column": 12
                                     }
                                 }
@@ -783,7 +806,7 @@ domain SomeDomain {
             valueobject PartnerAddress{
                 country:Country
                 address:string
-                zipCode:ineger
+                zipCode:integer
             }
 
             root entity OrderHeader{
@@ -860,6 +883,7 @@ domain SomeDomain {
                                                 "type": {
                                                     "$type": "d3i.reference_type",
                                                     "kind": "Kind.Reference",
+                                                    "isExternal": false,
                                                     "reference_name": "PartnerAddress",
                                                     "location": {
                                                         "fileName": "internal string",
@@ -880,6 +904,7 @@ domain SomeDomain {
                                                 "type": {
                                                     "$type": "d3i.reference_type",
                                                     "kind": "Kind.Reference",
+                                                    "isExternal": false,
                                                     "reference_name": "PartnerType",
                                                     "location": {
                                                         "fileName": "internal string",
@@ -1039,6 +1064,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "Country",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -1077,9 +1103,9 @@ domain SomeDomain {
                                             "$type": "d3i.value_object_member",
                                             "name": "zipCode",
                                             "type": {
-                                                "$type": "d3i.reference_type",
-                                                "kind": "Kind.Reference",
-                                                "reference_name": "ineger",
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.Integer",
                                                 "location": {
                                                     "fileName": "internal string",
                                                     "line": 14,
@@ -1352,6 +1378,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "PartnerData",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -1451,6 +1478,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "PartnerType",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -1631,6 +1659,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "OrderData",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -1672,6 +1701,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "ErrorNotFound",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -1850,6 +1880,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "PartnerType",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -2028,6 +2059,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "OrderData",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -2069,6 +2101,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "ErrorNotFound",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -2247,6 +2280,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "PartnerType",
                                                 "location": {
                                                     "fileName": "internal string",

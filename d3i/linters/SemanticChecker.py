@@ -180,6 +180,9 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         if (len(reference_type.reference_name.names) == 0):
             self.__error__(reference_type, f"Empty referenced name.")
 
+        if( reference_type.isExternal == True ):
+            return
+
         scope = self.__get_current_scope__(reference_type.parent)
         element = None
         # go up until we find the element for the first part of the name
@@ -199,12 +202,12 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             scope = scope.parent
 
         if (element == None):
-            self.__error__(reference_type, f"The first part of the referenced name {reference_type.name[0]} cannot be resolved.")
+            self.__error__(reference_type, f"The first part of the referenced name {reference_type.reference_name.names[0]} cannot be resolved.")
 
         # processing the rest of the name part if exist
         for name_part in reference_type.reference_name.names[1:]:
             if (isinstance(element, IScope) == False):
-                self.__error__(reference_type, f"The referenced name {reference_type.name[0]} cannot have an expected child: {name_part}.")
+                self.__error__(reference_type, f"The referenced name {reference_type.reference_name.names[0]} cannot have an expected child: {name_part}.")
                 break
 
             scope: IScope = element
