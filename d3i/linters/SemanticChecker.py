@@ -52,8 +52,8 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                     continue
                 if (neighbour.name == enum.name):
                     self.__error__(enum, f"An enum '{enum.name}' with same name already exists in {neighbour.locationText()}.")
-        elif isinstance(enum.parent, scoped_base_element):
-            parent_scope: scoped_base_element = enum.parent
+        elif isinstance(enum.parent, internal_scoped_base_element):
+            parent_scope: internal_scoped_base_element = enum.parent
             for neighbour in parent_scope.enums:
                 if (neighbour is enum):
                     continue
@@ -77,8 +77,8 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                     continue
                 if (neighbour.name == value_object.name):
                     self.__error__(value_object, f"A value object '{value_object.name}' with same name already exists in {neighbour.locationText()}.")
-        elif isinstance(value_object.parent, scoped_base_element):
-            parent_scope: scoped_base_element = value_object.parent
+        elif isinstance(value_object.parent, internal_scoped_base_element):
+            parent_scope: internal_scoped_base_element = value_object.parent
             for neighbour in parent_scope.value_objects:
                 if (neighbour is value_object):
                     continue
@@ -193,24 +193,7 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitReferenceType(self, reference_type: reference_type, parentData: Any, memberName: str) -> Any:
-        current_scope = reference_type.parent
-        while True:
-            if isinstance(current_scope, scoped_base_element):
-                break
-            elif (current_scope == None):
-                break
-            current_scope = current_scope.parent
-
-        if (current_scope == None):
-            self.__error__(reference_type, f"The referenced name '{reference_type.reference_name}' cannot be resolved.")
-
-        node = current_scope
-        for part in reference_type.reference_name.names:
-            node = current_scope.getChildByName(part)
-            if(node != None)
-
-
-        
+       pass
 
     def visitListType(self, list_type: list_type, parentData: Any, memberName: str) -> Any:
         pass
@@ -235,3 +218,14 @@ class SemanticChecker(d3i.elements.ElementVisitor):
 
     def __error__(self, element: base_element, msg: str):
         self.session.ReportDiagnostic(msg, Diagnostic.Severity.Error, element.fileName, element.line, element.column)
+
+    def __get_current_scope__(self, element: base_element) -> IScope:
+        current_scope = element
+        while True:
+            if isinstance(current_scope, IScope):
+                break
+            elif (current_scope == None):
+                break
+            current_scope = current_scope.parent
+
+        return current_scope
