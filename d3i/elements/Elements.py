@@ -42,7 +42,7 @@ class internal_scoped_base_element(decorated_base_element,IScope):
         self.value_objects: List[value_object] = []
 
     def getChildren(self) -> List[base_element]:
-        return IScope.getChildren(self) + self.enums + self.value_objects
+        return self.enums + self.value_objects
 
 class qualified_name(base_element):
     def __init__(self, fileName, pos):
@@ -95,7 +95,7 @@ class d3(IScope):
         return data
     
     def getChildren(self) -> List[base_element]:
-        return IScope.getChildren(self) + self.domains
+        return self.domains
 
 
 class domain(decorated_base_element,IScope):
@@ -114,7 +114,7 @@ class domain(decorated_base_element,IScope):
             context.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return IScope.getChildren(self) + self.contexts
+        return super().getChildren() + self.contexts
 
 
 class directive(base_element):
@@ -157,7 +157,7 @@ class context(internal_scoped_base_element):
             interface.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return IScope.getChildren(self) + self.aggregates + self.acls + self.services + self.interfaces
+        return super().getChildren() + self.aggregates + self.repositories + self.acls + self.services + self.interfaces
 
 
 class enum(decorated_base_element):
@@ -290,7 +290,7 @@ class aggregate(internal_scoped_base_element):
             internal_value_object.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return IScope.getChildren(self) + [ae.entity for ae in self.internal_entities]
+        return super.getChildren() + [ae.entity for ae in self.internal_entities]
 
 
 class aggregate_entity(base_element):
@@ -336,7 +336,7 @@ class service(internal_scoped_base_element):
             internal_value_object.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return IScope.getChildren(self) + self.events
+        return super().getChildren() + self.events
 
 class interface(internal_scoped_base_element):
     def __init__(self, fileName, pos):
@@ -358,7 +358,7 @@ class interface(internal_scoped_base_element):
             internal_value_object.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return IScope.getChildren(self) + self.events
+        return super().getChildren() + self.events
 
 class operation(decorated_base_element):
     def __init__(self, fileName, pos):

@@ -20,20 +20,12 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitEvent(self, event: event, parentData: Any) -> Any:
-        if isinstance(event.parent, interface):
-            parent_interface: interface = event.parent
-            for neighbour in parent_interface.events:
-                if (neighbour is event):
-                    continue
-                if (neighbour.name == event.name):
-                    self.__error__(event, f"An event '{event.name}' with same name already exists in {neighbour.locationText()}.")
-        elif isinstance(event.parent, service):
-            parent_service: service = event.parent
-            for neighbour in parent_service.events:
-                if (neighbour is event):
-                    continue
-                if (neighbour.name == event.name):
-                    self.__error__(event, f"An event '{event.name}' with same name already exists in {neighbour.locationText()}.")
+        scope = self.__get_current_scope__(event.parent)
+        for neighbour in scope.getChildren():
+            if (neighbour is event):
+                continue
+            if (neighbour.name == event.name):
+                self.__error__(event, f"An event '{event.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEventMember(self, eventMember: event_member, parentData: Any) -> Any:
         parent_event: event = eventMember.parent
@@ -41,24 +33,16 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is eventMember):
                 continue
             if (neighbour.name == eventMember.name):
-                self.__error__(eventMember, f"An event member '{eventMember.name}' with same name already exists in {neighbour.locationText()}.")
+                self.__error__(eventMember, f"An event member '{eventMember.name}' conflicts with same name with element in {neighbour.locationText()}.")
         pass
 
     def visitEnum(self, enum: enum, parentData: Any) -> Any:
-        if isinstance(enum.parent, context):
-            parent_context: context = enum.parent
-            for neighbour in parent_context.enums:
-                if (neighbour is enum):
-                    continue
-                if (neighbour.name == enum.name):
-                    self.__error__(enum, f"An enum '{enum.name}' with same name already exists in {neighbour.locationText()}.")
-        elif isinstance(enum.parent, internal_scoped_base_element):
-            parent_scope: internal_scoped_base_element = enum.parent
-            for neighbour in parent_scope.enums:
-                if (neighbour is enum):
-                    continue
-                if (neighbour.name == enum.name):
-                    self.__error__(enum, f"An enum '{enum.name}' with same name already exists in {neighbour.locationText()}.")
+        scope = self.__get_current_scope__(enum.parent)
+        for neighbour in scope.getChildren():
+            if (neighbour is enum):
+                continue
+            if (neighbour.name == enum.name):
+                self.__error__(enum, f"An enum '{enum.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEnumElement(self, enum_element: enum_element, parentData: Any) -> Any:
         parent_enum: enum = enum_element.parent
@@ -70,20 +54,12 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitValueObject(self, value_object: value_object, parentData: Any) -> Any:
-        if isinstance(value_object.parent, context):
-            parent_context: context = value_object.parent
-            for neighbour in parent_context.value_objects:
-                if (neighbour is value_object):
-                    continue
-                if (neighbour.name == value_object.name):
-                    self.__error__(value_object, f"A value object '{value_object.name}' with same name already exists in {neighbour.locationText()}.")
-        elif isinstance(value_object.parent, internal_scoped_base_element):
-            parent_scope: internal_scoped_base_element = value_object.parent
-            for neighbour in parent_scope.value_objects:
-                if (neighbour is value_object):
-                    continue
-                if (neighbour.name == value_object.name):
-                    self.__error__(value_object, f"A value object '{value_object.name}' with same name already exists in {neighbour.locationText()}.")
+        scope = self.__get_current_scope__(value_object.parent)
+        for neighbour in scope.getChildren():
+            if (neighbour is value_object):
+                continue
+            if (neighbour.name == value_object.name):
+                self.__error__(value_object, f"A value object '{value_object.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitValueObjectMember(self, value_object_member: value_object_member, parentData: Any) -> Any:
         parent_value_object: value_object = value_object_member.parent
@@ -91,7 +67,7 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is value_object_member):
                 continue
             if (neighbour.name == value_object_member.name):
-                self.__error__(value_object_member, f"An member '{value_object_member.name}' with same name already exists in {neighbour.locationText()}.")
+                self.__error__(value_object_member, f"An member '{value_object_member.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEnity(self, entity: entity, parentData: Any) -> Any:
         parent_aggregate: aggregate = entity.parent.parent
@@ -103,7 +79,7 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                 if (neighbour is entity):
                     continue
                 if (neighbour.name == entity.name):
-                    self.__error__(entity, f"An entity '{entity.name}' with same name already exists in {neighbour.locationText()}.")
+                    self.__error__(entity, f"An entity '{entity.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEnityMember(self, entity_member: entity_member, parentData: Any) -> Any:
         parent_entity: entity = entity_member.parent
@@ -111,11 +87,11 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is entity_member):
                 continue
             if (neighbour.name == entity_member.name):
-                self.__error__(entity_member, f"A member '{entity_member.name}' with same name already exists in {neighbour.locationText()}.")
+                self.__error__(entity_member, f"A member '{entity_member.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitAggregate(self, aggregate: aggregate, parentData: Any) -> Any:
-        parent_context: context = aggregate.parent
-        for neighbour in parent_context.aggregates:
+        scope = self.__get_current_scope__(aggregate.parent)
+        for neighbour in scope.getChildren():
             if (neighbour is aggregate):
                 continue
             if (neighbour.name == aggregate.name):
@@ -135,6 +111,13 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitRepository(self, repository: repository, parentData: Any) -> Any:
+        scope = self.__get_current_scope__(repository.parent)
+        for neighbour in scope.getChildren():
+            if (neighbour is repository):
+                continue
+            if (neighbour.name == repository.name):
+                self.__error__(repository, f"A repository '{repository.name}' with same name is already exists in {neighbour.locationText()}.")
+
         isFound: bool = False
         parent_context: context = repository.parent
         for aggregate in parent_context.aggregates:
@@ -145,24 +128,24 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             self.__error__(repository, f"Unknown refrenced name: {repository.referenced_name}, in repository {repository.name}")
 
     def visitAcl(self, acl: acl, parentData: Any) -> Any:
-        parent_context: context = acl.parent
-        for neighbour in parent_context.acls:
+        scope = self.__get_current_scope__(acl.parent)
+        for neighbour in scope.getChildren():
             if (neighbour is acl):
                 continue
             if (neighbour.name == acl.name):
                 self.__error__(acl, f"An acl '{acl.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitService(self, service: service, parentData: Any) -> Any:
-        parent_context: context = service.parent
-        for neighbour in parent_context.services:
+        scope = self.__get_current_scope__(service.parent)
+        for neighbour in scope.getChildren():
             if (neighbour is service):
                 continue
             if (neighbour.name == service.name):
                 self.__error__(service, f"A service '{service.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitInterface(self, interface: interface, parentData: Any) -> Any:
-        parent_context: context = interface.parent
-        for neighbour in parent_context.interfaces:
+        scope = self.__get_current_scope__(interface.parent)
+        for neighbour in scope.getChildren():
             if (neighbour is interface):
                 continue
             if (neighbour.name == interface.name):

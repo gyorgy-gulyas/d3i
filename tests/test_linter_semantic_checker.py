@@ -39,7 +39,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheEvent" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
         self.assertTrue("TheEvent" in session.diagnostics[1].toText())
@@ -68,7 +67,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheEvent" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
         self.assertTrue("TheEvent" in session.diagnostics[1].toText())
@@ -96,7 +94,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("the_member" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,16):", "(7,16)"]))
         self.assertTrue("the_member" in session.diagnostics[1].toText())
@@ -126,7 +123,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheEnum" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(7,8)"]))
         self.assertTrue("TheEnum" in session.diagnostics[1].toText())
@@ -158,7 +154,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheEnum" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(8,12)"]))
         self.assertTrue("TheEnum" in session.diagnostics[1].toText())
@@ -184,7 +179,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheValue" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
         self.assertTrue("TheValue" in session.diagnostics[1].toText())
@@ -211,7 +205,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheValueObject" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
         self.assertTrue("TheValueObject" in session.diagnostics[1].toText())
@@ -240,7 +233,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheValueObject" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
         self.assertTrue("TheValueObject" in session.diagnostics[1].toText())
@@ -266,7 +258,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheMember" in session.diagnostics[0].toText())
         self.assertTrue("(5,12)" in session.diagnostics[0].toText())
         self.assertTrue("TheMember" in session.diagnostics[1].toText())
@@ -299,7 +290,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 6)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheEntity" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,17):", "(7,12)"]))
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(5,17):", "(13,17)"]))
@@ -332,13 +322,12 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheMember" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,16):", "(7,16)"]))
         self.assertTrue("TheMember" in session.diagnostics[1].toText())
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,16):", "(7,16)"]))
 
-    def test_conflict_aggreaget_fail(self):
+    def test_conflict_aggregate_fail(self):
         engine = d3i.Engine()
         session = d3i.Session()
         session.AddSource(d3i.Source.CreateFromText("""
@@ -368,11 +357,83 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheAggregate" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(9,8)"]))
         self.assertTrue("TheAggregate" in session.diagnostics[1].toText())
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(9,8):", "(4,8)"]))
+
+    def test_conflict_all_fail(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext{
+        enum TheName { }
+        valueobject TheName { }
+        aggregate TheName { root entity TheEntity{}}
+        repository TheName : TheName
+        acl TheName {}
+        service TheName {}
+        interface TheName {}
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        self.assertFalse(session.HasAnyError())
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 42)
+        messages = [diagnostic.toText() for diagnostic in session.diagnostics]
+
+        self.assertTrue(any(all(x in s for x in ["TheName", "(4,8):", "(5,8)"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(4,8):', '(6,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(4,8):', '(7,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(4,8):', '(8,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(4,8):', '(9,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(4,8):', '(10,8)']) for s in messages))
+
+        self.assertTrue(any(all(x in s for x in ["TheName", "(5,8):", "(4,8)"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(5,8):', '(6,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(5,8):', '(7,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(5,8):', '(8,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(5,8):', '(9,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(5,8):', '(10,8)']) for s in messages))
+
+        self.assertTrue(any(all(x in s for x in ["TheName", "(6,8):", "(4,8)"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(6,8):', '(5,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(6,8):', '(7,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(6,8):', '(8,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(6,8):', '(9,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(6,8):', '(10,8)']) for s in messages))
+
+        self.assertTrue(any(all(x in s for x in ["TheName", "(7,8):", "(4,8)"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(7,8):', '(5,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(7,8):', '(6,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(7,8):', '(8,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(7,8):', '(9,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(7,8):', '(10,8)']) for s in messages))
+
+        self.assertTrue(any(all(x in s for x in ["TheName", "(8,8):", "(4,8)"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(8,8):', '(5,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(8,8):', '(6,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(8,8):', '(7,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(8,8):', '(9,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(8,8):', '(10,8)']) for s in messages))
+
+        self.assertTrue(any(all(x in s for x in ["TheName", "(9,8):", "(4,8)"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(9,8):', '(5,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(9,8):', '(6,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(9,8):', '(7,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(9,8):', '(8,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(9,8):', '(10,8)']) for s in messages))
+
+        self.assertTrue(any(all(x in s for x in ["TheName", "(10,8):", "(4,8)"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(10,8):', '(5,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(10,8):', '(6,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(10,8):', '(7,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(10,8):', '(8,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(10,8):', '(9,8)']) for s in messages))
 
     def test_aggregate_no_root_fail(self):
         engine = d3i.Engine()
@@ -395,7 +456,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 1)
-        x = session.diagnostics[0].toText()
         self.assertTrue("OrderAggregate" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "There is no root"]))
 
@@ -424,7 +484,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 1)
-        x = session.diagnostics[0].toText()
         self.assertTrue("OrderAggregate" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "More than one root"]))
 
@@ -444,7 +503,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 1)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheRepository" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "NotDefined"]))
 
@@ -469,7 +527,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheAcl" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
         self.assertTrue("TheAcl" in session.diagnostics[1].toText())
@@ -495,7 +552,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheOperation" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
         self.assertTrue("TheOperation" in session.diagnostics[1].toText())
@@ -522,7 +578,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheService" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
         self.assertTrue("TheService" in session.diagnostics[1].toText())
@@ -548,7 +603,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheOperation" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
         self.assertTrue("TheOperation" in session.diagnostics[1].toText())
@@ -575,7 +629,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheInterface" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
         self.assertTrue("TheInterface" in session.diagnostics[1].toText())
@@ -601,7 +654,6 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("TheOperation" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
         self.assertTrue("TheOperation" in session.diagnostics[1].toText())
@@ -626,12 +678,10 @@ domain SomeDomain {
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 2)
-        x = session.diagnostics[0].toText()
         self.assertTrue("already" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,27):", "(6,44)"]))
         self.assertTrue("already" in session.diagnostics[1].toText())
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,44):", "(6,27)"]))
-
 
     def test_rererence_type_ok(self):
         engine = d3i.Engine()
