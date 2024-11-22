@@ -26,14 +26,14 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                 if (neighbour is event):
                     continue
                 if (neighbour.name == event.name):
-                    self.__error__(event, f"An event '{event.name}' with this name already exists in {neighbour.locationText()}.")
+                    self.__error__(event, f"An event '{event.name}' with same name already exists in {neighbour.locationText()}.")
         elif isinstance(event.parent, service):
             parent_service: service = event.parent
             for neighbour in parent_service.events:
                 if (neighbour is event):
                     continue
                 if (neighbour.name == event.name):
-                    self.__error__(event, f"An event '{event.name}' with this name already exists in {neighbour.locationText()}.")
+                    self.__error__(event, f"An event '{event.name}' with same name already exists in {neighbour.locationText()}.")
 
     def visitEventMember(self, eventMember: event_member, parentData: Any) -> Any:
         parent_event: event = eventMember.parent
@@ -41,7 +41,7 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is eventMember):
                 continue
             if (neighbour.name == eventMember.name):
-                self.__error__(eventMember, f"An event member '{eventMember.name}' with this name already exists in {neighbour.locationText()}.")
+                self.__error__(eventMember, f"An event member '{eventMember.name}' with same name already exists in {neighbour.locationText()}.")
         pass
 
     def visitEnum(self, enum: enum, parentData: Any) -> Any:
@@ -51,14 +51,14 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                 if (neighbour is enum):
                     continue
                 if (neighbour.name == enum.name):
-                    self.__error__(enum, f"An enum '{enum.name}' with this name already exists in {neighbour.locationText()}.")
+                    self.__error__(enum, f"An enum '{enum.name}' with same name already exists in {neighbour.locationText()}.")
         elif isinstance(enum.parent, scoped_base_element):
             parent_scope: scoped_base_element = enum.parent
             for neighbour in parent_scope.internal_enums:
                 if (neighbour is enum):
                     continue
                 if (neighbour.name == enum.name):
-                    self.__error__(enum, f"An enum '{enum.name}' with this name already exists in {neighbour.locationText()}.")
+                    self.__error__(enum, f"An enum '{enum.name}' with same name already exists in {neighbour.locationText()}.")
 
     def visitEnumElement(self, enum_element: enum_element, parentData: Any) -> Any:
         parent_enum: enum = enum_element.parent
@@ -76,14 +76,14 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                 if (neighbour is value_object):
                     continue
                 if (neighbour.name == value_object.name):
-                    self.__error__(value_object, f"A value object '{value_object.name}' with this name already exists in {neighbour.locationText()}.")
+                    self.__error__(value_object, f"A value object '{value_object.name}' with same name already exists in {neighbour.locationText()}.")
         elif isinstance(value_object.parent, scoped_base_element):
             parent_scope: scoped_base_element = value_object.parent
             for neighbour in parent_scope.internal_value_objects:
                 if (neighbour is value_object):
                     continue
                 if (neighbour.name == value_object.name):
-                    self.__error__(value_object, f"A value object '{value_object.name}' with this name already exists in {neighbour.locationText()}.")
+                    self.__error__(value_object, f"A value object '{value_object.name}' with same name already exists in {neighbour.locationText()}.")
 
     def visitValueObjectMember(self, value_object_member: value_object_member, parentData: Any) -> Any:
         parent_value_object: value_object = value_object_member.parent
@@ -91,31 +91,39 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is value_object_member):
                 continue
             if (neighbour.name == value_object_member.name):
-                self.__error__(value_object_member, f"An member '{value_object_member.name}' with this value already exists in {neighbour.locationText()}.")
-        pass
+                self.__error__(value_object_member, f"An member '{value_object_member.name}' with same name already exists in {neighbour.locationText()}.")
 
     def visitEnity(self, entity: entity, parentData: Any) -> Any:
         parent_aggregate: aggregate = entity.parent.parent
         parent_context: context = parent_aggregate.parent 
         
-        #collect all neighbour entities
-        neighbour_entities = []
         for aggr in parent_context.aggregates:
             for aggr_entity in aggr.internal_entities:
-                neighbour_entities.append(aggr_entity.entity)
-
-        for neighbour in neighbour_entities:
-            if (neighbour is entity):
-                continue
-            if (neighbour.name == entity.name):
-                self.__error__(entity, f"An entity '{entity.name}' with this name already exists in {neighbour.locationText()}.")
+                neighbour = aggr_entity.entity
+                if (neighbour is entity):
+                    continue
+                if (neighbour.name == entity.name):
+                    self.__error__(entity, f"An entity '{entity.name}' with same name already exists in {neighbour.locationText()}.")
 
 
     def visitEnityMember(self, entity_member: entity_member, parentData: Any) -> Any:
-        pass
+        parent_entity: entity = entity_member.parent
+        for neighbour in parent_entity.members:
+            if (neighbour is entity_member):
+                continue
+            if (neighbour.name == entity_member.name):
+                self.__error__(entity_member, f"An member '{entity_member.name}' with this value already exists in {neighbour.locationText()}.")
 
     def visitAggregate(self, aggregate: aggregate, parentData: Any) -> Any:
-        pass
+        countOfRoot:int = 0
+        for aggregate_entity in aggregate.internal_entities:
+            if(aggregate_entity.isRoot == True):
+                countOfRoot = countOfRoot + 1
+
+        if (countOfRoot == 0):
+            self.__error__(aggregate, f"There is no root entity defined, in aggregate {aggregate.name}")
+        elif (countOfRoot > 1):
+            self.__error__(aggregate, f"More than one root entity defined, in aggregate {aggregate.name}")
 
     def visitAggregateEntity(self, aggregate_entity: aggregate_entity, parentData: Any) -> Any:
         pass

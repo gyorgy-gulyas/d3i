@@ -279,7 +279,7 @@ domain SomeDomain {
 domain SomeDomain {
     context OrderContext{
         aggregate OrderAggregate {
-            entity TheEntity {
+            root entity TheEntity {
             }
             entity TheEntity {
             }
@@ -287,7 +287,7 @@ domain SomeDomain {
             }
         }
         aggregate OrderAggregate {
-            entity TheEntity {
+            root entity TheEntity {
             }
         }
     }
@@ -301,15 +301,97 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 6)
         x = session.diagnostics[0].toText()
         self.assertTrue("TheEntity" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):","(7,12)" ]))
-        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(5,12):","(13,12)" ]))
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,17):","(7,12)" ]))
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(5,17):","(13,17)" ]))
         self.assertTrue("TheEntity" in session.diagnostics[2].toText())
-        self.assertTrue(all(location in session.diagnostics[2].toText() for location in ["(7,12):","(5,12)" ]))
-        self.assertTrue(all(location in session.diagnostics[3].toText() for location in ["(7,12):","(13,12)" ]))
+        self.assertTrue(all(location in session.diagnostics[2].toText() for location in ["(7,12):","(5,17)" ]))
+        self.assertTrue(all(location in session.diagnostics[3].toText() for location in ["(7,12):","(13,17)" ]))
         self.assertTrue("TheEntity" in session.diagnostics[4].toText())
-        self.assertTrue(all(location in session.diagnostics[4].toText() for location in ["(13,12):","(5,12)" ]))
-        self.assertTrue(all(location in session.diagnostics[5].toText() for location in ["(13,12):","(7,12)" ]))
+        self.assertTrue(all(location in session.diagnostics[4].toText() for location in ["(13,17):","(5,17)" ]))
+        self.assertTrue(all(location in session.diagnostics[5].toText() for location in ["(13,17):","(7,12)" ]))
 
+
+    def test_conflict_entity_member_fail(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext{
+        aggregate OrderAggregate {
+            root entity TheEntity {
+                TheMember:string
+                TheMember:number
+                OtherMember:date
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        self.assertFalse(session.HasAnyError())
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 2)
+        x = session.diagnostics[0].toText()
+        self.assertTrue("TheMember" in session.diagnostics[0].toText())
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,16):","(7,16)" ]))
+        self.assertTrue("TheMember" in session.diagnostics[1].toText())
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,16):","(7,16)" ]))
+
+    def test_aggregate_no_root_fail(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext{
+        aggregate OrderAggregate {
+            entity TheEntity {
+                TheMember:string
+                OtherMember:date
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        self.assertFalse(session.HasAnyError())
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 1)
+        x = session.diagnostics[0].toText()
+        self.assertTrue("OrderAggregate" in session.diagnostics[0].toText())
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)","There is no root" ]))
+
+    def test_aggregate_more_root_fail(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext{
+        aggregate OrderAggregate {
+            root entity TheEntity {
+                TheMember:string
+                OtherMember:date
+            }
+            root entity TheEntity2 {
+                TheMember:number
+                OtherMember:date
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        self.assertFalse(session.HasAnyError())
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 1)
+        x = session.diagnostics[0].toText()
+        self.assertTrue("OrderAggregate" in session.diagnostics[0].toText())
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)","More than one root" ]))
 
 if __name__ == "__main__":
     unittest.main()
