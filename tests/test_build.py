@@ -278,18 +278,20 @@ domain somedomain {
         session.AddSource(d3i.Source.CreateFromText("""
 domain somedomain {
     context context_1 {
-        @decorator_entity
-        entity Customer {
-            @required
-            name:string
-            address:Address
+        aggregate CustomerAggregate {
+            @decorator_entity
+            entity Customer {
+                @required
+                name:string
+                address:Address
+            }
         }
     }
 }
 """))
         root = engine.Build(session)
         context: d3i.context = root.domains[0].contexts[0]
-        entity: d3i.entity = context.entities[0]
+        entity: d3i.entity = context.aggregates[0].internal_entities[0].entity
         self.assertEqual(len(entity.decorators), 1)
         self.assertEqual(entity.name, "Customer")
         self.assertEqual(len(entity.members), 2)
@@ -309,23 +311,25 @@ domain somedomain {
         session.AddSource(d3i.Source.CreateFromText("""
 domain somedomain {
     context context_1 {
-        @decorator_entity
-        entity Customer {
-            enum Kind{
-                PrivatePerson,
-                Company
+        aggregate CutomerAggregate{    
+            @decorator_entity
+            entity Customer {
+                enum Kind{
+                    PrivatePerson,
+                    Company
+                }
+                @required
+                name:string
+                address:Address
+                kind:Kind
             }
-            @required
-            name:string
-            address:Address
-            kind:Kind
         }
     }
 }
 """))
         root = engine.Build(session)
         context: d3i.context = root.domains[0].contexts[0]
-        entity: d3i.entity = context.entities[0]
+        entity: d3i.entity = context.aggregates[0].internal_entities[0].entity
         self.assertEqual(len(entity.decorators), 1)
         self.assertEqual(entity.name, "Customer")
         self.assertEqual(len(entity.members), 3)
@@ -339,23 +343,25 @@ domain somedomain {
         session.AddSource(d3i.Source.CreateFromText("""
 domain somedomain {
     context context_1 {
-        @decorator_entity
-        entity Customer {
-            valueobject Credit {
-                limit:decimal
-                currency:Currency
+        aggregate CusometAggregate { 
+            @decorator_entity
+            entity Customer {
+                valueobject Credit {
+                    limit:decimal
+                    currency:Currency
+                }
+                @required
+                name:string
+                address:Address
+                kind:Kind
             }
-            @required
-            name:string
-            address:Address
-            kind:Kind
         }
     }
 }
 """))
         root = engine.Build(session)
         context: d3i.context = root.domains[0].contexts[0]
-        entity: d3i.entity = context.entities[0]
+        entity: d3i.entity = context.aggregates[0].internal_entities[0].entity
         self.assertEqual(len(entity.decorators), 1)
         self.assertEqual(entity.name, "Customer")
         self.assertEqual(len(entity.members), 3)
@@ -415,14 +421,7 @@ domain somedomain {
                 price:decimal
             }
         }
-        entity Customer {
-            @required
-            name:string
-            address:Address
-        }
-
         repository orders:Order
-        repository customers:Customer
     }
 }
 """))
@@ -431,9 +430,6 @@ domain somedomain {
         repository: d3i.repository = context.repositories[0]
         self.assertEqual(repository.name, "orders")
         self.assertEqual(repository.element_name.getText(), "Order")
-        repository: d3i.repository = context.repositories[1]
-        self.assertEqual(repository.name, "customers")
-        self.assertEqual(repository.element_name.getText(), "Customer")
 
     def test_service_event(self):
         engine = d3i.Engine()

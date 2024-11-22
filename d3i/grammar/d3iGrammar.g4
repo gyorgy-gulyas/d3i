@@ -27,7 +27,6 @@ context
     context_element
         : enum
         | value_object
-        | entity
         | aggregate
         | repository
         | acl

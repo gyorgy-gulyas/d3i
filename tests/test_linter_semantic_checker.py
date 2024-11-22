@@ -278,11 +278,13 @@ domain SomeDomain {
         session.AddSource(d3i.Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        entity TheEntity {
-        }
-        entity TheEntity {
-        }
-        entity OtherEntity {
+        aggregate OrderAggregate {
+            entity TheEntity {
+            }
+            entity TheEntity {
+            }
+            entity OtherEntity {
+            }
         }
         aggregate OrderAggregate {
             entity TheEntity {
@@ -299,14 +301,14 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 6)
         x = session.diagnostics[0].toText()
         self.assertTrue("TheEntity" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):","(6,8)" ]))
-        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(4,8):","(11,12)" ]))
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):","(7,12)" ]))
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(5,12):","(13,12)" ]))
         self.assertTrue("TheEntity" in session.diagnostics[2].toText())
-        self.assertTrue(all(location in session.diagnostics[2].toText() for location in ["(6,8):","(4,8)" ]))
-        self.assertTrue(all(location in session.diagnostics[3].toText() for location in ["(6,8):","(11,12)" ]))
+        self.assertTrue(all(location in session.diagnostics[2].toText() for location in ["(7,12):","(5,12)" ]))
+        self.assertTrue(all(location in session.diagnostics[3].toText() for location in ["(7,12):","(13,12)" ]))
         self.assertTrue("TheEntity" in session.diagnostics[4].toText())
-        self.assertTrue(all(location in session.diagnostics[4].toText() for location in ["(11,12):","(4,8)" ]))
-        self.assertTrue(all(location in session.diagnostics[5].toText() for location in ["(11,12):","(6,8)" ]))
+        self.assertTrue(all(location in session.diagnostics[4].toText() for location in ["(13,12):","(5,12)" ]))
+        self.assertTrue(all(location in session.diagnostics[5].toText() for location in ["(13,12):","(7,12)" ]))
 
 
 if __name__ == "__main__":

@@ -95,16 +95,11 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitEnity(self, entity: entity, parentData: Any) -> Any:
-        if isinstance(entity.parent, context):
-            parent_context: context = entity.parent
-        elif isinstance(entity.parent, aggregate_entity):
-            parent_aggregate: aggregate = entity.parent.parent
-            parent_context = parent_aggregate.parent 
+        parent_aggregate: aggregate = entity.parent.parent
+        parent_context: context = parent_aggregate.parent 
         
         #collect all neighbour entities
         neighbour_entities = []
-        for neighbour in parent_context.entities:
-            neighbour_entities.append(neighbour)
         for aggr in parent_context.aggregates:
             for aggr_entity in aggr.internal_entities:
                 neighbour_entities.append(aggr_entity.entity)

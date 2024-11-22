@@ -122,7 +122,6 @@ class context(decorated_base_element):
         self.name = None
         self.enums: List[enum] = []
         self.value_objects: List[value_object] = []
-        self.entities: List[entity] = []
         self.aggregates: List[aggregate] = []
         self.repositories: List[repository] = []
         self.acls: List[acl] = []
@@ -136,8 +135,6 @@ class context(decorated_base_element):
             enum.visit(visitor, data)
         for value_object in self.value_objects:
             value_object.visit(visitor, data)
-        for entity in self.entities:
-            entity.visit(visitor, data)
         for aggregate in self.aggregates:
             aggregate.visit(visitor, data)
         for repository in self.repositories:
