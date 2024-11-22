@@ -88,7 +88,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         if isinstance(enum.parent, context):
             key = "enums"
         else:
-            key = "internal_enums"
+            key = "enums"
 
         data = {
             "$type": "d3i.enum",
@@ -110,14 +110,14 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         if isinstance(value_object.parent, context):
             key = "value_objects"
         else:
-            key = "internal_value_objects"
+            key = "value_objects"
 
         data = {
             "$type": "d3i.value_object",
             "name": value_object.name,
             "members": [],
-            "internal_enums": [],
-            "internal_value_objects": []
+            "enums": [],
+            "value_objects": []
         }
         parentData[key].append(data)
         return data
@@ -135,8 +135,8 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "$type": "d3i.entity",
             "name": entity.name,
             "members": [],
-            "internal_enums": [],
-            "internal_value_objects": []
+            "enums": [],
+            "value_objects": []
         }
 
         if isinstance(entity.parent, context):
@@ -159,8 +159,8 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "$type": "d3i.aggregate",
             "name": aggregate.name,
             "internal_entities": [],
-            "internal_enums": [],
-            "internal_value_objects": []
+            "enums": [],
+            "value_objects": []
         }
         parentData["aggregates"].append(data)
         return data
@@ -177,7 +177,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.repository",
             "name": repository.name,
-            "element_name": repository.element_name.getText(),
+            "referenced_name": repository.referenced_name,
         }
         parentData["repositories"].append(data)
         return data
@@ -187,8 +187,8 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "$type": "d3i.acl",
             "name": acl.name,
             "operations": [],
-            "internal_enums": [],
-            "internal_value_objects": []
+            "enums": [],
+            "value_objects": []
         }
         parentData["acls"].append(data)
         return data
@@ -199,8 +199,8 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "name": service.name,
             "operations": [],
             "events": [],
-            "internal_enums": [],
-            "internal_value_objects": []
+            "enums": [],
+            "value_objects": []
         }
         parentData["services"].append(data)
         return data
@@ -211,8 +211,8 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "name": interface.name,
             "operations": [],
             "events": [],
-            "internal_enums": [],
-            "internal_value_objects": []
+            "enums": [],
+            "value_objects": []
         }
         parentData["services"].append(data)
         return data

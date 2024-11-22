@@ -589,7 +589,7 @@ domain SomeDomain {
         session.AddSource(d3i.Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        acl TheInterface {
+        interface TheInterface {
             TheOperation()
             TheOperation()
             OtherOperation()
@@ -608,6 +608,31 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):","(6,12)" ]))
         self.assertTrue("TheOperation" in session.diagnostics[1].toText())
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,12):","(5,12)" ]))
+
+    def test_conflict_operation_param_fail(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext{
+        interface TheInterface {
+            TheOperation1( param: string )
+            TheOperation2( already: string, already: string, other: int)
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        self.assertFalse(session.HasAnyError())
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 2)
+        x = session.diagnostics[0].toText()
+        self.assertTrue("already" in session.diagnostics[0].toText())
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,27):","(6,44)" ]))
+        self.assertTrue("already" in session.diagnostics[1].toText())
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,44):","(6,27)" ]))
 
 if __name__ == "__main__":
     unittest.main()

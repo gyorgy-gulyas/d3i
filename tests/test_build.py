@@ -230,7 +230,7 @@ domain somedomain {
         self.assertEqual(len(value_object.decorators), 1)
         self.assertEqual(value_object.name, "Address")
         self.assertEqual(len(value_object.members), 4)
-        value_object_inner: d3i.value_object = value_object.internal_value_objects[0]
+        value_object_inner: d3i.value_object = value_object.value_objects[0]
         member: d3i.value_object_member = value_object_inner.members[0]
         self.assertEqual(member.name, "inner_1")
         self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
@@ -268,7 +268,7 @@ domain somedomain {
         self.assertEqual(len(value_object.decorators), 1)
         self.assertEqual(value_object.name, "Address")
         self.assertEqual(len(value_object.members), 4)
-        enum_inner: d3i.enum = value_object.internal_enums[0]
+        enum_inner: d3i.enum = value_object.enums[0]
         self.assertEqual(enum_inner.name, "InnerEnum")
         self.assertEqual(len(enum_inner.enum_elements), 2)
 
@@ -333,7 +333,7 @@ domain somedomain {
         self.assertEqual(len(entity.decorators), 1)
         self.assertEqual(entity.name, "Customer")
         self.assertEqual(len(entity.members), 3)
-        inner_enum: d3i.enum = entity.internal_enums[0]
+        inner_enum: d3i.enum = entity.enums[0]
         self.assertEqual(inner_enum.name, "Kind")
         self.assertEqual(len(inner_enum.enum_elements), 2)
 
@@ -365,7 +365,7 @@ domain somedomain {
         self.assertEqual(len(entity.decorators), 1)
         self.assertEqual(entity.name, "Customer")
         self.assertEqual(len(entity.members), 3)
-        inner_value_object: d3i.value_object = entity.internal_value_objects[0]
+        inner_value_object: d3i.value_object = entity.value_objects[0]
         self.assertEqual(inner_value_object.name, "Credit")
         self.assertEqual(len(inner_value_object.members), 2)
 
@@ -429,7 +429,7 @@ domain somedomain {
         context: d3i.context = root.domains[0].contexts[0]
         repository: d3i.repository = context.repositories[0]
         self.assertEqual(repository.name, "orders")
-        self.assertEqual(repository.element_name.getText(), "Order")
+        self.assertEqual(repository.referenced_name, "Order")
 
     def test_service_event(self):
         engine = d3i.Engine()
@@ -465,8 +465,8 @@ domain somedomain {
         event: d3i.event = context.services[0].events[0]
         self.assertEqual(event.name, "OrderPlaced")
         self.assertEqual(len(event.members), 3)
-        self.assertEqual(len(event.internal_enums), 1)
-        self.assertEqual(len(event.internal_value_objects), 1)
+        self.assertEqual(len(event.enums), 1)
+        self.assertEqual(len(event.value_objects), 1)
         member: d3i.event_member = event.members[0]
         self.assertEqual(member.name, "orderId")
         self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
@@ -517,8 +517,8 @@ domain somedomain {
         event: d3i.event = context.interfaces[0].events[0]
         self.assertEqual(event.name, "OrderPlaced")
         self.assertEqual(len(event.members), 3)
-        self.assertEqual(len(event.internal_enums), 1)
-        self.assertEqual(len(event.internal_value_objects), 1)
+        self.assertEqual(len(event.enums), 1)
+        self.assertEqual(len(event.value_objects), 1)
         member: d3i.event_member = event.members[0]
         self.assertEqual(member.name, "orderId")
         self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
@@ -566,8 +566,8 @@ domain somedomain {
         acl: d3i.acl = context.acls[0]
         self.assertEqual(acl.name, "CustomerACL")
         self.assertEqual(len(acl.operations), 1)
-        self.assertEqual(len(acl.internal_enums), 1)
-        self.assertEqual(len(acl.internal_value_objects), 1)
+        self.assertEqual(len(acl.enums), 1)
+        self.assertEqual(len(acl.value_objects), 1)
         operation: d3i.operation = acl.operations[0]
         self.assertEqual(operation.name, "getOrderData")
         self.assertEqual(len(operation.decorators), 1)
@@ -612,8 +612,8 @@ domain somedomain {
         service: d3i.service = context.services[0]
         self.assertEqual(service.name, "OrderService")
         self.assertEqual(len(service.operations), 1)
-        self.assertEqual(len(service.internal_enums), 1)
-        self.assertEqual(len(service.internal_value_objects), 1)
+        self.assertEqual(len(service.enums), 1)
+        self.assertEqual(len(service.value_objects), 1)
         operation: d3i.operation = service.operations[0]
         self.assertEqual(operation.name, "getOrder")
         self.assertEqual(len(operation.decorators), 1)
@@ -664,8 +664,8 @@ domain somedomain {
         interface: d3i.interface = context.interfaces[0]
         self.assertEqual(interface.name, "OrderService")
         self.assertEqual(len(interface.operations), 1)
-        self.assertEqual(len(interface.internal_enums), 1)
-        self.assertEqual(len(interface.internal_value_objects), 1)
+        self.assertEqual(len(interface.enums), 1)
+        self.assertEqual(len(interface.value_objects), 1)
         operation: d3i.operation = interface.operations[0]
         self.assertEqual(operation.name, "getOrder")
         self.assertEqual(len(operation.decorators), 1)
@@ -717,8 +717,8 @@ domain somedomain {
         event: d3i.event = context.context_events[0]
         self.assertEqual(event.name, "OrderPlaced")
         self.assertEqual(len(event.members), 3)
-        self.assertEqual(len(event.internal_enums), 1)
-        self.assertEqual(len(event.internal_value_objects), 1)
+        self.assertEqual(len(event.enums), 1)
+        self.assertEqual(len(event.value_objects), 1)
         member: d3i.event_member = event.members[0]
         self.assertEqual(member.name, "orderId")
         self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)

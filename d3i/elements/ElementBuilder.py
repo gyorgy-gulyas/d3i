@@ -169,11 +169,11 @@ class ElementBuilder(d3iGrammarVisitor):
             elif (value_object_element.enum()):
                 child = self.visit(value_object_element.enum())
                 child.parent = result
-                result.internal_enums.append(child)
+                result.enums.append(child)
             elif (value_object_element.value_object()):
                 child = self.visit(value_object_element.value_object())
                 child.parent = result
-                result.internal_value_objects.append(child)
+                result.value_objects.append(child)
             counter = counter + 1
 
         return result
@@ -232,11 +232,11 @@ class ElementBuilder(d3iGrammarVisitor):
             elif (event_element.enum()):
                 child = self.visit(event_element.enum())
                 child.parent = result
-                result.internal_enums.append(child)
+                result.enums.append(child)
             elif (event_element.value_object()):
                 child = self.visit(event_element.value_object())
                 child.parent = result
-                result.internal_value_objects.append(child)
+                result.value_objects.append(child)
             counter = counter + 1
 
         return result
@@ -295,11 +295,11 @@ class ElementBuilder(d3iGrammarVisitor):
             elif (entity_element.enum()):
                 child = self.visit(entity_element.enum())
                 child.parent = result
-                result.internal_enums.append(child)
+                result.enums.append(child)
             elif (entity_element.value_object()):
                 child = self.visit(entity_element.value_object())
                 child.parent = result
-                result.internal_value_objects.append(child)
+                result.value_objects.append(child)
             counter = counter + 1
 
         return result
@@ -358,11 +358,11 @@ class ElementBuilder(d3iGrammarVisitor):
             elif (aggregate_element.enum()):
                 child = self.visit(aggregate_element.enum())
                 child.parent = result
-                result.internal_enums.append(child)
+                result.enums.append(child)
             elif (aggregate_element.value_object()):
                 child = self.visit(aggregate_element.value_object())
                 child.parent = result
-                result.internal_value_objects.append(child)
+                result.value_objects.append(child)
             counter = counter + 1
 
         return result
@@ -438,11 +438,11 @@ class ElementBuilder(d3iGrammarVisitor):
             elif (service_element.enum()):
                 child = self.visit(service_element.enum())
                 child.parent = result
-                result.internal_enums.append(child)
+                result.enums.append(child)
             elif (service_element.value_object()):
                 child = self.visit(service_element.value_object())
                 child.parent = result
-                result.internal_value_objects.append(child)
+                result.value_objects.append(child)
             counter = counter + 1
 
         return result
@@ -484,11 +484,11 @@ class ElementBuilder(d3iGrammarVisitor):
             elif (interface_element.enum()):
                 child = self.visit(interface_element.enum())
                 child.parent = result
-                result.internal_enums.append(child)
+                result.enums.append(child)
             elif (interface_element.value_object()):
                 child = self.visit(interface_element.value_object())
                 child.parent = result
-                result.internal_value_objects.append(child)
+                result.value_objects.append(child)
             counter = counter + 1
 
         return result
@@ -601,11 +601,11 @@ class ElementBuilder(d3iGrammarVisitor):
             elif (acl_element.enum()):
                 child = self.visit(acl_element.enum())
                 child.parent = result
-                result.internal_enums.append(child)
+                result.enums.append(child)
             elif (acl_element.value_object()):
                 child = self.visit(acl_element.value_object())
                 child.parent = result
-                result.internal_value_objects.append(child)
+                result.value_objects.append(child)
             counter = counter + 1
 
         return result

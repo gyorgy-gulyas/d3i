@@ -611,7 +611,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_enums": [
+                            "enums": [
                                 {
                                     "$type": "d3i.enum",
                                     "name": "PartnerType",
@@ -645,7 +645,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_value_objects": [
+                            "value_objects": [
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "internal_valueobject",
@@ -691,8 +691,8 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "internal_enums": [],
-                                    "internal_value_objects": [],
+                                    "enums": [],
+                                    "value_objects": [],
                                     "decorators": [],
                                     "location": {
                                         "fileName": "internal string",
@@ -895,8 +895,8 @@ domain SomeDomain {
                                                 }
                                             }
                                         ],
-                                        "internal_enums": [],
-                                        "internal_value_objects": [],
+                                        "enums": [],
+                                        "value_objects": [],
                                         "decorators": [],
                                         "location": {
                                             "fileName": "internal string",
@@ -978,8 +978,8 @@ domain SomeDomain {
                                                 }
                                             }
                                         ],
-                                        "internal_enums": [],
-                                        "internal_value_objects": [],
+                                        "enums": [],
+                                        "value_objects": [],
                                         "decorators": [],
                                         "location": {
                                             "fileName": "internal string",
@@ -994,7 +994,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_enums": [
+                            "enums": [
                                 {
                                     "$type": "d3i.enum",
                                     "name": "PartnerType",
@@ -1028,7 +1028,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_value_objects": [
+                            "value_objects": [
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "PartnerAddress",
@@ -1094,8 +1094,8 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "internal_enums": [],
-                                    "internal_value_objects": [],
+                                    "enums": [],
+                                    "value_objects": [],
                                     "decorators": [],
                                     "location": {
                                         "fileName": "internal string",
@@ -1205,7 +1205,7 @@ domain SomeDomain {
                         {
                             "$type": "d3i.repository",
                             "name": "orders",
-                            "element_name": "Order",
+                            "referenced_name": "Order",
                             "decorators": [
                                 {
                                     "$type": "d3i.decorator",
@@ -1386,7 +1386,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_enums": [
+                            "enums": [
                                 {
                                     "$type": "d3i.enum",
                                     "name": "PartnerType",
@@ -1420,7 +1420,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_value_objects": [
+                            "value_objects": [
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "PartnerData",
@@ -1466,8 +1466,8 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "internal_enums": [],
-                                    "internal_value_objects": [],
+                                    "enums": [],
+                                    "value_objects": [],
                                     "decorators": [],
                                     "location": {
                                         "fileName": "internal string",
@@ -1785,7 +1785,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_enums": [
+                            "enums": [
                                 {
                                     "$type": "d3i.enum",
                                     "name": "PartnerType",
@@ -1819,7 +1819,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_value_objects": [
+                            "value_objects": [
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "OrderData",
@@ -1865,8 +1865,8 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "internal_enums": [],
-                                    "internal_value_objects": [],
+                                    "enums": [],
+                                    "value_objects": [],
                                     "decorators": [],
                                     "location": {
                                         "fileName": "internal string",
@@ -2182,7 +2182,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_enums": [
+                            "enums": [
                                 {
                                     "$type": "d3i.enum",
                                     "name": "PartnerType",
@@ -2216,7 +2216,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_value_objects": [
+                            "value_objects": [
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "OrderData",
@@ -2262,8 +2262,8 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "internal_enums": [],
-                                    "internal_value_objects": [],
+                                    "enums": [],
+                                    "value_objects": [],
                                     "decorators": [],
                                     "location": {
                                         "fileName": "internal string",

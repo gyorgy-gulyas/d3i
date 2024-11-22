@@ -54,7 +54,7 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                     self.__error__(enum, f"An enum '{enum.name}' with same name already exists in {neighbour.locationText()}.")
         elif isinstance(enum.parent, scoped_base_element):
             parent_scope: scoped_base_element = enum.parent
-            for neighbour in parent_scope.internal_enums:
+            for neighbour in parent_scope.enums:
                 if (neighbour is enum):
                     continue
                 if (neighbour.name == enum.name):
@@ -79,7 +79,7 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                     self.__error__(value_object, f"A value object '{value_object.name}' with same name already exists in {neighbour.locationText()}.")
         elif isinstance(value_object.parent, scoped_base_element):
             parent_scope: scoped_base_element = value_object.parent
-            for neighbour in parent_scope.internal_value_objects:
+            for neighbour in parent_scope.value_objects:
                 if (neighbour is value_object):
                     continue
                 if (neighbour.name == value_object.name):
@@ -95,8 +95,8 @@ class SemanticChecker(d3i.elements.ElementVisitor):
 
     def visitEnity(self, entity: entity, parentData: Any) -> Any:
         parent_aggregate: aggregate = entity.parent.parent
-        parent_context: context = parent_aggregate.parent 
-        
+        parent_context: context = parent_aggregate.parent
+
         for aggr in parent_context.aggregates:
             for aggr_entity in aggr.internal_entities:
                 neighbour = aggr_entity.entity
@@ -104,7 +104,6 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                     continue
                 if (neighbour.name == entity.name):
                     self.__error__(entity, f"An entity '{entity.name}' with same name already exists in {neighbour.locationText()}.")
-
 
     def visitEnityMember(self, entity_member: entity_member, parentData: Any) -> Any:
         parent_entity: entity = entity_member.parent
@@ -122,9 +121,9 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour.name == aggregate.name):
                 self.__error__(aggregate, f"An aggregate '{aggregate.name}' with same name is already exists in {neighbour.locationText()}.")
 
-        countOfRoot:int = 0
+        countOfRoot: int = 0
         for aggregate_entity in aggregate.internal_entities:
-            if(aggregate_entity.isRoot == True):
+            if (aggregate_entity.isRoot == True):
                 countOfRoot = countOfRoot + 1
 
         if (countOfRoot == 0):
@@ -136,13 +135,13 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitRepository(self, repository: repository, parentData: Any) -> Any:
-        isFound:bool = False
-        parent_context:context = repository.parent
+        isFound: bool = False
+        parent_context: context = repository.parent
         for aggregate in parent_context.aggregates:
-            if( aggregate.name == repository.referenced_name ):
+            if (aggregate.name == repository.referenced_name):
                 isFound = True
-        
-        if( isFound == False ):
+
+        if (isFound == False):
             self.__error__(repository, f"Unknown refrenced name: {repository.referenced_name}, in repository {repository.name}")
 
     def visitAcl(self, acl: acl, parentData: Any) -> Any:
@@ -176,8 +175,13 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour.name == operation.name):
                 self.__error__(operation, f"An operation '{operation.name}' with same name is already exists in {neighbour.locationText()}.")
 
-    def visitOperationParam(self, operation_param: operation_param, parentData: Any) -> Any:
-        pass
+    def visitOperationParam(self, param: operation_param, parentData: Any) -> Any:
+        parent_operation: operation = param.parent
+        for neighbour in parent_operation.operation_params:
+            if (neighbour is param):
+                continue
+            if (neighbour.name == param.name):
+                self.__error__(param, f"An operation parameter '{param.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitOperationReturn(self, operation_return: operation_return, parentData: Any) -> Any:
         pass

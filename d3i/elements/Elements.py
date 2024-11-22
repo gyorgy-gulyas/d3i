@@ -35,8 +35,8 @@ class decorated_base_element(base_element):
 class scoped_base_element(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.internal_enums: List[enum] = []
-        self.internal_value_objects: List[value_object] = []
+        self.enums: List[enum] = []
+        self.value_objects: List[value_object] = []
 
 
 class qualified_name(base_element):
@@ -117,12 +117,10 @@ class directive(base_element):
         super().visit(visitor, data)
 
 
-class context(decorated_base_element):
+class context(scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
-        self.enums: List[enum] = []
-        self.value_objects: List[value_object] = []
         self.aggregates: List[aggregate] = []
         self.repositories: List[repository] = []
         self.acls: List[acl] = []
@@ -182,9 +180,9 @@ class value_object(scoped_base_element):
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
-        for internal_enum in self.internal_enums:
+        for internal_enum in self.enums:
             internal_enum.visit(visitor, data)
-        for internal_value_object in self.internal_value_objects:
+        for internal_value_object in self.value_objects:
             internal_value_object.visit(visitor, data)
 
 
@@ -212,9 +210,9 @@ class event(scoped_base_element):
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
-        for internal_enum in self.internal_enums:
+        for internal_enum in self.enums:
             internal_enum.visit(visitor, data)
-        for internal_value_object in self.internal_value_objects:
+        for internal_value_object in self.value_objects:
             internal_value_object.visit(visitor, data)
 
 
@@ -242,9 +240,9 @@ class entity(scoped_base_element):
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
-        for internal_enum in self.internal_enums:
+        for internal_enum in self.enums:
             internal_enum.visit(visitor, data)
-        for internal_value_object in self.internal_value_objects:
+        for internal_value_object in self.value_objects:
             internal_value_object.visit(visitor, data)
 
 
@@ -272,9 +270,9 @@ class aggregate(scoped_base_element):
         super().visit(visitor, data)
         for aggregate_entity in self.internal_entities:
             aggregate_entity.visit(visitor, data)
-        for internal_enum in self.internal_enums:
+        for internal_enum in self.enums:
             internal_enum.visit(visitor, data)
-        for internal_value_object in self.internal_value_objects:
+        for internal_value_object in self.value_objects:
             internal_value_object.visit(visitor, data)
 
 
@@ -315,9 +313,9 @@ class service(scoped_base_element):
             operation.visit(visitor, data)
         for event in self.events:
             event.visit(visitor, data)
-        for internal_enum in self.internal_enums:
+        for internal_enum in self.enums:
             internal_enum.visit(visitor, data)
-        for internal_value_object in self.internal_value_objects:
+        for internal_value_object in self.value_objects:
             internal_value_object.visit(visitor, data)
 
 
@@ -335,9 +333,9 @@ class interface(scoped_base_element):
             operation.visit(visitor, data)
         for event in self.events:
             event.visit(visitor, data)
-        for internal_enum in self.internal_enums:
+        for internal_enum in self.enums:
             internal_enum.visit(visitor, data)
-        for internal_value_object in self.internal_value_objects:
+        for internal_value_object in self.value_objects:
             internal_value_object.visit(visitor, data)
 
 
@@ -393,9 +391,9 @@ class acl(scoped_base_element):
         super().visit(visitor, data)
         for operation in self.operations:
             operation.visit(visitor, data)
-        for internal_enum in self.internal_enums:
+        for internal_enum in self.enums:
             internal_enum.visit(visitor, data)
-        for internal_value_object in self.internal_value_objects:
+        for internal_value_object in self.value_objects:
             internal_value_object.visit(visitor, data)
 
 
