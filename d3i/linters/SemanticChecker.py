@@ -112,9 +112,16 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is entity_member):
                 continue
             if (neighbour.name == entity_member.name):
-                self.__error__(entity_member, f"An member '{entity_member.name}' with this value already exists in {neighbour.locationText()}.")
+                self.__error__(entity_member, f"A member '{entity_member.name}' with same name already exists in {neighbour.locationText()}.")
 
     def visitAggregate(self, aggregate: aggregate, parentData: Any) -> Any:
+        parent_context: context = aggregate.parent
+        for neighbour in parent_context.aggregates:
+            if (neighbour is aggregate):
+                continue
+            if (neighbour.name == aggregate.name):
+                self.__error__(aggregate, f"An aggregate '{aggregate.name}' with same name is already exists in {neighbour.locationText()}.")
+
         countOfRoot:int = 0
         for aggregate_entity in aggregate.internal_entities:
             if(aggregate_entity.isRoot == True):
@@ -129,19 +136,45 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitRepository(self, repository: repository, parentData: Any) -> Any:
-        pass
+        isFound:bool = False
+        parent_context:context = repository.parent
+        for aggregate in parent_context.aggregates:
+            if( aggregate.name == repository.referenced_name ):
+                isFound = True
+        
+        if( isFound == False ):
+            self.__error__(repository, f"Unknown refrenced name: {repository.referenced_name}, in repository {repository.name}")
 
     def visitAcl(self, acl: acl, parentData: Any) -> Any:
-        pass
+        parent_context: context = acl.parent
+        for neighbour in parent_context.acls:
+            if (neighbour is acl):
+                continue
+            if (neighbour.name == acl.name):
+                self.__error__(acl, f"An acl '{acl.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitService(self, service: service, parentData: Any) -> Any:
-        pass
+        parent_context: context = service.parent
+        for neighbour in parent_context.services:
+            if (neighbour is service):
+                continue
+            if (neighbour.name == service.name):
+                self.__error__(service, f"A service '{service.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitInterface(self, interface: interface, parentData: Any) -> Any:
-        pass
+        parent_context: context = interface.parent
+        for neighbour in parent_context.interfaces:
+            if (neighbour is interface):
+                continue
+            if (neighbour.name == interface.name):
+                self.__error__(interface, f"An interface '{interface.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitOperation(self, operation: operation, parentData: Any) -> Any:
-        pass
+        for neighbour in operation.parent.operations:
+            if (neighbour is operation):
+                continue
+            if (neighbour.name == operation.name):
+                self.__error__(operation, f"An operation '{operation.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitOperationParam(self, operation_param: operation_param, parentData: Any) -> Any:
         pass

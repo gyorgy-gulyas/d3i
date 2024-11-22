@@ -117,7 +117,7 @@ def serializedATN():
         1,0,0,0,258,259,1,0,0,0,259,260,3,24,12,0,260,35,1,0,0,0,261,263,
         3,68,34,0,262,261,1,0,0,0,263,266,1,0,0,0,264,262,1,0,0,0,264,265,
         1,0,0,0,265,267,1,0,0,0,266,264,1,0,0,0,267,268,5,23,0,0,268,269,
-        5,40,0,0,269,270,5,3,0,0,270,271,3,66,33,0,271,37,1,0,0,0,272,274,
+        5,40,0,0,269,270,5,3,0,0,270,271,5,40,0,0,271,37,1,0,0,0,272,274,
         3,68,34,0,273,272,1,0,0,0,274,277,1,0,0,0,275,273,1,0,0,0,275,276,
         1,0,0,0,276,278,1,0,0,0,277,275,1,0,0,0,278,279,5,18,0,0,279,280,
         5,40,0,0,280,284,5,6,0,0,281,283,3,40,20,0,282,281,1,0,0,0,283,286,
@@ -1792,15 +1792,14 @@ class d3iGrammar ( Parser ):
         def REPOSITORY(self):
             return self.getToken(d3iGrammar.REPOSITORY, 0)
 
-        def IDENTIFIER(self):
-            return self.getToken(d3iGrammar.IDENTIFIER, 0)
+        def IDENTIFIER(self, i:int=None):
+            if i is None:
+                return self.getTokens(d3iGrammar.IDENTIFIER)
+            else:
+                return self.getToken(d3iGrammar.IDENTIFIER, i)
 
         def SEMI(self):
             return self.getToken(d3iGrammar.SEMI, 0)
-
-        def qualifiedName(self):
-            return self.getTypedRuleContext(d3iGrammar.QualifiedNameContext,0)
-
 
         def decorator(self, i:int=None):
             if i is None:
@@ -1853,7 +1852,7 @@ class d3iGrammar ( Parser ):
             self.state = 269
             self.match(d3iGrammar.SEMI)
             self.state = 270
-            self.qualifiedName()
+            self.match(d3iGrammar.IDENTIFIER)
         except RecognitionException as re:
             localctx.exception = re
             self._errHandler.reportError(self, re)

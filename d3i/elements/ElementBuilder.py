@@ -388,11 +388,10 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#repository.
     def visitRepository(self, ctx: d3iGrammar.RepositoryContext):
         result = repository(self.fileName, ctx.start)
-        if(ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if(ctx.qualifiedName() != None):
-            result.element_name = self.visit(ctx.qualifiedName())
-            result.element_name.parent = result
+        if(ctx.IDENTIFIER(0) != None):
+            result.name = ctx.IDENTIFIER(0).getText()
+        if(ctx.IDENTIFIER(1) != None):
+            result.referenced_name = ctx.IDENTIFIER(1).getText()
 
         counter = 0
         while True:

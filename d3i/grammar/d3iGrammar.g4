@@ -91,7 +91,7 @@ aggregate
         ;
 
 repository
-    : decorator* 'repository' IDENTIFIER ':' qualifiedName
+    : decorator* 'repository' IDENTIFIER ':' IDENTIFIER
     ;
 
 service

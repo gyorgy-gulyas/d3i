@@ -6,15 +6,15 @@ from d3i.elements.ElementVisitor import *
 
 class base_element:
     def __init__(self, fileName, pos):
-        self.fileName = fileName
-        self.line = pos.line
-        self.column = pos.column
+        self.fileName: str = fileName
+        self.line: int = pos.line
+        self.column: int = pos.column
         self.parent: base_element = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
         data = visitor.visitBaseElement(self, parentData)
         return data
-    
+
     def locationText(self):
         return f"'{self.fileName}({self.line},{self.column})'"
 
@@ -51,7 +51,7 @@ class qualified_name(base_element):
 class decorator(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.params: List[decorator_param] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
@@ -93,7 +93,7 @@ class d3:
 class domain(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.directives: List[directive] = []
         self.contexts: List[context] = []
 
@@ -104,6 +104,7 @@ class domain(decorated_base_element):
             directive.visit(visitor, data)
         for context in self.contexts:
             context.visit(visitor, data)
+
 
 class directive(base_element):
     def __init__(self, fileName, pos):
@@ -119,7 +120,7 @@ class directive(base_element):
 class context(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.enums: List[enum] = []
         self.value_objects: List[value_object] = []
         self.aggregates: List[aggregate] = []
@@ -150,7 +151,7 @@ class context(decorated_base_element):
 class enum(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.enum_elements: List[enum_element] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -173,7 +174,7 @@ class enum_element(decorated_base_element):
 class value_object(scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.members: List[value_object_member] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -190,7 +191,7 @@ class value_object(scoped_base_element):
 class value_object_member(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.type: type = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -203,7 +204,7 @@ class value_object_member(decorated_base_element):
 class event(scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.members: List[event_member] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -220,7 +221,7 @@ class event(scoped_base_element):
 class event_member(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.type: type = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -233,7 +234,7 @@ class event_member(decorated_base_element):
 class entity(scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.members: List[entity_member] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -250,7 +251,7 @@ class entity(scoped_base_element):
 class entity_member(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.type: type = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -263,7 +264,7 @@ class entity_member(decorated_base_element):
 class aggregate(scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.internal_entities: List[aggregate_entity] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -292,8 +293,8 @@ class aggregate_entity(base_element):
 class repository(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
-        self.element_name: qualified_name = None
+        self.name: str = None
+        self.referenced_name: str = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitRepository(self, parentData)
@@ -303,7 +304,7 @@ class repository(decorated_base_element):
 class service(scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.operations: List[operation] = []
         self.events: List[event] = []
 
@@ -323,7 +324,7 @@ class service(scoped_base_element):
 class interface(scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.operations: List[operation] = []
         self.events: List[event] = []
 
@@ -343,7 +344,7 @@ class interface(scoped_base_element):
 class operation(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.operation_params: List[operation_param] = []
         self.operation_returns: List[operation_return] = []
 
@@ -359,7 +360,7 @@ class operation(decorated_base_element):
 class operation_param(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.type: type = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -384,7 +385,7 @@ class operation_return(decorated_base_element):
 class acl(scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.operations: List[operation] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -397,10 +398,11 @@ class acl(scoped_base_element):
         for internal_value_object in self.internal_value_objects:
             internal_value_object.visit(visitor, data)
 
+
 class type(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name = None
+        self.name: str = None
         self.kind: type.Kind = None
 
     class Kind(Enum):
