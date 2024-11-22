@@ -717,8 +717,9 @@ domain SomeDomain {
                 }
 
                 member_1: vo_inner
-                member_2: vo_inner.enum_inners
+                member_2: vo_inner.enum_inner
                 member_3: enum_out
+                member_4: TheService.vo_out.vo_inner.enum_inner
             }    
             enum enum_out{
             }    

@@ -421,7 +421,6 @@ class acl(internal_scoped_base_element):
 class type(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.name: str = None
         self.kind: type.Kind = None
 
     class Kind(Enum):

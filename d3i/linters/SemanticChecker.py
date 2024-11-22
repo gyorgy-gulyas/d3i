@@ -67,7 +67,8 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is value_object_member):
                 continue
             if (neighbour.name == value_object_member.name):
-                self.__error__(value_object_member, f"An member '{value_object_member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                self.__error__(value_object_member, f"An member '{
+                               value_object_member.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEnity(self, entity: entity, parentData: Any) -> Any:
         parent_aggregate: aggregate = entity.parent.parent
@@ -176,7 +177,44 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitReferenceType(self, reference_type: reference_type, parentData: Any, memberName: str) -> Any:
-       pass
+        if (len(reference_type.reference_name.names) == 0):
+            self.__error__(reference_type, f"Empty referenced name.")
+
+        scope = self.__get_current_scope__(reference_type.parent)
+        element = None
+        # go up until we find the element for the first part of the name
+        while True:
+            if (scope == None):
+                break
+
+            # is the scope that has a child with the name we are looking for
+            for child in scope.getChildren():
+                if (child.name == reference_type.reference_name.names[0]):
+                    element = child
+                    break
+
+            if (element != None):
+                break
+            
+            scope = scope.parent
+
+        if (element == None):
+            self.__error__(reference_type, f"The first part of the referenced name {reference_type.name[0]} cannot be resolved.")
+
+        # processing the rest of the name part if exist
+        for name_part in reference_type.reference_name.names[1:]:
+            if (isinstance(element, IScope) == False):
+                self.__error__(reference_type, f"The referenced name {reference_type.name[0]} cannot have an expected child: {name_part}.")
+                break
+
+            scope: IScope = element
+            element = None
+            for child in scope.getChildren():
+                if (child.name == name_part):
+                    element = child
+
+            if (element == None):
+                self.__error__(reference_type, f"The referenced name {scope.name} does not have an expected child: {name_part}.")
 
     def visitListType(self, list_type: list_type, parentData: Any, memberName: str) -> Any:
         pass
