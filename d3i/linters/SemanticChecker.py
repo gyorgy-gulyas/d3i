@@ -193,7 +193,24 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitReferenceType(self, reference_type: reference_type, parentData: Any, memberName: str) -> Any:
-        pass
+        current_scope = reference_type.parent
+        while True:
+            if isinstance(current_scope, scoped_base_element):
+                break
+            elif (current_scope == None):
+                break
+            current_scope = current_scope.parent
+
+        if (current_scope == None):
+            self.__error__(reference_type, f"The referenced name '{reference_type.reference_name}' cannot be resolved.")
+
+        node = current_scope
+        for part in reference_type.reference_name.names:
+            node = current_scope.getChildByName(part)
+            if(node != None)
+
+
+        
 
     def visitListType(self, list_type: list_type, parentData: Any, memberName: str) -> Any:
         pass

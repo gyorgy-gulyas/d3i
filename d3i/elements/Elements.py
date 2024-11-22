@@ -38,7 +38,6 @@ class scoped_base_element(decorated_base_element):
         self.enums: List[enum] = []
         self.value_objects: List[value_object] = []
 
-
 class qualified_name(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
@@ -89,7 +88,6 @@ class d3:
             domain.visit(visitor, data)
         return data
 
-
 class domain(decorated_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
@@ -104,7 +102,6 @@ class domain(decorated_base_element):
             directive.visit(visitor, data)
         for context in self.contexts:
             context.visit(visitor, data)
-
 
 class directive(base_element):
     def __init__(self, fileName, pos):
@@ -318,7 +315,6 @@ class service(scoped_base_element):
         for internal_value_object in self.value_objects:
             internal_value_object.visit(visitor, data)
 
-
 class interface(scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
@@ -337,7 +333,6 @@ class interface(scoped_base_element):
             internal_enum.visit(visitor, data)
         for internal_value_object in self.value_objects:
             internal_value_object.visit(visitor, data)
-
 
 class operation(decorated_base_element):
     def __init__(self, fileName, pos):
