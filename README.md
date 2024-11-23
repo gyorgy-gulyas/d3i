@@ -35,8 +35,8 @@ The D3I language and the DDD Interpreter recognize and interpret all major compo
 - **Interfaces**  
   Interfaces expose certain functionalities to external systems, making them accessible for integration without exposing underlying details. D3I allows for the definition of interfaces, which the interpreter structures as part of the external access layer.
 
-- **Domain Events and Context Events**  
-  Domain Events are meaningful occurrences within the domain itself, whereas Context Events are events that occur when data crosses bounded contexts. The interpreter supports both types of events, enabling integration in event-driven architectures and ensuring a clear distinction between internal and external domain events.
+- **Events**  
+  Events are created inside the context, during the execution of some operation, so events must be defined either in interfaces or in services, depending on whether the event is visible outside the context, that is, part of the context's interface, or an internal event thrown and handled by services inside the context
 
 - **Anti-Corruption Layers (ACLs)**  
   Anti-Corruption Layers serve as boundaries between different systems, ensuring that an external system’s data and logic do not compromise the domain model's integrity. The interpreter recognizes ACL structures in D3I, implementing secure boundaries to maintain domain purity.
@@ -70,34 +70,78 @@ To begin using DDD Interpreter in a Python environment, follow these steps:
 Below is a basic example of D3I input that DDD Interpreter can process:
 
 ```plaintext
-entity Customer {
-  id: UUID
-  name: String
-  email: String
-}
+/*
+    In one domain you can define multiple contexts
+*/
+domain WebShop {
 
-aggregate Order {
-  id: UUID
-  customer: Customer
-  items: List<OrderItem>
-}
+    // context remarks
+    context Main {
 
-service OrderService {
-  placeOrder(Customer, List<OrderItem>): Order
-}
+        aggreagte Customer {
+            enum CustomerKind {
+                PrivatePerson,
+                Company
+            }
+            valueobject Address {
+                @required
+                countryCode:string
+                city:string
+                zipCode:string
+                street:string
+            }
 
-event OrderPlaced {
-  orderId: UUID
-  date: DateTime
-}
 
-acl ExternalSystemAcl {
-  method: "fetchExternalOrder"
-  params: {
-    externalOrderId: String
-  }
+            root entity Customer {
+                @id
+                id:string
+                @required
+                name: string
+                address:Address
+                kind:CustomerKind
+            }
+
+            entity CustomerLogo {
+                @id
+                id:string
+                customerid:string
+                data:bytes
+            }
+        }
+
+        aggreagte Order {
+            root entity OrderHeader {
+                @id
+                id:string
+                @required
+                customerId: string
+                items:List[OrderItem]
+                
+            }
+
+            valueobject OrderItem {
+                product:string
+                quantity:number
+                price:number
+            }
+        }
+
+        interface PublicIF {
+            valueobject Error{
+                statusCode:integer
+                message:string
+            }
+
+            @post
+            createOrder( customerId:string )
+                : @status(200) Order
+                : @status(404) Error
+        }
+    }
 }
 ```
+> [!TIP]
+> use any decoarator you like @post, @status(404) there is no limit in the decorators, and it helps for code generator, see how the d3i pipeline works
 
 ## Supported Outputs
 
