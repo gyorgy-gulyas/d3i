@@ -683,7 +683,7 @@ domain SomeDomain {
         self.assertTrue("already" in session.diagnostics[1].toText())
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,44):", "(6,27)"]))
 
-    def test_rererence_type_ok(self):
+    def test_reference_type_ok(self):
         engine = d3i.Engine()
         session = d3i.Session()
         session.AddSource(d3i.Source.CreateFromText("""
@@ -723,6 +723,31 @@ domain SomeDomain {
                 member_5: external["java.util.map.HashMap<Int>"]
             }    
             enum enum_out{
+            }    
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        self.assertFalse(session.HasAnyError())
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 0)
+
+
+    def test_inheritence_fail(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext{
+        interface TheInterface {
+            valueobject TheValueObject inherits NotExist{
+                valueobject vo_inner{
+                    valueobject enum_inner{
+                    }    
+                }    
             }    
         }
     }
