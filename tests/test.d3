@@ -1,2 +1,69 @@
-domain Test {
+/*
+    In one domain you can define multiple contexts
+*/
+domain WebShop {
+
+    // context remarks
+    context Main {
+
+        aggreagte Customer {
+            enum CustomerKind {
+                PrivatePerson,
+                Company
+            }
+            valueobject Address {
+                @required
+                countryCode:string
+                city:string
+                zipCode:string
+                street:string
+            }
+
+
+            root entity Customer {
+                @id
+                id:string
+                @required
+                name: string
+                address:Address
+                kind:CustomerKind
+            }
+
+            entity CustomerLogo {
+                @id
+                id:string
+                customerid:string
+                data:bytes
+            }
+        }
+
+        aggreagte Order {
+            root entity OrderHeader {
+                @id
+                id:string
+                @required
+                customerId: string
+                items:List[OrderItem]
+                
+            }
+
+            valueobject OrderItem {
+                product:string
+                quantity:number
+                price:number
+            }
+        }
+
+        interface PublicIF {
+            valueobject Error{
+                statusCode:integer
+                message:string
+            }
+
+            @post
+            createOrder( customerId:string )
+                : @status(200) Order
+                : @status(404) Error
+        }
+    }
 }
