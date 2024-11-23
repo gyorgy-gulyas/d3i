@@ -293,7 +293,7 @@ class aggregate(internal_scoped_base_element):
             internal_value_object.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return super.getChildren() + [ae.entity for ae in self.internal_entities]
+        return super().getChildren() + [ae.entity for ae in self.internal_entities]
 
 
 class aggregate_entity(base_element):
