@@ -70,10 +70,6 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(domain_element.context())
                 child.parent = result
                 result.contexts.append(child)
-            elif (domain_element.event()):
-                child = self.visit(domain_element.event())
-                child.parent = result
-                result.domain_events.append(child)
             counter = counter + 1
 
         return result
@@ -146,6 +142,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
+        if (ctx.inherits() != None):
+            result.inherits = result.value = self.visit(ctx.inherits())
+
         counter = 0
         while True:
             decorator = ctx.decorator((counter))
@@ -209,6 +208,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
+        if (ctx.inherits() != None):
+            result.inherits = result.value = self.visit(ctx.inherits())
+
         counter = 0
         while True:
             decorator = ctx.decorator((counter))
@@ -271,6 +273,9 @@ class ElementBuilder(d3iGrammarVisitor):
         result = entity(self.fileName, ctx.start)
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
+
+        if (ctx.inherits() != None):
+            result.inherits = result.value = self.visit(ctx.inherits())
 
         counter = 0
         while True:
@@ -651,6 +656,7 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.qualifiedName() != None):
             result.isExternal = False
             result.reference_name = self.visit(ctx.qualifiedName())
+            result.reference_name.parent = result
         elif (ctx.EXTERNAL() != None):
             result.isExternal = True
             result.reference_name = qualified_name(self.fileName, ctx.start)
@@ -713,6 +719,7 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.qualifiedName() != None):
             result.kind = decorator_param.Kind.QualifiedName
             result.value = self.visit(ctx.qualifiedName())
+            result.value.parent = result
         elif (ctx.INTEGER_CONSTANS() != None):
             result.kind = decorator_param.Kind.Integer
             result.value = int(ctx.INTEGER_CONSTANS().getText())
@@ -768,5 +775,21 @@ class ElementBuilder(d3iGrammarVisitor):
             child = self.visit(decorator)
             child.parent = result
             result.decorators.append(child)
+
+        return result
+
+    # Visit a parse tree produced by d3iGrammar#inherits.
+    def visitInherits(self, ctx:d3iGrammar.InheritsContext):
+        result: List[qualified_name] = []
+
+        counter = 0
+        while True:
+            base_class = ctx.qualifiedName((counter))
+            if (base_class == None):
+                break
+            counter = counter + 1
+            child:qualified_name = self.visit(base_class)
+            child.parent = result
+            result.append(child)
 
         return result

@@ -35,7 +35,7 @@ context
         ;
 
 value_object
-    : decorator* 'valueobject' IDENTIFIER '{' value_object_element* '}'
+    : decorator* 'valueobject' IDENTIFIER inherits? '{' value_object_element* '}'
     ;
 
     value_object_element
@@ -49,7 +49,7 @@ value_object
             ;
 
 event
-    :  decorator* 'event' IDENTIFIER '{' event_element* '}'
+    :  decorator* 'event' IDENTIFIER inherits? '{' event_element* '}'
     ;
 
     event_element
@@ -63,7 +63,7 @@ event
         ;
         
 entity
-    :  decorator* 'entity' IDENTIFIER '{' entity_element* '}'
+    :  decorator* 'entity' IDENTIFIER inherits? '{' entity_element* '}'
     ;
 
     entity_element
@@ -192,3 +192,7 @@ enum
     enum_element
         : decorator* IDENTIFIER
         ;
+
+inherits
+    : 'inherits' qualifiedName (',' qualifiedName)*
+    ;

@@ -186,6 +186,7 @@ class enum_element(decorated_base_element):
 class value_object(internal_scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
+        self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[value_object_member] = []
 
@@ -216,6 +217,7 @@ class value_object_member(decorated_base_element):
 class event(internal_scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
+        self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[event_member] = []
 
@@ -246,6 +248,7 @@ class event_member(decorated_base_element):
 class entity(internal_scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
+        self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[entity_member] = []
 
