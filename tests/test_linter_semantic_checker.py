@@ -683,7 +683,7 @@ domain SomeDomain {
         self.assertTrue("already" in session.diagnostics[1].toText())
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,44):", "(6,27)"]))
 
-    def test_rererence_type_ok(self):
+    def test_reference_type_ok(self):
         engine = d3i.Engine()
         session = d3i.Session()
         session.AddSource(d3i.Source.CreateFromText("""
@@ -735,6 +735,62 @@ domain SomeDomain {
         data = root.visit(checker, None)
         self.assertEqual(len(session.diagnostics), 0)
 
+
+    def test_inheritence_not_exists_fail(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext{
+        interface TheInterface {
+            valueobject TheValueObject inherits NotExist{
+                valueobject vo_inner{
+                    valueobject enum_inner{
+                    }    
+                }    
+            }    
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        self.assertFalse(session.HasAnyError())
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["NotExist", "(5,48):"]))
+
+    def test_inheritence_wrong_type_fail(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext{
+            aggregate Order {
+                root entity TheEntity inherits TheInterface.TheEvent{
+                }    
+            }
+            valueobject TheValueObject inherits Order.TheEntity{
+            }                                                    
+            interface TheInterface {
+                event TheEvent inherits TheValueObject{
+            }    
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        self.assertFalse(session.HasAnyError())
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 3)
+        messages = [diagnostic.toText() for diagnostic in session.diagnostics]
+
+        self.assertTrue(any(all(x in s for x in ["TheInterface.TheEvent", "(5,47):"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ["Order.TheEntity", "(8,48):"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ["TheValueObject", "(11,40):"]) for s in messages))
 
 if __name__ == "__main__":
     unittest.main()

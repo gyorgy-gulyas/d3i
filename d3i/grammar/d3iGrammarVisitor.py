@@ -199,5 +199,10 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by d3iGrammar#inherits.
+    def visitInherits(self, ctx:d3iGrammar.InheritsContext):
+        return self.visitChildren(ctx)
+
+
 
 del d3iGrammar

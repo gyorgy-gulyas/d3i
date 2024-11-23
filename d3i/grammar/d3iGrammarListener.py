@@ -350,5 +350,14 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#inherits.
+    def enterInherits(self, ctx:d3iGrammar.InheritsContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#inherits.
+    def exitInherits(self, ctx:d3iGrammar.InheritsContext):
+        pass
+
+
 
 del d3iGrammar

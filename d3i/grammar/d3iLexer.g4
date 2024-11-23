@@ -50,6 +50,7 @@ BYTES : 'bytes' ;
 LIST : 'list' ;
 MAP : 'map' ;
 EXTERNAL : 'external' ;
+INHERITS : 'inherits' ;
 
 // constans
 INTEGER_CONSTANS : [0-9]+ ;

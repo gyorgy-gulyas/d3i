@@ -506,6 +506,7 @@ domain SomeDomain {
                         {
                             "$type": "d3i.value_object",
                             "name": "PartnerAddress",
+                            "inherits": [],
                             "members": [
                                 {
                                     "$type": "d3i.value_object_member",
@@ -672,6 +673,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "internal_valueobject",
+                                    "inherits": [],
                                     "members": [
                                         {
                                             "$type": "d3i.value_object_member",
@@ -856,6 +858,7 @@ domain SomeDomain {
                                     "entity": {
                                         "$type": "d3i.entity",
                                         "name": "OrderHeader",
+                                        "inherits": [],
                                         "members": [
                                             {
                                                 "$type": "d3i.entity_member",
@@ -941,6 +944,7 @@ domain SomeDomain {
                                     "entity": {
                                         "$type": "d3i.entity",
                                         "name": "OrderItem",
+                                        "inherits": [],
                                         "members": [
                                             {
                                                 "$type": "d3i.entity_member",
@@ -1057,6 +1061,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "PartnerAddress",
+                                    "inherits": [],
                                     "members": [
                                         {
                                             "$type": "d3i.value_object_member",
@@ -1451,6 +1456,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "PartnerData",
+                                    "inherits": [],
                                     "members": [
                                         {
                                             "$type": "d3i.value_object_member",
@@ -1785,6 +1791,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.event",
                                     "name": "OrderPlaced",
+                                    "inherits": [],
                                     "members": [
                                         {
                                             "$type": "d3i.event_member",
@@ -1853,6 +1860,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "OrderData",
+                                    "inherits": [],
                                     "members": [
                                         {
                                             "$type": "d3i.value_object_member",
@@ -2185,6 +2193,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.event",
                                     "name": "OrderPlaced",
+                                    "inherits": [],
                                     "members": [
                                         {
                                             "$type": "d3i.event_member",
@@ -2253,6 +2262,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "OrderData",
+                                    "inherits": [],
                                     "members": [
                                         {
                                             "$type": "d3i.value_object_member",

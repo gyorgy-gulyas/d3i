@@ -21,6 +21,14 @@ class SemanticChecker(d3i.elements.ElementVisitor):
 
     def visitEvent(self, event: event, parentData: Any) -> Any:
         scope = self.__get_current_scope__(event.parent)
+
+        for inherit in event.inherits:
+            base_class, message = self.__get_referenced_element__(event.parent, inherit)
+            if (base_class == None):
+                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
+            elif (isinstance(base_class, d3i.event) == False):
+                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an event.")
+
         for neighbour in scope.getChildren():
             if (neighbour is event):
                 continue
@@ -55,24 +63,38 @@ class SemanticChecker(d3i.elements.ElementVisitor):
 
     def visitValueObject(self, value_object: value_object, parentData: Any) -> Any:
         scope = self.__get_current_scope__(value_object.parent)
+
+        for inherit in value_object.inherits:
+            base_class, message = self.__get_referenced_element__(value_object.parent, inherit)
+            if (base_class == None):
+                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
+            elif (isinstance(base_class, d3i.value_object) == False):
+                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not a value object.")
+
         for neighbour in scope.getChildren():
             if (neighbour is value_object):
                 continue
             if (neighbour.name == value_object.name):
                 self.__error__(value_object, f"A value object '{value_object.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
-    def visitValueObjectMember(self, value_object_member: value_object_member, parentData: Any) -> Any:
-        parent_value_object: value_object = value_object_member.parent
+    def visitValueObjectMember(self, member: value_object_member, parentData: Any) -> Any:
+        parent_value_object: value_object = member.parent
         for neighbour in parent_value_object.members:
-            if (neighbour is value_object_member):
+            if (neighbour is member):
                 continue
-            if (neighbour.name == value_object_member.name):
-                self.__error__(value_object_member, f"An member '{
-                               value_object_member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+            if (neighbour.name == member.name):
+                self.__error__(member, f"An member '{member.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEnity(self, entity: entity, parentData: Any) -> Any:
         parent_aggregate: aggregate = entity.parent.parent
         parent_context: context = parent_aggregate.parent
+
+        for inherit in entity.inherits:
+            base_class, message = self.__get_referenced_element__(entity.parent, inherit)
+            if (base_class == None):
+                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
+            elif (isinstance(base_class, d3i.entity) == False):
+                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an entity.")
 
         for aggr in parent_context.aggregates:
             for aggr_entity in aggr.internal_entities:
@@ -180,44 +202,12 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         if (len(reference_type.reference_name.names) == 0):
             self.__error__(reference_type, f"Empty referenced name.")
 
-        if( reference_type.isExternal == True ):
+        if (reference_type.isExternal == True):
             return
 
-        scope = self.__get_current_scope__(reference_type.parent)
-        element = None
-        # go up until we find the element for the first part of the name
-        while True:
-            if (scope == None):
-                break
-
-            # is the scope that has a child with the name we are looking for
-            for child in scope.getChildren():
-                if (child.name == reference_type.reference_name.names[0]):
-                    element = child
-                    break
-
-            if (element != None):
-                break
-            
-            scope = scope.parent
-
+        element, message = self.__get_referenced_element__(reference_type.parent, reference_type.reference_name)
         if (element == None):
-            self.__error__(reference_type, f"The first part of the referenced name {reference_type.reference_name.names[0]} cannot be resolved.")
-
-        # processing the rest of the name part if exist
-        for name_part in reference_type.reference_name.names[1:]:
-            if (isinstance(element, IScope) == False):
-                self.__error__(reference_type, f"The referenced name {reference_type.reference_name.names[0]} cannot have an expected child: {name_part}.")
-                break
-
-            scope: IScope = element
-            element = None
-            for child in scope.getChildren():
-                if (child.name == name_part):
-                    element = child
-
-            if (element == None):
-                self.__error__(reference_type, f"The referenced name {scope.name} does not have an expected child: {name_part}.")
+            self.__error__(reference_type, message)
 
     def visitListType(self, list_type: list_type, parentData: Any, memberName: str) -> Any:
         pass
@@ -253,3 +243,42 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             current_scope = current_scope.parent
 
         return current_scope
+
+    def __get_referenced_element__(self, parent: base_element, name: qualified_name) -> IScope:
+
+        scope = self.__get_current_scope__(parent)
+        element = None
+        # go up until we find the element for the first part of the name
+        while True:
+            if (scope == None):
+                break
+
+            # is the scope that has a child with the name we are looking for
+            for child in scope.getChildren():
+                if (child.name == name.names[0]):
+                    element = child
+                    break
+
+            if (element != None):
+                break
+
+            scope = scope.parent
+
+        if (element == None):
+            return None, f"The first part of the referenced name '{name.names[0]}' cannot be resolved."
+
+        # processing the rest of the name part if exist
+        for name_part in name.names[1:]:
+            if (isinstance(element, IScope) == False):
+                return None, f"The referenced name '{name.names[0]}' cannot have an expected child: '{name_part}'."
+
+            scope: IScope = element
+            element = None
+            for child in scope.getChildren():
+                if (child.name == name_part):
+                    element = child
+
+            if (element == None):
+                return None, f"The referenced name '{scope.name}' does not have an expected child: '{name_part}'."
+
+        return element, "ok"
