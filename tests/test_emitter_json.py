@@ -1,12 +1,12 @@
 import unittest
 import d3i
-from d3i.emitter import *
+from d3i.emitters import *
 import jsondiff
 
 
 class TestEmitterJson(unittest.TestCase):
 
-    def tests_empty_ok(self):
+    def test_empty_ok(self):
         engine = d3i.Engine()
         session = d3i.Session()
         session.AddSource(d3i.Source.CreateFromText(""))
@@ -475,7 +475,8 @@ domain SomeDomain {
             country:Country
             @max_length( 100 )
             address:string
-            zipCode:ineger
+            zipCode:integer
+            private_member:external["java.util.map.HashMap<>"]
         }
     }
 }
@@ -512,6 +513,7 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.reference_type",
                                         "kind": "Kind.Reference",
+                                        "isExternal": false,
                                         "reference_name": "Country",
                                         "location": {
                                             "fileName": "internal string",
@@ -594,9 +596,9 @@ domain SomeDomain {
                                     "$type": "d3i.value_object_member",
                                     "name": "zipCode",
                                     "type": {
-                                        "$type": "d3i.reference_type",
-                                        "kind": "Kind.Reference",
-                                        "reference_name": "ineger",
+                                        "$type": "d3i.primitive_type",
+                                        "kind": "Kind.Primitive",
+                                        "primtiveKind": "PrimtiveKind.Integer",
                                         "location": {
                                             "fileName": "internal string",
                                             "line": 20,
@@ -609,9 +611,30 @@ domain SomeDomain {
                                         "line": 20,
                                         "column": 12
                                     }
+                                },
+                                {
+                                    "$type": "d3i.value_object_member",
+                                    "name": "private_member",
+                                    "type": {
+                                        "$type": "d3i.reference_type",
+                                        "kind": "Kind.Reference",
+                                        "isExternal": true,
+                                        "reference_name": "java.util.map.HashMap<>",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 21,
+                                            "column": 27
+                                        }
+                                    },
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 21,
+                                        "column": 12
+                                    }
                                 }
                             ],
-                            "internal_enums": [
+                            "enums": [
                                 {
                                     "$type": "d3i.enum",
                                     "name": "PartnerType",
@@ -645,7 +668,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_value_objects": [
+                            "value_objects": [
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "internal_valueobject",
@@ -691,8 +714,8 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "internal_enums": [],
-                                    "internal_value_objects": [],
+                                    "enums": [],
+                                    "value_objects": [],
                                     "decorators": [],
                                     "location": {
                                         "fileName": "internal string",
@@ -767,349 +790,6 @@ domain SomeDomain {
         diff = jsondiff.diff(result, expected, syntax='symmetric')
         self.assertEqual(0, len(diff))
 
-    def tests_entity_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
-domain SomeDomain {
-    context OrderContext {
-        @decorator  
-        @decorator_with_param( "decorator_value")
-        entity Partner {
-            enum PartnerType {
-                Customer,    
-                PrivatePerson
-            }
-            valueobject PartnerAddress{
-                country:Country
-                address:string
-                zipCode:ineger
-            }
-
-            @unique
-            id:string
-            @max_length( 100 )
-            name:string
-            address:PartnerAddress
-            type:PartnerType
-        }
-    }
-}
-"""))
-        root = engine.Build(session)
-
-        jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
-        expected = """{
-    "$type": "d3i.d3",
-    "domains": [
-        {
-            "$type": "d3i.domain",
-            "name": "SomeDomain",
-            "decorators": [],
-            "directives": [],
-            "contexts": [
-                {
-                    "$type": "d3i.context",
-                    "name": "OrderContext",
-                    "decorators": [],
-                    "enums": [],
-                    "value_objects": [],
-                    "entities": [
-                        {
-                            "$type": "d3i.entity",
-                            "name": "Partner",
-                            "members": [
-                                {
-                                    "$type": "d3i.entity_member",
-                                    "name": "id",
-                                    "type": {
-                                        "$type": "d3i.primitive_type",
-                                        "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.String",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 18,
-                                            "column": 15
-                                        }
-                                    },
-                                    "decorators": [
-                                        {
-                                            "$type": "d3i.decorator",
-                                            "name": "unique",
-                                            "params": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 17,
-                                                "column": 12
-                                            }
-                                        }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 17,
-                                        "column": 12
-                                    }
-                                },
-                                {
-                                    "$type": "d3i.entity_member",
-                                    "name": "name",
-                                    "type": {
-                                        "$type": "d3i.primitive_type",
-                                        "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.String",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 20,
-                                            "column": 17
-                                        }
-                                    },
-                                    "decorators": [
-                                        {
-                                            "$type": "d3i.decorator",
-                                            "name": "max_length",
-                                            "params": [
-                                                {
-                                                    "$type": "d3i.decorator_param",
-                                                    "kind": "Kind.Integer",
-                                                    "value": "100",
-                                                    "location": {
-                                                        "fileName": "internal string",
-                                                        "line": 19,
-                                                        "column": 25
-                                                    }
-                                                }
-                                            ],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 19,
-                                                "column": 12
-                                            }
-                                        }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 19,
-                                        "column": 12
-                                    }
-                                },
-                                {
-                                    "$type": "d3i.entity_member",
-                                    "name": "address",
-                                    "type": {
-                                        "$type": "d3i.reference_type",
-                                        "kind": "Kind.Reference",
-                                        "reference_name": "PartnerAddress",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 21,
-                                            "column": 20
-                                        }
-                                    },
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 21,
-                                        "column": 12
-                                    }
-                                },
-                                {
-                                    "$type": "d3i.entity_member",
-                                    "name": "type",
-                                    "type": {
-                                        "$type": "d3i.reference_type",
-                                        "kind": "Kind.Reference",
-                                        "reference_name": "PartnerType",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 22,
-                                            "column": 17
-                                        }
-                                    },
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 22,
-                                        "column": 12
-                                    }
-                                }
-                            ],
-                            "internal_enums": [
-                                {
-                                    "$type": "d3i.enum",
-                                    "name": "PartnerType",
-                                    "enum_elements": [
-                                        {
-                                            "$type": "d3i.enum_element",
-                                            "name": "Customer",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 8,
-                                                "column": 16
-                                            }
-                                        },
-                                        {
-                                            "$type": "d3i.enum_element",
-                                            "name": "PrivatePerson",
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 9,
-                                                "column": 16
-                                            }
-                                        }
-                                    ],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 7,
-                                        "column": 12
-                                    }
-                                }
-                            ],
-                            "internal_value_objects": [
-                                {
-                                    "$type": "d3i.value_object",
-                                    "name": "PartnerAddress",
-                                    "members": [
-                                        {
-                                            "$type": "d3i.value_object_member",
-                                            "name": "country",
-                                            "type": {
-                                                "$type": "d3i.reference_type",
-                                                "kind": "Kind.Reference",
-                                                "reference_name": "Country",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 12,
-                                                    "column": 24
-                                                }
-                                            },
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 12,
-                                                "column": 16
-                                            }
-                                        },
-                                        {
-                                            "$type": "d3i.value_object_member",
-                                            "name": "address",
-                                            "type": {
-                                                "$type": "d3i.primitive_type",
-                                                "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.String",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 13,
-                                                    "column": 24
-                                                }
-                                            },
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 13,
-                                                "column": 16
-                                            }
-                                        },
-                                        {
-                                            "$type": "d3i.value_object_member",
-                                            "name": "zipCode",
-                                            "type": {
-                                                "$type": "d3i.reference_type",
-                                                "kind": "Kind.Reference",
-                                                "reference_name": "ineger",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 14,
-                                                    "column": 24
-                                                }
-                                            },
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 14,
-                                                "column": 16
-                                            }
-                                        }
-                                    ],
-                                    "internal_enums": [],
-                                    "internal_value_objects": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 11,
-                                        "column": 12
-                                    }
-                                }
-                            ],
-                            "decorators": [
-                                {
-                                    "$type": "d3i.decorator",
-                                    "name": "decorator",
-                                    "params": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 4,
-                                        "column": 8
-                                    }
-                                },
-                                {
-                                    "$type": "d3i.decorator",
-                                    "name": "decorator_with_param",
-                                    "params": [
-                                        {
-                                            "$type": "d3i.decorator_param",
-                                            "kind": "Kind.String",
-                                            "value": "decorator_value",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 5,
-                                                "column": 31
-                                            }
-                                        }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 5,
-                                        "column": 8
-                                    }
-                                }
-                            ],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
-                        }
-                    ],
-                    "aggregates": [],
-                    "repositories": [],
-                    "acls": [],
-                    "context_events": [],
-                    "services": [],
-                    "interfaces": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
-                }
-            ],
-            "domain_events": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
-        }
-    ]
-}"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
-
     def tests_aggregate_ok(self):
         engine = d3i.Engine()
         session = d3i.Session()
@@ -1126,7 +806,7 @@ domain SomeDomain {
             valueobject PartnerAddress{
                 country:Country
                 address:string
-                zipCode:ineger
+                zipCode:integer
             }
 
             root entity OrderHeader{
@@ -1203,6 +883,7 @@ domain SomeDomain {
                                                 "type": {
                                                     "$type": "d3i.reference_type",
                                                     "kind": "Kind.Reference",
+                                                    "isExternal": false,
                                                     "reference_name": "PartnerAddress",
                                                     "location": {
                                                         "fileName": "internal string",
@@ -1223,6 +904,7 @@ domain SomeDomain {
                                                 "type": {
                                                     "$type": "d3i.reference_type",
                                                     "kind": "Kind.Reference",
+                                                    "isExternal": false,
                                                     "reference_name": "PartnerType",
                                                     "location": {
                                                         "fileName": "internal string",
@@ -1238,8 +920,8 @@ domain SomeDomain {
                                                 }
                                             }
                                         ],
-                                        "internal_enums": [],
-                                        "internal_value_objects": [],
+                                        "enums": [],
+                                        "value_objects": [],
                                         "decorators": [],
                                         "location": {
                                             "fileName": "internal string",
@@ -1321,8 +1003,8 @@ domain SomeDomain {
                                                 }
                                             }
                                         ],
-                                        "internal_enums": [],
-                                        "internal_value_objects": [],
+                                        "enums": [],
+                                        "value_objects": [],
                                         "decorators": [],
                                         "location": {
                                             "fileName": "internal string",
@@ -1337,7 +1019,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_enums": [
+                            "enums": [
                                 {
                                     "$type": "d3i.enum",
                                     "name": "PartnerType",
@@ -1371,7 +1053,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_value_objects": [
+                            "value_objects": [
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "PartnerAddress",
@@ -1382,6 +1064,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "Country",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -1420,9 +1103,9 @@ domain SomeDomain {
                                             "$type": "d3i.value_object_member",
                                             "name": "zipCode",
                                             "type": {
-                                                "$type": "d3i.reference_type",
-                                                "kind": "Kind.Reference",
-                                                "reference_name": "ineger",
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.Integer",
                                                 "location": {
                                                     "fileName": "internal string",
                                                     "line": 14,
@@ -1437,8 +1120,8 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "internal_enums": [],
-                                    "internal_value_objects": [],
+                                    "enums": [],
+                                    "value_objects": [],
                                     "decorators": [],
                                     "location": {
                                         "fileName": "internal string",
@@ -1548,7 +1231,7 @@ domain SomeDomain {
                         {
                             "$type": "d3i.repository",
                             "name": "orders",
-                            "element_name": "Order",
+                            "referenced_name": "Order",
                             "decorators": [
                                 {
                                     "$type": "d3i.decorator",
@@ -1652,13 +1335,13 @@ domain SomeDomain {
                         {
                             "$type": "d3i.acl",
                             "name": "partnerACL",
-                            "methods": [
+                            "operations": [
                                 {
-                                    "$type": "d3i.method",
+                                    "$type": "d3i.operation",
                                     "name": "getPartnerData",
-                                    "method_params": [
+                                    "operation_params": [
                                         {
-                                            "$type": "d3i.method_param",
+                                            "$type": "d3i.operation_param",
                                             "name": "partnerId",
                                             "type": {
                                                 "$type": "d3i.primitive_type",
@@ -1689,16 +1372,28 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "return_type": {
-                                        "$type": "d3i.reference_type",
-                                        "kind": "Kind.Reference",
-                                        "reference_name": "PartnerData",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 16,
-                                            "column": 60
+                                    "operation_returns": [
+                                        {
+                                            "$type": "d3i.operation_return",
+                                            "type": {
+                                                "$type": "d3i.reference_type",
+                                                "kind": "Kind.Reference",
+                                                "isExternal": false,
+                                                "reference_name": "PartnerData",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 16,
+                                                    "column": 60
+                                                }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 16,
+                                                "column": 60
+                                            }
                                         }
-                                    },
+                                    ],
                                     "decorators": [
                                         {
                                             "$type": "d3i.decorator",
@@ -1718,7 +1413,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_enums": [
+                            "enums": [
                                 {
                                     "$type": "d3i.enum",
                                     "name": "PartnerType",
@@ -1752,7 +1447,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_value_objects": [
+                            "value_objects": [
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "PartnerData",
@@ -1783,6 +1478,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "PartnerType",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -1798,8 +1494,8 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "internal_enums": [],
-                                    "internal_value_objects": [],
+                                    "enums": [],
+                                    "value_objects": [],
                                     "decorators": [],
                                     "location": {
                                         "fileName": "internal string",
@@ -1876,6 +1572,9 @@ domain SomeDomain {
                 address:string
                 type:PartnerType
             }
+            event OrderPlaced {
+                orderId:string
+            }
 
             @post
             getOrder( @required orderId: string ) 
@@ -1931,7 +1630,7 @@ domain SomeDomain {
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 16,
+                                                    "line": 19,
                                                     "column": 41
                                                 }
                                             },
@@ -1942,14 +1641,14 @@ domain SomeDomain {
                                                     "params": [],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 16,
+                                                        "line": 19,
                                                         "column": 22
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 16,
+                                                "line": 19,
                                                 "column": 22
                                             }
                                         }
@@ -1960,10 +1659,11 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "OrderData",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 17,
+                                                    "line": 20,
                                                     "column": 31
                                                 }
                                             },
@@ -1978,21 +1678,21 @@ domain SomeDomain {
                                                             "value": "200",
                                                             "location": {
                                                                 "fileName": "internal string",
-                                                                "line": 17,
+                                                                "line": 20,
                                                                 "column": 26
                                                             }
                                                         }
                                                     ],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 17,
+                                                        "line": 20,
                                                         "column": 18
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 17,
+                                                "line": 20,
                                                 "column": 18
                                             }
                                         },
@@ -2001,10 +1701,11 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "ErrorNotFound",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 18,
+                                                    "line": 21,
                                                     "column": 31
                                                 }
                                             },
@@ -2019,21 +1720,21 @@ domain SomeDomain {
                                                             "value": "404",
                                                             "location": {
                                                                 "fileName": "internal string",
-                                                                "line": 18,
+                                                                "line": 21,
                                                                 "column": 26
                                                             }
                                                         }
                                                     ],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 18,
+                                                        "line": 21,
                                                         "column": 18
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 18,
+                                                "line": 21,
                                                 "column": 18
                                             }
                                         }
@@ -2045,14 +1746,14 @@ domain SomeDomain {
                                             "params": [],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 15,
+                                                "line": 18,
                                                 "column": 12
                                             }
                                         }
                                     ],
                                     "location": {
                                         "fileName": "internal string",
-                                        "line": 15,
+                                        "line": 18,
                                         "column": 12
                                     }
                                 },
@@ -2068,19 +1769,53 @@ domain SomeDomain {
                                             "params": [],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 20,
+                                                "line": 23,
                                                 "column": 12
                                             }
                                         }
                                     ],
                                     "location": {
                                         "fileName": "internal string",
-                                        "line": 20,
+                                        "line": 23,
                                         "column": 12
                                     }
                                 }
                             ],
-                            "internal_enums": [
+                            "events": [
+                                {
+                                    "$type": "d3i.event",
+                                    "name": "OrderPlaced",
+                                    "members": [
+                                        {
+                                            "$type": "d3i.event_member",
+                                            "name": "orderId",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 15,
+                                                    "column": 24
+                                                }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 15,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 14,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "enums": [
                                 {
                                     "$type": "d3i.enum",
                                     "name": "PartnerType",
@@ -2114,7 +1849,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_value_objects": [
+                            "value_objects": [
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "OrderData",
@@ -2145,6 +1880,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "PartnerType",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -2160,8 +1896,8 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "internal_enums": [],
-                                    "internal_value_objects": [],
+                                    "enums": [],
+                                    "value_objects": [],
                                     "decorators": [],
                                     "location": {
                                         "fileName": "internal string",
@@ -2236,6 +1972,9 @@ domain SomeDomain {
                 address:string
                 type:PartnerType
             }
+            event OrderPlaced {
+                orderId:string
+            }
 
             @post
             getOrder( @required orderId: string ) 
@@ -2291,7 +2030,7 @@ domain SomeDomain {
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 16,
+                                                    "line": 19,
                                                     "column": 41
                                                 }
                                             },
@@ -2302,14 +2041,14 @@ domain SomeDomain {
                                                     "params": [],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 16,
+                                                        "line": 19,
                                                         "column": 22
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 16,
+                                                "line": 19,
                                                 "column": 22
                                             }
                                         }
@@ -2320,10 +2059,11 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "OrderData",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 17,
+                                                    "line": 20,
                                                     "column": 31
                                                 }
                                             },
@@ -2338,21 +2078,21 @@ domain SomeDomain {
                                                             "value": "200",
                                                             "location": {
                                                                 "fileName": "internal string",
-                                                                "line": 17,
+                                                                "line": 20,
                                                                 "column": 26
                                                             }
                                                         }
                                                     ],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 17,
+                                                        "line": 20,
                                                         "column": 18
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 17,
+                                                "line": 20,
                                                 "column": 18
                                             }
                                         },
@@ -2361,10 +2101,11 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "ErrorNotFound",
                                                 "location": {
                                                     "fileName": "internal string",
-                                                    "line": 18,
+                                                    "line": 21,
                                                     "column": 31
                                                 }
                                             },
@@ -2379,21 +2120,21 @@ domain SomeDomain {
                                                             "value": "404",
                                                             "location": {
                                                                 "fileName": "internal string",
-                                                                "line": 18,
+                                                                "line": 21,
                                                                 "column": 26
                                                             }
                                                         }
                                                     ],
                                                     "location": {
                                                         "fileName": "internal string",
-                                                        "line": 18,
+                                                        "line": 21,
                                                         "column": 18
                                                     }
                                                 }
                                             ],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 18,
+                                                "line": 21,
                                                 "column": 18
                                             }
                                         }
@@ -2405,14 +2146,14 @@ domain SomeDomain {
                                             "params": [],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 15,
+                                                "line": 18,
                                                 "column": 12
                                             }
                                         }
                                     ],
                                     "location": {
                                         "fileName": "internal string",
-                                        "line": 15,
+                                        "line": 18,
                                         "column": 12
                                     }
                                 },
@@ -2428,19 +2169,53 @@ domain SomeDomain {
                                             "params": [],
                                             "location": {
                                                 "fileName": "internal string",
-                                                "line": 20,
+                                                "line": 23,
                                                 "column": 12
                                             }
                                         }
                                     ],
                                     "location": {
                                         "fileName": "internal string",
-                                        "line": 20,
+                                        "line": 23,
                                         "column": 12
                                     }
                                 }
                             ],
-                            "internal_enums": [
+                            "events": [
+                                {
+                                    "$type": "d3i.event",
+                                    "name": "OrderPlaced",
+                                    "members": [
+                                        {
+                                            "$type": "d3i.event_member",
+                                            "name": "orderId",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 15,
+                                                    "column": 24
+                                                }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 15,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 14,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "enums": [
                                 {
                                     "$type": "d3i.enum",
                                     "name": "PartnerType",
@@ -2474,7 +2249,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
-                            "internal_value_objects": [
+                            "value_objects": [
                                 {
                                     "$type": "d3i.value_object",
                                     "name": "OrderData",
@@ -2505,6 +2280,7 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
+                                                "isExternal": false,
                                                 "reference_name": "PartnerType",
                                                 "location": {
                                                     "fileName": "internal string",
@@ -2520,8 +2296,8 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
-                                    "internal_enums": [],
-                                    "internal_value_objects": [],
+                                    "enums": [],
+                                    "value_objects": [],
                                     "decorators": [],
                                     "location": {
                                         "fileName": "internal string",

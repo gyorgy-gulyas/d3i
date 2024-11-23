@@ -19,7 +19,11 @@ arg_parser.add_argument("-l",
                         default=[])
 arg_parser.add_argument("-aoe",
                         "--abort-on-error",
-                        help="when any file has a syntax erro, or any of the linter reports error, then no emitter called and the executing is aborted",
+                        help="when any file has a any error, or any of the linter reports an error, then no emitter called and the executing is aborted",
+                        action="store_true")
+arg_parser.add_argument("-aow",
+                        "--abort-on-warning",
+                        help="when any file has a any warinig, or any of the linter reports a warining, then no emitter called and the executing is aborted",
                         action="store_true")
 arg_parser.add_argument("-e",
                         "--emitter",
@@ -41,7 +45,7 @@ args = arg_parser.parse_args()
 if (len(args.input) == 0):
     print("at least on input must be specified, use -h to see help.")
 
-#region process inputs
+#region parsing
 engine = d3i.Engine()
 session = d3i.Session()
 for input in args.input:
@@ -56,11 +60,12 @@ if(args.verbose):
     print( f"information: {len(session.sources)} file will be processed")
 root = engine.Build(session)
 
-if(session.HasErrror() == True):
-    if(args.verbose):
-        session.PrintErrors()
-    if(args.abort_on_error):
+if(session.HasDiagnostic() == True):
+    session.PrintDiagnostics()
+    if(session.HasAnyError() == True and args.abort_on_error):
         exit( "abort on error is enabled, process is aborted")
+    if(session.HasAnyWarning() == True and args.abort_on_warinig):
+        exit( "abort on warning is enabled, process is aborted")
 else:
     if(args.verbose):
         print( f"information: no error found in build")
@@ -73,11 +78,12 @@ for linter_file in args.linter:
     spec.loader.exec_module(module)
     module.DoLint( session )
 
-if(session.HasErrror() == True):
-    if(args.verbose):
-        session.PrintErrors()
-    if(args.abort_on_error):
-        exit( "abort on error is enabled, prcess is aborted")
+if(session.HasDiagnostic() == True):
+    session.PrintDiagnostics()
+    if(session.HasAnyError() == True and args.abort_on_error):
+        exit( "abort on error is enabled, process is aborted")
+    if(session.HasAnyWarning() == True and args.abort_on_warinig):
+        exit( "abort on warning is enabled, process is aborted")
 #endregion process inputs
 
 #region emitting
@@ -87,9 +93,10 @@ for emitter_file in args.emitter:
     spec.loader.exec_module(module)
     print(module.DoEmit( session, args.output_dir ))
 
-if(session.HasErrror() == True):
-    if(args.verbose):
-        session.PrintErrors()
-    if(args.abort_on_error):
+if(session.HasDiagnostic() == True):
+    session.PrintDiagnostics()
+    if(session.HasAnyError() == True and args.abort_on_error):
         exit( "abort on error is enabled, process is aborted")
+    if(session.HasAnyWarning() == True and args.abort_on_warinig):
+        exit( "abort on warning is enabled, process is aborted")
 #endregion process inputs

@@ -18,7 +18,7 @@ domain
         
     domain_element
         : context
-        | event;
+        ;
     
 context
     :  decorator* 'context' IDENTIFIER '{' context_element* '}'
@@ -27,10 +27,8 @@ context
     context_element
         : enum
         | value_object
-        | entity
         | aggregate
         | repository
-        | event
         | acl
         | service
         | interface
@@ -93,7 +91,7 @@ aggregate
         ;
 
 repository
-    : decorator* 'repository' IDENTIFIER ':' qualifiedName
+    : decorator* 'repository' IDENTIFIER ':' IDENTIFIER
     ;
 
 service
@@ -104,6 +102,7 @@ service
         : operation
         | enum
         | value_object
+        | event
         ;
 
 interface
@@ -114,6 +113,7 @@ interface
         : operation
         | enum
         | value_object
+        | event
         ;
     
 operation
@@ -136,16 +136,9 @@ acl
     acl_element
         : enum
         | value_object
-        | method
+        | operation
         ;
-        
-        method
-            : decorator* IDENTIFIER '(' (method_param? (',' method_param)*) ')' ':' type
-            ;
-
-            method_param
-                : decorator* IDENTIFIER ':' type
-                ;
+       
 type
     : primitive_type
     | reference_type
@@ -167,6 +160,7 @@ type
 
     reference_type
         : qualifiedName
+        | 'external' '[' STRING_LITERAL ']'
         ;
 
     list_type
@@ -192,7 +186,7 @@ decorator
         | STRING_LITERAL
         ;
 enum
-    : decorator* 'enum' IDENTIFIER '{' enum_element (',' enum_element)* '}'
+    : decorator* 'enum' IDENTIFIER '{' enum_element? (',' enum_element)* '}'
     ;
 
     enum_element

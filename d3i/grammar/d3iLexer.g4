@@ -49,6 +49,7 @@ BOOLEAN : 'boolean' ;
 BYTES : 'bytes' ;
 LIST : 'list' ;
 MAP : 'map' ;
+EXTERNAL : 'external' ;
 
 // constans
 INTEGER_CONSTANS : [0-9]+ ;

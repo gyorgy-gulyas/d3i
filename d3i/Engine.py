@@ -4,7 +4,6 @@ from d3i.grammar.d3iLexer import *
 from d3i.grammar.d3iGrammar import *
 from d3i.elements.ElementBuilder import *
 import d3i
-import json
 
 class Source:
     def __init__(self):
@@ -38,16 +37,28 @@ class Session:
     def AddSource(self, source: Source):
         self.sources.append(source)
 
-    def HasErrror(self):
+    def HasDiagnostic(self):
         if (len(self.diagnostics) > 0):
             return True
         return False
 
-    def PrintErrors(self):
+    def HasAnyError(self):
         for msg in self.diagnostics:
-            print(f"{msg.fileName}({msg.line},{msg.column}): {msg.severity} :{msg.message}\n")
+            if(msg.severity == Diagnostic.Severity.Error):
+                return True
+        return False
 
-    def ClearErrors(self):
+    def HasAnyWarning(self):
+        for msg in self.diagnostics:
+            if(msg.severity == Diagnostic.Severity.Warning):
+                return True
+        return False
+
+    def PrintDiagnostics(self):
+        for msg in self.diagnostics:
+            print(f"{msg.toText()}\n")
+
+    def ClearDiagnostics(self):
         self.diagnostics.clear()
 
     def ReportDiagnostic(self, message, severity, fileName="", line=0, column=0 ):
@@ -82,16 +93,12 @@ class Engine:
             syntaxTree.source = source
             session.syntaxTrees.append(syntaxTree)
 
-        return session.HasErrror()
-
     def __create_element_trees__(self, session: Session):
         visitor = ElementBuilder()
         for syntaxTree in session.syntaxTrees:
             visitor.fileName = syntaxTree.source.fileName
             elementTree = visitor.visit(syntaxTree)
             session.elementTrees.append(elementTree)
-
-        return session.HasErrror()
 
     def __merge_element_trees__(self, session: Session):
         session.main = d3()
@@ -121,8 +128,6 @@ class Engine:
                             context_already.context_events.extend(context.context_events)
                             context_already.services.extend(context.services)
                             context_already.interfaces.extend(context.interfaces)
-
-        return session.HasErrror()
 
     @staticmethod
     def __find_domain_by_name__(domains, name):
@@ -157,7 +162,11 @@ class Diagnostic:
         self.column: int = None
         self.message: int = None
 
+    def toText(self):
+        return f"{self.fileName}({self.line},{self.column}): {self.severity} :{self.message}\n"
+    
     class Severity(Enum):
         Message = 1,
         Warning = 2,
         Error = 3,
+        
