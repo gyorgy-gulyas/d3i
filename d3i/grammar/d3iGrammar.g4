@@ -5,75 +5,89 @@ options {
 }
 
 d3i
-    : directive* domain* EOF
-    ;
-
-directive
-    : IDENTIFIER qualifiedName
+    : domain* EOF
     ;
 
 domain
-    : decorator* 'domain' IDENTIFIER '{' domain_element* '}'
+    : directive* decorator* 'domain' IDENTIFIER '{' domain_element* '}'
     ;
 
+    directive
+        : IDENTIFIER qualifiedName
+        ;
+        
     domain_element
         : context
-        | event;
+        ;
     
 context
     :  decorator* 'context' IDENTIFIER '{' context_element* '}'
     ;
 
     context_element
-        : entity
-        | enum
+        : enum
         | value_object
         | aggregate
         | repository
         | acl
-        | event
         | service
         | interface
         ;
 
 value_object
-    : decorator* 'valueObject' IDENTIFIER '{' value_object_member* '}'
+    : decorator* 'valueobject' IDENTIFIER '{' value_object_element* '}'
     ;
 
-    value_object_member
-        : decorator* IDENTIFIER ':' type
+    value_object_element
+        : value_object_member
         | enum
         | value_object
         ;
         
+        value_object_member
+            : decorator* IDENTIFIER ':' type
+            ;
+
 event
-    :  decorator* 'event' IDENTIFIER '{' event_member* '}'
+    :  decorator* 'event' IDENTIFIER '{' event_element* '}'
     ;
+
+    event_element
+        : event_member
+        | enum
+        | value_object
+        ;
 
     event_member
         : decorator* IDENTIFIER ':' type
-        | enum
-        | value_object
         ;
         
 entity
-    :  decorator* 'entity' IDENTIFIER '{' entity_member* '}'
+    :  decorator* 'entity' IDENTIFIER '{' entity_element* '}'
     ;
 
-    entity_member
-        : decorator* IDENTIFIER ':' type
+    entity_element
+        : entity_member
         | enum
         | value_object
         ;
+
+        entity_member
+            : decorator* IDENTIFIER ':' type
+            ;
         
 aggregate
     :  decorator* 'aggregate' IDENTIFIER '{' aggregate_element* '}'
     ;
 
     aggregate_element
-        :  'root'? entity
+        : aggregate_entity
         | enum
         | value_object
+        ;
+        
+        aggregate_entity
+        :  'root'? entity
         ;
 
 repository
@@ -88,6 +102,7 @@ service
         : operation
         | enum
         | value_object
+        | event
         ;
 
 interface
@@ -98,19 +113,21 @@ interface
         : operation
         | enum
         | value_object
+        | event
         ;
     
 operation
-    : decorator* IDENTIFIER '(' operation_param? (',' operation_param)* ')' operation_return?
+    : decorator* IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' ((':' operation_return )? ('|' operation_return)*)
     ;
 
     operation_param
         : decorator* IDENTIFIER ':' type
         ;
 
-    operation_return
-        : ':' decorator* type ('|' decorator* type)*
-        ;
+        operation_return
+            : decorator* type
+            ;
+
 
 acl
     :  decorator* 'acl' IDENTIFIER '{' acl_element* '}'
@@ -119,20 +136,14 @@ acl
     acl_element
         : enum
         | value_object
-        | acl_function
+        | operation
         ;
-        
-        acl_function
-            : decorator* IDENTIFIER '(' acl_function_param? (',' acl_function_param)* ')' ':' type
-            ;
-
-            acl_function_param
-                : decorator* IDENTIFIER ':' type
-                ;
+       
 type
     : primitive_type
     | reference_type
-    | container_type
+    | list_type
+    | map_type
     ;
     
     primitive_type
@@ -149,11 +160,15 @@ type
 
     reference_type
         : qualifiedName
+        | 'external' '[' STRING_LITERAL ']'
         ;
 
-    container_type
-        : 'list' '[' type ',' type ']'
-        | 'map' '[' type ',' type ']'
+    list_type
+        : 'list' '[' type ']'
+        ;
+
+    map_type
+        : 'map' '[' type ',' type ']'
         ;
         
 qualifiedName 
@@ -171,7 +186,7 @@ decorator
         | STRING_LITERAL
         ;
 enum
-    : decorator* 'enum' IDENTIFIER '{' enum_element (',' enum_element)* '}'
+    : decorator* 'enum' IDENTIFIER '{' enum_element? (',' enum_element)* '}'
     ;
 
     enum_element

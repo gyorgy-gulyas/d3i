@@ -2,6 +2,9 @@ lexer grammar d3iLexer;
 
 channels { COMMENT_CHANNEL }
 
+options { 
+    caseInsensitive = true;
+}
 // syntax elements
 DOT : '.' ;
 COMMA : ',' ;
@@ -13,6 +16,7 @@ RCURLY : '}' ;
 LBARCKET : '[' ;
 RBRACKET : ']' ;
 AT : '@' ;
+ARROW : '=>' ;
 PIPE : '|' ;
 
 
@@ -25,12 +29,13 @@ AGGREGATE : 'aggregate' ;
 SERVICE : 'service' ;
 INTERFACE : 'interface' ;
 ACL : 'acl' ;
-VALUEOBJECT : 'valueObject' ;
+VALUEOBJECT : 'valueobject' ;
 ENUM : 'enum' ;
 REPOSITORY : 'repository' ;
 
 // qualifier keywords
 ROOT : 'root' ;
+OR : 'or' ;
 
 // built-in types
 INTEGER : 'integer' ;
@@ -44,6 +49,7 @@ BOOLEAN : 'boolean' ;
 BYTES : 'bytes' ;
 LIST : 'list' ;
 MAP : 'map' ;
+EXTERNAL : 'external' ;
 
 // constans
 INTEGER_CONSTANS : [0-9]+ ;
@@ -51,7 +57,7 @@ NUMBER_CONSTANS : [0-9]+'.'[0-9]+ ;
 STRING_LITERAL: '"' .*? '"';
 
 // syntax controllers
-IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]* ;
+IDENTIFIER: [a-z][a-z_0-9]* ;
 WS: [ \t\n\r\f]+ -> skip ;
 
 
