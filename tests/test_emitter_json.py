@@ -1790,8 +1790,8 @@ domain SomeDomain {
                             "events": [
                                 {
                                     "$type": "d3i.event",
-                                    "name": "OrderPlaced",
                                     "inherits": [],
+                                    "name": "OrderPlaced",
                                     "members": [
                                         {
                                             "$type": "d3i.event_member",

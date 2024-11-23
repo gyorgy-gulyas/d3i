@@ -69,8 +69,8 @@ class JsonEmitter(d3i.elements.ElementVisitor):
     def visitEvent(self, event: event, parentData: Any) -> Any:
         data = {
             "$type": "d3i.event",
-            "inherits" : [],
             "name": event.name,
+            "inherits" : [],
             "members": []
         }
         parentData["events"].append(data)
