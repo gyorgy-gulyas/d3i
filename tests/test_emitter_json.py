@@ -10,11 +10,10 @@ class TestEmitterJson(unittest.TestCase):
         engine = d3i.Engine()
         session = d3i.Session()
         session.AddSource(d3i.Source.CreateFromText(""))
-        root = engine.Build(session)
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
         expected = '{\n    "$type": "d3i.d3",\n    "domains": []\n}'
         diff = jsondiff.diff(result, expected, syntax='symmetric')
         self.assertEqual(0, len(diff))
@@ -28,11 +27,10 @@ class TestEmitterJson(unittest.TestCase):
 domain somedomain{
 }
 """))
-        root = engine.Build(session)
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
     "domains": [
@@ -123,11 +121,10 @@ domain somedomain{
 domain SomeDomain {
 }
 """))
-        root = engine.Build(session)
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
     "domains": [
@@ -159,11 +156,10 @@ namespace somedomain.subdomain.subsubdomain
 domain SomeDomain {
 }
 """))
-        root = engine.Build(session)
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
     "domains": [
@@ -224,11 +220,10 @@ domain SomeDomain {
     }
 }
 """))
-        root = engine.Build(session)
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
     "domains": [
@@ -298,11 +293,10 @@ domain SomeDomain {
     }
 }
 """))
-        root = engine.Build(session)
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
     "domains": [
@@ -481,12 +475,10 @@ domain SomeDomain {
     }
 }
 """))
-        root = engine.Build(session)
-
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
 
         expected = """{
     "$type": "d3i.d3",
@@ -826,11 +818,10 @@ domain SomeDomain {
     }
 }
 """))
-        root = engine.Build(session)
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
     "domains": [
@@ -1210,11 +1201,10 @@ domain SomeDomain {
     }
 }
 """))
-        root = engine.Build(session)
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
     "domains": [
@@ -1313,11 +1303,10 @@ domain SomeDomain {
     }
 }
 """))
-        root = engine.Build(session)
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
     "domains": [
@@ -1593,11 +1582,10 @@ domain SomeDomain {
     }
 }
 """))
-        root = engine.Build(session)
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
     "domains": [
@@ -1995,11 +1983,10 @@ domain SomeDomain {
     }
 }
 """))
-        root = engine.Build(session)
+        engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
-        data = root.visit(jsonEmmiter, None)
-        result = json.dumps(data, indent=4)
+        result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
     "domains": [

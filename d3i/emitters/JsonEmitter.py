@@ -6,10 +6,22 @@ from d3i.elements.Elements import *
 from d3i.Engine import Session
 
 
-def DoEmit(session: Session, output_dir: str, args: Dict[str, str]):
+def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
     jsonEmmiter = JsonEmitter()
-    data = session.main.visit(jsonEmmiter, None)
-    json_result = json.dumps(data, indent=4)
+
+    indent = 4
+    if "json.indent" in configuration:
+        indent = int(configuration["indent"])
+
+    ensure_ascii = True
+    if "json.ensure_ascii" in configuration:
+        ensure_ascii = bool(configuration["ensure_ascii"])
+
+    sort_keys = False
+    if "json.sort_keys" in configuration:
+        sort_keys = bool(configuration["sort_keys"])
+
+    json_result = jsonEmmiter.Emit(session, indent, ensure_ascii, sort_keys)
     with open(os.path.join(output_dir, "main.json"), "w") as file:
         file.write(json_result)
     return json_result
@@ -19,6 +31,14 @@ class JsonEmitter(d3i.elements.ElementVisitor):
     def __init__(self, withLocation: bool = True):
         self.dict = {}
         self.withLocation = withLocation
+
+    def Emit(self, session: Session, indent=4, ensure_ascii=True, sort_keys=False) -> str:
+        data = session.main.visit(self, None)
+        json_result = json.dumps(data,
+                                 indent=indent,
+                                 ensure_ascii=ensure_ascii,
+                                 sort_keys=sort_keys)
+        return json_result
 
     def visitd3(self, d3: d3, parentData: Any) -> Any:
         self.dict = {
