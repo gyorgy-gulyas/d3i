@@ -3,6 +3,7 @@
     "json.ensure_ascii": "True",
     "json.sort_keys": "False",
 
+    "dotnet.use_line_directive": "False",
     "dotnet.create_folder_structure": "True",
     "dotnet.each_class_separate_file": "True",
     "dotnet.file_header_lines": [
