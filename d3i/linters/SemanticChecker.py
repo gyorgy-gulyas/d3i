@@ -1,7 +1,12 @@
+from typing import Any, Dict
 import d3i.elements.ElementVisitor
 from d3i.Engine import *
 from d3i.elements.Elements import *
 
+
+def DoLint(session: Session, output_dir: str, args: Dict[str, str]):
+    linter = SemanticChecker(session)
+    data = session.main.visit(linter, None)
 
 class SemanticChecker(d3i.elements.ElementVisitor):
     def __init__(self, session: Session):

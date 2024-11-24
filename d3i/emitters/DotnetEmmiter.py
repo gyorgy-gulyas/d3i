@@ -2,7 +2,7 @@ import os
 import io
 from d3i.elements.Elements import *
 
-class utils:
+class DotnetEmmiter:
     def __create_folder__(output_dir: str, folder_name: str):
         folder_path = os.path.join(output_dir, folder_name)
         os.makedirs(folder_path, exist_ok=True)
@@ -23,6 +23,26 @@ class utils:
 // </auto-generated>
 //------------------------------------------------------------------------------"""
 
+    def contextEnumText(domain: domain, context: context, enum: enum):
+        buffer = io.StringIO()
+        buffer.write(dotnet_emmiter.fileHeader())
+        buffer.write("\n")
+        buffer.write(f"namespace {domain.name}.{context.name}")
+        buffer.write("{")
+        buffer.write(f"{dotnet_emmiter.enumText(enum, indent=1)}")
+        buffer.write("}")
+        return buffer.getvalue()
+
+    def contextValueObjectText(domain: domain, context: context, value_object: value_object):
+        buffer = io.StringIO()
+        buffer.write(dotnet_emmiter.fileHeader())
+        buffer.write("\n")
+        buffer.write(f"namespace {domain.name}.{context.name}")
+        buffer.write("{")
+        buffer.write(f"\t{dotnet_emmiter.valueObjectText(value_object)}")
+        buffer.write("}")
+        return buffer.getvalue()
+
     def enumText(enum: enum, indent: int = 1):
         buffer = io.StringIO()
         buffer.write("\n")
@@ -39,25 +59,25 @@ class utils:
         buffer.write(f"{'\t'*indent}enum {enum.name}")
         buffer.write("{")
         for member in value_object.members:
-            buffer.write(f"{utils.memberText(member.name, member.type, indent+1)},")
+            buffer.write(f"{dotnet_emmiter.memberText(member.name, member.type, indent+1)},")
         buffer.write(f"{'\t'*indent}enum {enum.name}")
         return buffer.getvalue()
 
     def memberText(member_name: str, type: type, indent: int):
         buffer = io.StringIO()
-        buffer.write(f"{'\t'*indent}public {utils.typeText(type)} {member_name} {{ get; set; }}")
+        buffer.write(f"{'\t'*indent}public {dotnet_emmiter.typeText(type)} {member_name} {{ get; set; }}")
         return buffer.getvalue()
 
     def typeText(type: type):
         match type.kind:
             case type.Kind.Primitive:
-                return utils.typeTextPrimitive(type)
+                return dotnet_emmiter.typeTextPrimitive(type)
             case type.Kind.Reference:
-                return utils.typeTextReference(type)
+                return dotnet_emmiter.typeTextReference(type)
             case type.Kind.List:
-                return utils.typeTextList(type)
+                return dotnet_emmiter.typeTextList(type)
             case type.Kind.Map:
-                return utils.typeTextMap(type)
+                return dotnet_emmiter.typeTextMap(type)
 
     def typeTextPrimitive(type: primitive_type, indent: int):
         match type.primtiveKind:
@@ -84,7 +104,7 @@ class utils:
         return type.reference_name.getText()
 
     def typeTextList(type: list_type, indent: int):
-        return f"System.Generic.List<{utils.typeText(type.item_type)}>"
+        return f"System.Generic.List<{dotnet_emmiter.typeText(type.item_type)}>"
 
     def typeTextMap(type: map_type, indent: int):
-        return f"System.Generic.Dictionary<{utils.typeText(type.key_type)},{utils.typeText(type.value_type)}>"
+        return f"System.Generic.Dictionary<{dotnet_emmiter.typeText(type.key_type)},{dotnet_emmiter.typeText(type.value_type)}>"

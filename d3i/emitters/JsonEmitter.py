@@ -1,11 +1,12 @@
 import json
 import os
-from typing import Any
+from typing import Any, Dict
 import d3i.elements.ElementVisitor
 from d3i.elements.Elements import *
 from d3i.Engine import Session
 
-def DoEmit( session:Session, output_dir:str):
+
+def DoEmit(session: Session, output_dir: str, args: Dict[str, str]):
     jsonEmmiter = JsonEmitter()
     data = session.main.visit(jsonEmmiter, None)
     json_result = json.dumps(data, indent=4)
@@ -70,7 +71,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.event",
             "name": event.name,
-            "inherits" : [],
+            "inherits": [],
             "members": []
         }
         parentData["events"].append(data)
@@ -116,7 +117,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.value_object",
             "name": value_object.name,
-            "inherits" : [],
+            "inherits": [],
             "members": [],
             "enums": [],
             "value_objects": []
@@ -136,7 +137,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.entity",
             "name": entity.name,
-            "inherits" : [],
+            "inherits": [],
             "members": [],
             "enums": [],
             "value_objects": []
@@ -146,7 +147,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             parentData["entities"].append(data)
         elif isinstance(entity.parent, aggregate_entity):
             parentData["entity"] = data
-        
+
         return data
 
     def visitEnityMember(self, entity_member: entity_member, parentData: Any) -> Any:
@@ -329,4 +330,3 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             return data
         else:
             return None
-
