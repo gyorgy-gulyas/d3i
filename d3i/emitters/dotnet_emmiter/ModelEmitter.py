@@ -4,7 +4,7 @@ from d3i.emitters.dotnet_emmiter.DotnetEmmiter import *
 from d3i.Engine import Session
 
 
-class ContextEmmiter(DotnetEmmiter):
+class ModelEmmiter(DotnetEmmiter):
     def __init__(self, output_dir: str = "./", configuration: Dict[str, str] = {}):
         super().__init__(output_dir, configuration)
 
@@ -15,7 +15,7 @@ class ContextEmmiter(DotnetEmmiter):
             for context in domain.contexts:
 
                 content = self.__beginContext(domain, context)
-                fileName = self.__get_context_model_filename__(domain, context, context.name)
+                fileName = self.__get_context_model_filename(domain, context, context.name)
 
                 for enum in context.enums:
                     content += self.enumText(enum)
@@ -28,7 +28,7 @@ class ContextEmmiter(DotnetEmmiter):
 
         return result
 
-    def __get_context_model_filename__(self, domain: domain, context: context, name: str) -> str:
+    def __get_context_model_filename(self, domain: domain, context: context, name: str) -> str:
 
         if (self.configuration.createFolderStructure == True):
             return os.path.join(domain.name, context.name, context.name + ".cs")

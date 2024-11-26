@@ -74,13 +74,13 @@ class Session:
 class Engine:
 
     def Build(self, session: Session):
-        self.__create_syntax_trees__(session)
-        self.__create_element_trees__(session)
-        self.__merge_element_trees__(session)
+        self.__create_syntax_trees(session)
+        self.__create_element_trees(session)
+        self.__merge_element_trees(session)
 
         return session.main
 
-    def __create_syntax_trees__(self, session: Session):
+    def __create_syntax_trees(self, session: Session):
         for source in session.sources:
             lexer = d3iLexer(InputStream(source.content))
             grammar = d3iGrammar(CommonTokenStream(lexer))
@@ -93,20 +93,20 @@ class Engine:
             syntaxTree.source = source
             session.syntaxTrees.append(syntaxTree)
 
-    def __create_element_trees__(self, session: Session):
+    def __create_element_trees(self, session: Session):
         visitor = ElementBuilder()
         for syntaxTree in session.syntaxTrees:
             visitor.fileName = syntaxTree.source.fileName
             elementTree = visitor.visit(syntaxTree)
             session.elementTrees.append(elementTree)
 
-    def __merge_element_trees__(self, session: Session):
+    def __merge_element_trees(self, session: Session):
         session.main = d3()
 
         for elementTree in session.elementTrees:
             for domain in elementTree.domains:
                 # find domain in merged
-                domain_already: d3i.domain = self.__find_domain_by_name__(session.main.domains, domain.name)
+                domain_already: d3i.domain = self.__find_domain_by_name(session.main.domains, domain.name)
                 if (domain_already == None):
                     # append domain to merged
                     session.main.domains.append(domain)
@@ -115,7 +115,7 @@ class Engine:
                     domain_already.domain_events.extend(domain.domain_events)
                     for context in domain.contexts:
                         # find context in merged
-                        context_already: d3i.context = self.__find_context_by_name__(
+                        context_already: d3i.context = self.__find_context_by_name(
                             domain_already.contexts, context.name)
                         if (context_already == None):
                             domain.contexts.append(context)
@@ -130,7 +130,7 @@ class Engine:
                             context_already.interfaces.extend(context.interfaces)
 
     @staticmethod
-    def __find_domain_by_name__(domains, name):
+    def __find_domain_by_name(domains, name):
         for domain in domains:
             if (domain.name == name):
                 return domain
@@ -138,7 +138,7 @@ class Engine:
         return None
 
     @staticmethod
-    def __find_context_by_name__(contexts, name):
+    def __find_context_by_name(contexts, name):
         for context in contexts:
             if (context.name == name):
                 return context

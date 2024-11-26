@@ -7,7 +7,7 @@ import importlib.util
 from pathlib import Path
 
 
-def __add_known_arguments__():
+def __add_known_arguments():
     arg_parser.add_argument("-i",
                             "--input",
                             help="input d3 file(s), multiple files may be necessary if a domain is described in multiple files, or if you want to process multiple domains at once ",
@@ -46,7 +46,7 @@ def __add_known_arguments__():
                             action="store_true")
 
 
-def __read_config_file__(args, unknown_args) -> Dict[str, str]:
+def __read_config_file(args, unknown_args) -> Dict[str, str]:
     if (args.config_file != None):
         config_file = args.config_file
     else:
@@ -63,7 +63,7 @@ def __read_config_file__(args, unknown_args) -> Dict[str, str]:
     return configuration
 
 
-def __parse_input_files__(args) -> d3i.Session:
+def __parse_input_files(args) -> d3i.Session:
     engine = d3i.Engine()
     session = d3i.Session()
     for input in args.input:
@@ -81,7 +81,7 @@ def __parse_input_files__(args) -> d3i.Session:
     return session
 
 
-def __check_errors__(session: d3i.Session, args):
+def __check_errors(session: d3i.Session, args):
     if (session.HasDiagnostic() == True):
         session.PrintDiagnostics()
         if (session.HasAnyError() == True and args.abort_on_error):
@@ -93,7 +93,7 @@ def __check_errors__(session: d3i.Session, args):
             print(f"information: no error found in build")
 
 
-def __call_linters__(session: d3i.Session, args):
+def __call_linters(session: d3i.Session, args):
     for linter_file in args.linter:
         spec = importlib.util.spec_from_file_location(Path(linter_file).stem, linter_file)
         module = importlib.util.module_from_spec(spec)
@@ -101,7 +101,7 @@ def __call_linters__(session: d3i.Session, args):
         module.DoLint(session, configuration)
 
 
-def __call_emiters__(session: d3i.Session, args):
+def __call_emiters(session: d3i.Session, args):
     for emitter_file in args.emitter:
         spec = importlib.util.spec_from_file_location(Path(emitter_file).stem, emitter_file)
         module = importlib.util.module_from_spec(spec)
@@ -113,20 +113,20 @@ if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(
         description="This program processes d3i files and produces results according to the specified emitter.")
 
-    __add_known_arguments__(arg_parser)
+    __add_known_arguments(arg_parser)
     args, unknown_args = arg_parser.parse_known_args()
     if (len(args.input) == 0):
         print("at least on input must be specified, use -h to see help.")
 
     # parse
-    configuration = __read_config_file__(args)
-    session: d3i.Session = __parse_input_files__(args)
-    __check_errors__(session, args)
+    configuration = __read_config_file(args)
+    session: d3i.Session = __parse_input_files(args)
+    __check_errors(session, args)
 
     # linting
-    __call_linters__(session, args)
-    __check_errors__(session, args)
+    __call_linters(session, args)
+    __check_errors(session, args)
 
     # emmiting
-    __call_emiters__(session, args)
-    __check_errors__(session, args)
+    __call_emiters(session, args)
+    __check_errors(session, args)

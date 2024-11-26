@@ -25,20 +25,20 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         pass
 
     def visitEvent(self, event: event, parentData: Any) -> Any:
-        scope = self.__get_current_scope__(event.parent)
+        scope = self.__get_current_scope(event.parent)
 
         for inherit in event.inherits:
-            base_class, message = self.__get_referenced_element__(event.parent, inherit)
+            base_class, message = self.__get_referenced_element(event.parent, inherit)
             if (base_class == None):
-                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
             elif (isinstance(base_class, d3i.event) == False):
-                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an event.")
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an event.")
 
         for neighbour in scope.getChildren():
             if (neighbour is event):
                 continue
             if (neighbour.name == event.name):
-                self.__error__(event, f"An event '{event.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                self.__error(event, f"An event '{event.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEventMember(self, eventMember: event_member, parentData: Any) -> Any:
         parent_event: event = eventMember.parent
@@ -46,16 +46,16 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is eventMember):
                 continue
             if (neighbour.name == eventMember.name):
-                self.__error__(eventMember, f"An event member '{eventMember.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                self.__error(eventMember, f"An event member '{eventMember.name}' conflicts with same name with element in {neighbour.locationText()}.")
         pass
 
     def visitEnum(self, enum: enum, parentData: Any) -> Any:
-        scope = self.__get_current_scope__(enum.parent)
+        scope = self.__get_current_scope(enum.parent)
         for neighbour in scope.getChildren():
             if (neighbour is enum):
                 continue
             if (neighbour.name == enum.name):
-                self.__error__(enum, f"An enum '{enum.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                self.__error(enum, f"An enum '{enum.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEnumElement(self, enum_element: enum_element, parentData: Any) -> Any:
         parent_enum: enum = enum_element.parent
@@ -63,24 +63,24 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is enum_element):
                 continue
             if (neighbour.value == enum_element.value):
-                self.__error__(enum_element, f"An enum element '{enum_element.value}' with this value already exists in {neighbour.locationText()}.")
+                self.__error(enum_element, f"An enum element '{enum_element.value}' with this value already exists in {neighbour.locationText()}.")
         pass
 
     def visitValueObject(self, value_object: value_object, parentData: Any) -> Any:
-        scope = self.__get_current_scope__(value_object.parent)
+        scope = self.__get_current_scope(value_object.parent)
 
         for inherit in value_object.inherits:
-            base_class, message = self.__get_referenced_element__(value_object.parent, inherit)
+            base_class, message = self.__get_referenced_element(value_object.parent, inherit)
             if (base_class == None):
-                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
             elif (isinstance(base_class, d3i.value_object) == False):
-                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not a value object.")
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not a value object.")
 
         for neighbour in scope.getChildren():
             if (neighbour is value_object):
                 continue
             if (neighbour.name == value_object.name):
-                self.__error__(value_object, f"A value object '{value_object.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                self.__error(value_object, f"A value object '{value_object.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitValueObjectMember(self, member: value_object_member, parentData: Any) -> Any:
         parent_value_object: value_object = member.parent
@@ -88,18 +88,18 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is member):
                 continue
             if (neighbour.name == member.name):
-                self.__error__(member, f"An member '{member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                self.__error(member, f"An member '{member.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEnity(self, entity: entity, parentData: Any) -> Any:
         parent_aggregate: aggregate = entity.parent.parent
         parent_context: context = parent_aggregate.parent
 
         for inherit in entity.inherits:
-            base_class, message = self.__get_referenced_element__(entity.parent, inherit)
+            base_class, message = self.__get_referenced_element(entity.parent, inherit)
             if (base_class == None):
-                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
             elif (isinstance(base_class, d3i.entity) == False):
-                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an entity.")
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an entity.")
 
         for aggr in parent_context.aggregates:
             for aggr_entity in aggr.internal_entities:
@@ -107,7 +107,7 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                 if (neighbour is entity):
                     continue
                 if (neighbour.name == entity.name):
-                    self.__error__(entity, f"An entity '{entity.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                    self.__error(entity, f"An entity '{entity.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEnityMember(self, entity_member: entity_member, parentData: Any) -> Any:
         parent_entity: entity = entity_member.parent
@@ -115,15 +115,15 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is entity_member):
                 continue
             if (neighbour.name == entity_member.name):
-                self.__error__(entity_member, f"A member '{entity_member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                self.__error(entity_member, f"A member '{entity_member.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitAggregate(self, aggregate: aggregate, parentData: Any) -> Any:
-        scope = self.__get_current_scope__(aggregate.parent)
+        scope = self.__get_current_scope(aggregate.parent)
         for neighbour in scope.getChildren():
             if (neighbour is aggregate):
                 continue
             if (neighbour.name == aggregate.name):
-                self.__error__(aggregate, f"An aggregate '{aggregate.name}' with same name is already exists in {neighbour.locationText()}.")
+                self.__error(aggregate, f"An aggregate '{aggregate.name}' with same name is already exists in {neighbour.locationText()}.")
 
         countOfRoot: int = 0
         for aggregate_entity in aggregate.internal_entities:
@@ -131,20 +131,20 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                 countOfRoot = countOfRoot + 1
 
         if (countOfRoot == 0):
-            self.__error__(aggregate, f"There is no root entity defined, in aggregate {aggregate.name}")
+            self.__error(aggregate, f"There is no root entity defined, in aggregate {aggregate.name}")
         elif (countOfRoot > 1):
-            self.__error__(aggregate, f"More than one root entity defined, in aggregate {aggregate.name}")
+            self.__error(aggregate, f"More than one root entity defined, in aggregate {aggregate.name}")
 
     def visitAggregateEntity(self, aggregate_entity: aggregate_entity, parentData: Any) -> Any:
         pass
 
     def visitRepository(self, repository: repository, parentData: Any) -> Any:
-        scope = self.__get_current_scope__(repository.parent)
+        scope = self.__get_current_scope(repository.parent)
         for neighbour in scope.getChildren():
             if (neighbour is repository):
                 continue
             if (neighbour.name == repository.name):
-                self.__error__(repository, f"A repository '{repository.name}' with same name is already exists in {neighbour.locationText()}.")
+                self.__error(repository, f"A repository '{repository.name}' with same name is already exists in {neighbour.locationText()}.")
 
         isFound: bool = False
         parent_context: context = repository.parent
@@ -153,38 +153,38 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                 isFound = True
 
         if (isFound == False):
-            self.__error__(repository, f"Unknown refrenced name: {repository.referenced_name}, in repository {repository.name}")
+            self.__error(repository, f"Unknown refrenced name: {repository.referenced_name}, in repository {repository.name}")
 
     def visitAcl(self, acl: acl, parentData: Any) -> Any:
-        scope = self.__get_current_scope__(acl.parent)
+        scope = self.__get_current_scope(acl.parent)
         for neighbour in scope.getChildren():
             if (neighbour is acl):
                 continue
             if (neighbour.name == acl.name):
-                self.__error__(acl, f"An acl '{acl.name}' with same name is already exists in {neighbour.locationText()}.")
+                self.__error(acl, f"An acl '{acl.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitService(self, service: service, parentData: Any) -> Any:
-        scope = self.__get_current_scope__(service.parent)
+        scope = self.__get_current_scope(service.parent)
         for neighbour in scope.getChildren():
             if (neighbour is service):
                 continue
             if (neighbour.name == service.name):
-                self.__error__(service, f"A service '{service.name}' with same name is already exists in {neighbour.locationText()}.")
+                self.__error(service, f"A service '{service.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitInterface(self, interface: interface, parentData: Any) -> Any:
-        scope = self.__get_current_scope__(interface.parent)
+        scope = self.__get_current_scope(interface.parent)
         for neighbour in scope.getChildren():
             if (neighbour is interface):
                 continue
             if (neighbour.name == interface.name):
-                self.__error__(interface, f"An interface '{interface.name}' with same name is already exists in {neighbour.locationText()}.")
+                self.__error(interface, f"An interface '{interface.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitOperation(self, operation: operation, parentData: Any) -> Any:
         for neighbour in operation.parent.operations:
             if (neighbour is operation):
                 continue
             if (neighbour.name == operation.name):
-                self.__error__(operation, f"An operation '{operation.name}' with same name is already exists in {neighbour.locationText()}.")
+                self.__error(operation, f"An operation '{operation.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitOperationParam(self, param: operation_param, parentData: Any) -> Any:
         parent_operation: operation = param.parent
@@ -192,7 +192,7 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour is param):
                 continue
             if (neighbour.name == param.name):
-                self.__error__(param, f"An operation parameter '{param.name}' with same name is already exists in {neighbour.locationText()}.")
+                self.__error(param, f"An operation parameter '{param.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitOperationReturn(self, operation_return: operation_return, parentData: Any) -> Any:
         pass
@@ -205,14 +205,14 @@ class SemanticChecker(d3i.elements.ElementVisitor):
 
     def visitReferenceType(self, reference_type: reference_type, parentData: Any, memberName: str) -> Any:
         if (len(reference_type.reference_name.names) == 0):
-            self.__error__(reference_type, f"Empty referenced name.")
+            self.__error(reference_type, f"Empty referenced name.")
 
         if (reference_type.isExternal == True):
             return
 
-        element, message = self.__get_referenced_element__(reference_type.parent, reference_type.reference_name)
+        element, message = self.__get_referenced_element(reference_type.parent, reference_type.reference_name)
         if (element == None):
-            self.__error__(reference_type, message)
+            self.__error(reference_type, message)
 
     def visitListType(self, list_type: list_type, parentData: Any, memberName: str) -> Any:
         pass
@@ -232,13 +232,13 @@ class SemanticChecker(d3i.elements.ElementVisitor):
     def visitBaseElement(self, base_element: base_element, parentData: Any) -> Any:
         pass
 
-    def __warning__(self, element: base_element, msg: str):
+    def __warning(self, element: base_element, msg: str):
         self.session.ReportDiagnostic(msg, Diagnostic.Severity.Warning, element.fileName, element.line, element.column)
 
-    def __error__(self, element: base_element, msg: str):
+    def __error(self, element: base_element, msg: str):
         self.session.ReportDiagnostic(msg, Diagnostic.Severity.Error, element.fileName, element.line, element.column)
 
-    def __get_current_scope__(self, element: base_element) -> IScope:
+    def __get_current_scope(self, element: base_element) -> IScope:
         current_scope = element
         while True:
             if isinstance(current_scope, IScope):
@@ -249,9 +249,9 @@ class SemanticChecker(d3i.elements.ElementVisitor):
 
         return current_scope
 
-    def __get_referenced_element__(self, parent: base_element, name: qualified_name) -> IScope:
+    def __get_referenced_element(self, parent: base_element, name: qualified_name) -> IScope:
 
-        scope = self.__get_current_scope__(parent)
+        scope = self.__get_current_scope(parent)
         element = None
         # go up until we find the element for the first part of the name
         while True:
