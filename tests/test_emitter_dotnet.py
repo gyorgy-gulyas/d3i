@@ -1,5 +1,6 @@
 from __future__ import annotations
 import unittest
+from tests.dotnet_code_helper import *
 import d3i
 from d3i.emitters.dotnet_emmiter.ModelEmitter import *
 from io import StringIO
@@ -44,7 +45,12 @@ namespace WebShop.CustomerContext
     }
 }
 """
-        self.assertTrue(self.__dotnet_code_is_equal(expected, result))
+        self.assertTrue(1, len(result))
+        self.assertEqual(result[0].fileName, "CustomerContext.cs")
+        equal, index, diff_part_1, diff_part_2 = dotnet_code_helper.compare_and_extract_diff(expected, result[0].content)
+        self.assertTrue(equal)
+        compiled, errors = dotnet_code_helper.compile_debug(result, dotnet_code_helper.assembly_name())
+        self.assertTrue(compiled)
 
         print(result)
 
@@ -162,10 +168,10 @@ namespace WebShop.CustomerContext
 
         try:
             trivias = syntax_node.DescendantTrivia()
-            csharp_list = list(syntax_node.ChildNodes())[0].Parent
+
             return SyntaxNodeExtensions.ReplaceTrivia(
                 syntax_node,
-                trivias,
+                [trivia for trivia in syntax_node.DescendantTrivia() if trivia.IsKind(SyntaxKind.SingleLineCommentTrivia)],
                 lambda st1, st2, st3: self.__replace_comments(self, st1, st2, st3)
             )
         except Exception as e:

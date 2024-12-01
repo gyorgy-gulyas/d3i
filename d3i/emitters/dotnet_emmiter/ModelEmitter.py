@@ -8,14 +8,14 @@ class ModelEmmiter(DotnetEmmiter):
     def __init__(self, output_dir: str = "./", configuration: Dict[str, str] = {}):
         super().__init__(output_dir, configuration)
 
-    def Emit(self, session: Session) -> Dict[str, str]:
-        result: Dict[str, str] = {}
+    def Emit(self, session: Session) -> List[dotnet_code]:
+        result: List[dotnet_code] = []
 
         for domain in session.main.domains:
             for context in domain.contexts:
 
                 content = self.__beginContext(domain, context)
-                fileName = self.__get_context_model_filename(domain, context, context.name)
+                fullPath = self.__get_context_model_fullpath(domain, context, context.name)
 
                 for enum in context.enums:
                     content += self.enumText(enum)
@@ -24,11 +24,11 @@ class ModelEmmiter(DotnetEmmiter):
                     content += self.valueObjectText(value_object)
 
                 content += self.__endContext(domain, context)
-                result[fileName] = content
+                result.append(dotnet_code(fullPath, content))
 
         return result
 
-    def __get_context_model_filename(self, domain: domain, context: context, name: str) -> str:
+    def __get_context_model_fullpath(self, domain: domain, context: context, name: str) -> str:
 
         if (self.configuration.createFolderStructure == True):
             return os.path.join(domain.name, context.name, context.name + ".cs")

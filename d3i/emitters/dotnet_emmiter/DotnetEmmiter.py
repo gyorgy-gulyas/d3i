@@ -35,11 +35,11 @@ class DotnetEmmiter:
     def enumText(self, enum: enum, indent: int = 1):
         buffer = io.StringIO()
         buffer.write("\n")
-        buffer.write(f"{'\t'*indent}enum {enum.name}")
-        buffer.write("{")
+        buffer.write(f"{'\t'*indent}enum {enum.name}\n")
+        buffer.write(f"{'\t'*indent}{{\n")
         for enum_element in enum.enum_elements:
-            buffer.write(f"{'\t'*(indent+1)}{enum_element.value},")
-        buffer.write(f"{'\t'*indent}")
+            buffer.write(f"{'\t'*(indent+1)}{enum_element.value},\n")
+        buffer.write(f"{'\t'*indent}}}\n")
         return buffer.getvalue()
 
     def valueObjectText(self, value_object: value_object, indent: int = 1):
@@ -113,7 +113,7 @@ class utils:
 class dotnet_configuration:
     def __init__(self, configuration: Dict[str, str], output_dir: str):
         self.output_dir = output_dir
-        
+
         self.__read_fileHeader(configuration)
         self.__read_defaultUsings(configuration)
         self.__read_createFolderStructure(configuration)
@@ -148,3 +148,10 @@ class dotnet_configuration:
         self.eachClassSeparateFile: bool = True
         if "dotnet.each_class_separate_file" in configuration:
             self.eachClassSeparateFile = bool(configuration["dotnet.each_class_separate_file"])
+
+
+class dotnet_code:
+    def __init__(self, fullPath: str, content: str):
+        self.fullPath: str = fullPath
+        self.fileName: str = os.path.basename(fullPath)
+        self.content: str = content
