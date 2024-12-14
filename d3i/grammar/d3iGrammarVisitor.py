@@ -99,6 +99,21 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by d3iGrammar#view.
+    def visitView(self, ctx:d3iGrammar.ViewContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#view_element.
+    def visitView_element(self, ctx:d3iGrammar.View_elementContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#view_member.
+    def visitView_member(self, ctx:d3iGrammar.View_memberContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by d3iGrammar#repository.
     def visitRepository(self, ctx:d3iGrammar.RepositoryContext):
         return self.visitChildren(ctx)

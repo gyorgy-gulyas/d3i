@@ -90,7 +90,7 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour.name == member.name):
                 self.__error(member, f"An member '{member.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
-    def visitEnity(self, entity: entity, parentData: Any) -> Any:
+    def visitEntity(self, entity: entity, parentData: Any) -> Any:
         parent_aggregate: aggregate = entity.parent.parent
         parent_context: context = parent_aggregate.parent
 
@@ -109,7 +109,7 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                 if (neighbour.name == entity.name):
                     self.__error(entity, f"An entity '{entity.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
-    def visitEnityMember(self, entity_member: entity_member, parentData: Any) -> Any:
+    def visitEntityMember(self, entity_member: entity_member, parentData: Any) -> Any:
         parent_entity: entity = entity_member.parent
         for neighbour in parent_entity.members:
             if (neighbour is entity_member):
@@ -138,6 +138,30 @@ class SemanticChecker(d3i.elements.ElementVisitor):
     def visitAggregateEntity(self, aggregate_entity: aggregate_entity, parentData: Any) -> Any:
         pass
 
+    def visitView(self, view: view, parentData: Any) -> Any:
+        scope = self.__get_current_scope__(view.parent)
+
+        for inherit in view.inherits:
+            base_class, message = self.__get_referenced_element__(view.parent, inherit)
+            if (base_class == None):
+                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
+            elif (isinstance(base_class, d3i.view) == False):
+                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an view.")
+
+        for neighbour in scope.getChildren():
+            if (neighbour is view):
+                continue
+            if (neighbour.name == view.name):
+                self.__error__(view, f"A view '{view.name}' conflicts with same name with element in {neighbour.locationText()}.")
+
+    def visitViewMember(self, view_member: view_member, parentData: Any) -> Any:
+        parent_view: view = view_member.parent
+        for neighbour in parent_view.members:
+            if (neighbour is view_member):
+                continue
+            if (neighbour.name == view_member.name):
+                self.__error__(view_member, f"A member '{view_member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+    
     def visitRepository(self, repository: repository, parentData: Any) -> Any:
         scope = self.__get_current_scope(repository.parent)
         for neighbour in scope.getChildren():
@@ -150,6 +174,10 @@ class SemanticChecker(d3i.elements.ElementVisitor):
         parent_context: context = repository.parent
         for aggregate in parent_context.aggregates:
             if (aggregate.name == repository.referenced_name):
+                isFound = True
+
+        for view in parent_context.views:
+            if (view.name == repository.referenced_name):
                 isFound = True
 
         if (isFound == False):

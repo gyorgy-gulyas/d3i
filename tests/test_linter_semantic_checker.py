@@ -371,6 +371,7 @@ domain SomeDomain {
         enum TheName { }
         valueobject TheName { }
         aggregate TheName { root entity TheEntity{}}
+        view TheName { }
         repository TheName : TheName
         acl TheName {}
         service TheName {}
@@ -383,7 +384,7 @@ domain SomeDomain {
         self.assertFalse(session.HasAnyError())
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
-        self.assertEqual(len(session.diagnostics), 42)
+        self.assertEqual(len(session.diagnostics), 56)
         messages = [diagnostic.toText() for diagnostic in session.diagnostics]
 
         self.assertTrue(any(all(x in s for x in ["TheName", "(4,8):", "(5,8)"]) for s in messages))
@@ -392,6 +393,7 @@ domain SomeDomain {
         self.assertTrue(any(all(x in s for x in ['TheName', '(4,8):', '(8,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(4,8):', '(9,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(4,8):', '(10,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(4,8):', '(11,8)']) for s in messages))
 
         self.assertTrue(any(all(x in s for x in ["TheName", "(5,8):", "(4,8)"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(5,8):', '(6,8)']) for s in messages))
@@ -399,6 +401,7 @@ domain SomeDomain {
         self.assertTrue(any(all(x in s for x in ['TheName', '(5,8):', '(8,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(5,8):', '(9,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(5,8):', '(10,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(5,8):', '(11,8)']) for s in messages))
 
         self.assertTrue(any(all(x in s for x in ["TheName", "(6,8):", "(4,8)"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(6,8):', '(5,8)']) for s in messages))
@@ -406,6 +409,7 @@ domain SomeDomain {
         self.assertTrue(any(all(x in s for x in ['TheName', '(6,8):', '(8,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(6,8):', '(9,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(6,8):', '(10,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(6,8):', '(11,8)']) for s in messages))
 
         self.assertTrue(any(all(x in s for x in ["TheName", "(7,8):", "(4,8)"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(7,8):', '(5,8)']) for s in messages))
@@ -413,6 +417,7 @@ domain SomeDomain {
         self.assertTrue(any(all(x in s for x in ['TheName', '(7,8):', '(8,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(7,8):', '(9,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(7,8):', '(10,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(7,8):', '(11,8)']) for s in messages))
 
         self.assertTrue(any(all(x in s for x in ["TheName", "(8,8):", "(4,8)"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(8,8):', '(5,8)']) for s in messages))
@@ -420,6 +425,7 @@ domain SomeDomain {
         self.assertTrue(any(all(x in s for x in ['TheName', '(8,8):', '(7,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(8,8):', '(9,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(8,8):', '(10,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(8,8):', '(11,8)']) for s in messages))
 
         self.assertTrue(any(all(x in s for x in ["TheName", "(9,8):", "(4,8)"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(9,8):', '(5,8)']) for s in messages))
@@ -427,6 +433,7 @@ domain SomeDomain {
         self.assertTrue(any(all(x in s for x in ['TheName', '(9,8):', '(7,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(9,8):', '(8,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(9,8):', '(10,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(9,8):', '(11,8)']) for s in messages))
 
         self.assertTrue(any(all(x in s for x in ["TheName", "(10,8):", "(4,8)"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(10,8):', '(5,8)']) for s in messages))
@@ -434,6 +441,15 @@ domain SomeDomain {
         self.assertTrue(any(all(x in s for x in ['TheName', '(10,8):', '(7,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(10,8):', '(8,8)']) for s in messages))
         self.assertTrue(any(all(x in s for x in ['TheName', '(10,8):', '(9,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(10,8):', '(11,8)']) for s in messages))
+
+        self.assertTrue(any(all(x in s for x in ["TheName", "(11,8):", "(4,8)"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(11,8):', '(5,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(11,8):', '(6,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(11,8):', '(7,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(11,8):', '(8,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(11,8):', '(9,8)']) for s in messages))
+        self.assertTrue(any(all(x in s for x in ['TheName', '(11,8):', '(10,8)']) for s in messages))
 
     def test_aggregate_no_root_fail(self):
         engine = d3i.Engine()

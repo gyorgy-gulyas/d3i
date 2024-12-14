@@ -78,6 +78,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "value_objects": [],
             "entities": [],
             "aggregates": [],
+            "views": [],
             "repositories": [],
             "acls": [],
             "context_events": [],
@@ -153,7 +154,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         parentData["members"].append(data)
         return data
 
-    def visitEnity(self, entity: entity, parentData: Any) -> Any:
+    def visitEntity(self, entity: entity, parentData: Any) -> Any:
         data = {
             "$type": "d3i.entity",
             "name": entity.name,
@@ -170,7 +171,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
 
         return data
 
-    def visitEnityMember(self, entity_member: entity_member, parentData: Any) -> Any:
+    def visitEntityMember(self, entity_member: entity_member, parentData: Any) -> Any:
         data = {
             "$type": "d3i.entity_member",
             "name": entity_member.name,
@@ -195,6 +196,28 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "isRoot": str(aggregate_entity.isRoot),
         }
         parentData["internal_entities"].append(data)
+        return data
+
+    def visitView(self, view: view, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.view",
+            "name": view.name,
+            "inherits" : [],
+            "members": [],
+            "enums": [],
+            "value_objects": []
+        }
+
+        parentData["views"].append(data)
+        
+        return data
+
+    def visitViewMember(self, view_member: view_member, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.view_member",
+            "name": view_member.name,
+        }
+        parentData["members"].append(data)
         return data
 
     def visitRepository(self, repository: repository, parentData: Any) -> Any:

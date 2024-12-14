@@ -23,6 +23,9 @@ The D3I language and the DDD Interpreter recognize and interpret all major compo
 - **Aggregates and Aggregate Roots**  
   Aggregates are clusters of entities and value objects considered a single unit when handling data changes. The aggregate root serves as the primary access point, enforcing consistency within the aggregate. D3I syntax allows for defining aggregates, and the interpreter maintains integrity by validating these relationships.
 
+- **Views**  
+  Views represent read-only projections of domain data that are optimized for specific use cases, such as querying or displaying aggregated information. Views are particularly useful in CQRS (Command Query Responsibility Segregation) patterns and event-driven architectures. D3I supports the definition of Views to facilitate separation of concerns, allowing efficient queries without impacting the core domain logic. Views can be generated based on entities, aggregates, or events, and the interpreter ensures these projections are defined consistently.
+
 - **Bounded Contexts**  
   A Bounded Context is a boundary within which a particular domain model applies. It allows different parts of a large system to operate with models tailored to their specific needs, avoiding conflicts and dependencies. The interpreter supports Bounded Contexts, enabling modularity and clear boundaries in complex systems.
 
@@ -104,7 +107,7 @@ domain WebShop {
             entity CustomerLogo {
                 @id
                 id:string
-                customerid:string
+                customerId:string
                 data:bytes
             }
         }
@@ -113,17 +116,30 @@ domain WebShop {
             root entity OrderHeader {
                 @id
                 id:string
+                deadline:date
                 @required
                 customerId: string
                 items:List[OrderItem]
-                
             }
 
             valueobject OrderItem {
+                @id
+                itemId:string
                 product:string
                 quantity:number
                 price:number
             }
+        }
+
+        view OrderStatistics {
+            orderId:string
+            orderDeadline:date
+            customerId:string
+            customerName: string
+            customerKind:CustomerKind
+            orderItemId:string
+            orderedProduct:string
+            orderedQuantity:number
         }
 
         interface PublicIF {
