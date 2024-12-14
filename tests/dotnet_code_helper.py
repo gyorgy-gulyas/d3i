@@ -362,41 +362,55 @@ class dotnet_code_helper:
         try:
             for source in sources:
                 # Import Roslyn's CSharpSyntaxTree from the .NET libraries (Python.NET)
-                from Microsoft.CodeAnalysis.CSharp import CSharpSyntaxTree, CSharpCompilation
-                from Microsoft.CodeAnalysis import DiagnosticFormatter
+                from Microsoft.CodeAnalysis.CSharp import CSharpSyntaxTree, CSharpCompilation, CSharpCompilationOptions
+                from Microsoft.CodeAnalysis import DiagnosticFormatter, OutputKind
 
                 # Parse the source code to create a SyntaxTree object for Roslyn compilation
                 syntax_tree = CSharpSyntaxTree.ParseText(source.content, path=source.fullPath)
                 syntax_trees.append(syntax_tree)
 
+            from Microsoft.CodeAnalysis import SyntaxTree
+            from Microsoft.CodeAnalysis import MetadataReference
+            from System.Collections.Generic import List as CSharpList
+            import System
+
+            enumerable_syntax_trees = CSharpList[SyntaxTree]()
+            for i in range(len(syntax_trees)):
+                enumerable_syntax_trees.Add(syntax_trees[i])
+
+            enumerable_references = CSharpList[MetadataReference]()
+            enumerable_references.Add(MetadataReference.CreateFromFile( enumerable_references.GetType().Assembly.Location ))
+            options = CSharpCompilationOptions( OutputKind.DynamicallyLinkedLibrary)
+
             # Create Roslyn compilation settings
             # CSharpCompilation.Create generates the assembly based on the SyntaxTrees (source code).
             compilation = CSharpCompilation.Create( assembly_name,  # The name of the assembly
-                syntax_trees,  # The collection of parsed SyntaxTree objects
-                [],  # Add necessary references here (e.g., System.dll, Microsoft.CSharp.dll, etc.)
-                None  # Optional compilation settings, such as whether to optimize the code
+                enumerable_syntax_trees,  # The collection of parsed SyntaxTree objects
+                enumerable_references,  # Add necessary references here (e.g., System.dll, Microsoft.CSharp.dll, etc.)
+                options  # Optional compilation settings, such as whether to optimize the code
             )
 
             # Import MemoryStream from System.IO to handle the byte streams of the compiled assembly and PDB.
             from System.IO import MemoryStream
+            from System.Reflection import Assembly
 
             # Compilation and generation of the output (DLL and PDB) in memory.
-            with MemoryStream() as emit_stream, MemoryStream() as pdb_stream:
-                # Emit (generate) the compiled assembly and PDB (debugging symbols)
-                result = compilation.Emit(emit_stream, pdb_stream)
+            emit_stream = MemoryStream()
+            # Emit (generate) the compiled assembly and PDB (debugging symbols)
+            result = compilation.Emit(emit_stream)
 
-                # Check if the compilation was successful
-                if not result.Success:
-                    # In case of errors, print the diagnostics (errors encountered during the compilation)
-                    diagnostics = result.Diagnostics
-                    diagnostic_formatter = DiagnosticFormatter()
-                    compile_errors = []
-                    for diagnostic in diagnostics:
-                        compile_errors.append(diagnostic_formatter.Format(diagnostic))
-                    return False, compile_errors  # If the compilation failed, return False, and errors
+            # Check if the compilation was successful
+            if not result.Success:
+                # In case of errors, print the diagnostics (errors encountered during the compilation)
+                diagnostics = result.Diagnostics
+                diagnostic_formatter = DiagnosticFormatter()
+                compile_errors = []
+                for diagnostic in diagnostics:
+                    compile_errors.append(diagnostic_formatter.Format(diagnostic))
+                return False, compile_errors, None  # If the compilation failed, return False, and errors
 
-                # compilation ha no error
-                return True, []
+            # compilation ha no error
+            return True, [], Assembly.Load( emit_stream.ToArray() )
         except Exception as e:
             print(f"Hiba történt: {e}")
             return False, [f"Hiba történt: {e}"]

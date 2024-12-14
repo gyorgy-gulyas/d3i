@@ -49,7 +49,7 @@ namespace WebShop.CustomerContext
         self.assertEqual(result[0].fileName, "CustomerContext.cs")
         equal, index, diff_part_1, diff_part_2 = dotnet_code_helper.compare_and_extract_diff(expected, result[0].content)
         self.assertTrue(equal)
-        compiled, errors = dotnet_code_helper.compile_debug(result, dotnet_code_helper.assembly_name())
+        compiled, errors, assembly = dotnet_code_helper.compile_debug(result, dotnet_code_helper.assembly_name())
         self.assertTrue(compiled)
 
         print(result)
