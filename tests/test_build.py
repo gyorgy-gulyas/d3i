@@ -402,6 +402,97 @@ domain somedomain {
         self.assertEqual(order_item.entity.name, "OrderItem")
         self.assertEqual(order_item.isRoot, False)
 
+    def test_view(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        @decorator_view
+        view CustomerView {
+            @required
+            name:string
+            address:Address
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: d3i.context = root.domains[0].contexts[0]
+        view: d3i.view = context.views[0]
+        self.assertEqual(len(view.decorators), 1)
+        self.assertEqual(view.name, "CustomerView")
+        self.assertEqual(len(view.members), 2)
+        member: d3i.view_member = view.members[0]
+        self.assertEqual(member.name, "name")
+        self.assertEqual(member.type.kind, d3i.type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, d3i.primitive_type.PrimtiveKind.String)
+        self.assertEqual(member.decorators[0].name, "required")
+        member: d3i.view_member = view.members[1]
+        self.assertEqual(member.name, "address")
+        self.assertEqual(member.type.kind, d3i.type.Kind.Reference)
+        self.assertEqual(member.type.reference_name.getText(), "Address")
+
+    def test_view_inner_enum(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        @decorator_view
+        view CustomerView {
+            enum Kind{
+                PrivatePerson,
+                Company
+            }
+            @required
+            name:string
+            address:Address
+            kind:Kind
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: d3i.context = root.domains[0].contexts[0]
+        view: d3i.view = context.views[0]
+        self.assertEqual(len(view.decorators), 1)
+        self.assertEqual(view.name, "CustomerView")
+        self.assertEqual(len(view.members), 3)
+        inner_enum: d3i.enum = view.enums[0]
+        self.assertEqual(inner_enum.name, "Kind")
+        self.assertEqual(len(inner_enum.enum_elements), 2)
+
+    def test_view_inner_valueobject(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        @decorator_view
+        view CustomerView {
+            valueobject Credit {
+                limit:decimal
+                currency:Currency
+            }
+            @required
+            name:string
+            address:Address
+            kind:Kind
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: d3i.context = root.domains[0].contexts[0]
+        view: d3i.view = context.views[0]
+        self.assertEqual(len(view.decorators), 1)
+        self.assertEqual(view.name, "CustomerView")
+        self.assertEqual(len(view.members), 3)
+        inner_value_object: d3i.value_object = view.value_objects[0]
+        self.assertEqual(inner_value_object.name, "Credit")
+        self.assertEqual(len(inner_value_object.members), 2)
+
     def test_repository(self):
         engine = d3i.Engine()
         session = d3i.Session()

@@ -26,6 +26,7 @@ CONTEXT : 'context' ;
 EVENT : 'event' ;
 ENTITY : 'entity' ;
 AGGREGATE : 'aggregate' ;
+VIEW : 'view' ;
 SERVICE : 'service' ;
 INTERFACE : 'interface' ;
 ACL : 'acl' ;

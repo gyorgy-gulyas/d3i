@@ -133,6 +133,7 @@ class context(internal_scoped_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.aggregates: List[aggregate] = []
+        self.views: List[view] = []
         self.repositories: List[repository] = []
         self.acls: List[acl] = []
         self.services: List[service] = []
@@ -147,6 +148,8 @@ class context(internal_scoped_base_element):
             value_object.visit(visitor, data)
         for aggregate in self.aggregates:
             aggregate.visit(visitor, data)
+        for view in self.views:
+            view.visit(visitor, data)
         for repository in self.repositories:
             repository.visit(visitor, data)
         for acl in self.acls:
@@ -157,7 +160,7 @@ class context(internal_scoped_base_element):
             interface.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return super().getChildren() + self.aggregates + self.repositories + self.acls + self.services + self.interfaces
+        return super().getChildren() + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces
 
 
 class enum(decorated_base_element):
@@ -253,7 +256,7 @@ class entity(internal_scoped_base_element):
         self.members: List[entity_member] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitEnity(self, parentData)
+        data = visitor.visitEntity(self, parentData)
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
@@ -270,7 +273,7 @@ class entity_member(decorated_base_element):
         self.type: type = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitEnityMember(self, parentData)
+        data = visitor.visitEntityMember(self, parentData)
         if (self.type != None):
             self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
@@ -307,6 +310,36 @@ class aggregate_entity(base_element):
         self.entity.visit(visitor, data)
         super().visit(visitor, data)
 
+
+class view(internal_scoped_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.inherits: List[qualified_name] = []
+        self.name: str = None
+        self.members: List[view_member] = []
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitView(self, parentData)
+        super().visit(visitor, data)
+        for member in self.members:
+            member.visit(visitor, data)
+        for internal_enum in self.enums:
+            internal_enum.visit(visitor, data)
+        for internal_value_object in self.value_objects:
+            internal_value_object.visit(visitor, data)
+
+
+class view_member(decorated_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = None
+        self.type: type = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitViewMember(self, parentData)
+        if (self.type != None):
+            self.type.visit(visitor, data, "type")
+        super().visit(visitor, data)
 
 class repository(decorated_base_element):
     def __init__(self, fileName, pos):

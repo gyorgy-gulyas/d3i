@@ -122,8 +122,8 @@ class Engine:
                         else:
                             context_already.enums.extend(context.enums)
                             context_already.value_objects.extend(context.value_objects)
-                            context_already.entities.extend(context.entities)
                             context_already.aggregates.extend(context.aggregates)
+                            context_already.views.extend(context.views)
                             context_already.repositories.extend(context.repositories)
                             context_already.context_events.extend(context.context_events)
                             context_already.services.extend(context.services)
