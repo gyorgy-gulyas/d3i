@@ -112,6 +112,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(context_element.aggregate())
                 child.parent = result
                 result.aggregates.append(child)
+            elif (context_element.view() != None):
+                child = self.visit(context_element.view())
+                child.parent = result
+                result.views.append(child)
             elif (context_element.repository() != None):
                 child = self.visit(context_element.repository())
                 child.parent = result
@@ -390,6 +394,73 @@ class ElementBuilder(d3iGrammarVisitor):
 
         return result
 
+    # Visit a parse tree produced by d3iGrammar#view.
+    def visitView(self, ctx:d3iGrammar.ViewContext):
+        result = view(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+
+        if (ctx.inherits() != None):
+            result.inherits = result.value = self.visit(ctx.inherits())
+
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if (decorator == None):
+                break
+            counter = counter + 1
+            child = self.visit(decorator)
+            child.parent = result
+            result.decorators.append(child)
+
+        counter = 0
+        while True:
+            view_element: d3iGrammar.View_elementContext = ctx.view_element(
+                (counter))
+            if (view_element == None):
+                break
+            elif (view_element.view_member() != None):
+                child = self.visit(view_element.view_member())
+                child.parent = result
+                result.members.append(child)
+            elif (view_element.enum()):
+                child = self.visit(view_element.enum())
+                child.parent = result
+                result.enums.append(child)
+            elif (view_element.value_object()):
+                child = self.visit(view_element.value_object())
+                child.parent = result
+                result.value_objects.append(child)
+            counter = counter + 1
+
+        return result
+
+    # Visit a parse tree produced by d3iGrammar#view_element.
+    def visitView_element(self, ctx:d3iGrammar.View_elementContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#view_member.
+    def visitView_member(self, ctx:d3iGrammar.View_memberContext):
+        result = view_member(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+        if (ctx.type_() != None):
+            result.type = self.visit(ctx.type_())
+            result.type.parent = result
+
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if (decorator == None):
+                break
+            counter = counter + 1
+            child = self.visit(decorator)
+            child.parent = result
+            result.decorators.append(child)
+
+        return result
+    
     # Visit a parse tree produced by d3iGrammar#repository.
     def visitRepository(self, ctx: d3iGrammar.RepositoryContext):
         result = repository(self.fileName, ctx.start)

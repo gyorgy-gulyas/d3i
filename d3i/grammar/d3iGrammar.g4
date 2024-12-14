@@ -28,6 +28,7 @@ context
         : enum
         | value_object
         | aggregate
+        | view
         | repository
         | acl
         | service
@@ -89,6 +90,20 @@ aggregate
         aggregate_entity
         :  'root'? entity
         ;
+
+view
+    :  decorator* 'view' IDENTIFIER inherits? '{' view_element* '}'
+    ;
+
+    view_element
+        : view_member
+        | enum
+        | value_object
+        ;
+
+        view_member
+            : decorator* IDENTIFIER ':' type
+            ;
 
 repository
     : decorator* 'repository' IDENTIFIER ':' IDENTIFIER

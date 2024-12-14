@@ -170,6 +170,33 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#view.
+    def enterView(self, ctx:d3iGrammar.ViewContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#view.
+    def exitView(self, ctx:d3iGrammar.ViewContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#view_element.
+    def enterView_element(self, ctx:d3iGrammar.View_elementContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#view_element.
+    def exitView_element(self, ctx:d3iGrammar.View_elementContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#view_member.
+    def enterView_member(self, ctx:d3iGrammar.View_memberContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#view_member.
+    def exitView_member(self, ctx:d3iGrammar.View_memberContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#repository.
     def enterRepository(self, ctx:d3iGrammar.RepositoryContext):
         pass

@@ -34,16 +34,22 @@ class ElementVisitor:
     def visitValueObjectMember(self, value_object_member: value_object_member, parentData: Any) -> Any:
         pass
 
-    def visitEnity(self, entity: entity, parentData: Any) -> Any:
+    def visitEntity(self, entity: entity, parentData: Any) -> Any:
         pass
 
-    def visitEnityMember(self, entity_member: entity_member, parentData: Any) -> Any:
+    def visitEntityMember(self, entity_member: entity_member, parentData: Any) -> Any:
         pass
 
     def visitAggregate(self, aggregate: aggregate, parentData: Any) -> Any:
         pass
 
     def visitAggregateEntity(self, aggregate_entity: aggregate_entity, parentData: Any) -> Any:
+        pass
+
+    def visitView(self, view: view, parentData: Any) -> Any:
+        pass
+
+    def visitViewMember(self, view_member: view_member, parentData: Any) -> Any:
         pass
 
     def visitRepository(self, repository: repository, parentData: Any) -> Any:

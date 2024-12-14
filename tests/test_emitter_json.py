@@ -257,6 +257,7 @@ domain SomeDomain {
                     "value_objects": [],
                     "entities": [],
                     "aggregates": [],
+                    "views": [],
                     "repositories": [],
                     "acls": [],
                     "context_events": [],
@@ -429,6 +430,7 @@ domain SomeDomain {
                     "value_objects": [],
                     "entities": [],
                     "aggregates": [],
+                    "views": [],
                     "repositories": [],
                     "acls": [],
                     "context_events": [],
@@ -768,6 +770,7 @@ domain SomeDomain {
                     ],
                     "entities": [],
                     "aggregates": [],
+                    "views": [],
                     "repositories": [],
                     "acls": [],
                     "context_events": [],
@@ -1175,6 +1178,342 @@ domain SomeDomain {
                             }
                         }
                     ],
+                    "views": [],
+                    "repositories": [],
+                    "acls": [],
+                    "context_events": [],
+                    "services": [],
+                    "interfaces": [],
+                    "location": {
+                        "fileName": "internal string",
+                        "line": 3,
+                        "column": 4
+                    }
+                }
+            ],
+            "domain_events": [],
+            "location": {
+                "fileName": "internal string",
+                "line": 2,
+                "column": 0
+            }
+        }
+    ]
+}"""
+        diff = jsondiff.diff(result, expected, syntax='symmetric')
+        self.assertEqual(0, len(diff))
+
+    def tests_view_ok(self):
+        engine = d3i.Engine()
+        session = d3i.Session()
+        session.AddSource(d3i.Source.CreateFromText("""
+domain SomeDomain {
+    context OrderContext {
+        @decorator  
+        @decorator_with_param( "decorator_value")
+        view OrderView {
+            enum PartnerType {
+                Customer,    
+                PrivatePerson
+            }
+            valueobject PartnerAddress{
+                country:Country
+                address:string
+                zipCode:integer
+            }
+
+            id:string    
+            address:PartnerAddress
+            partnerType:PartnerType
+            product:string
+            quantity:number
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+
+        jsonEmmiter = JsonEmitter()
+        data = root.visit(jsonEmmiter, None)
+        result = json.dumps(data, indent=4)
+        expected = """{
+    "$type": "d3i.d3",
+    "domains": [
+        {
+            "$type": "d3i.domain",
+            "name": "SomeDomain",
+            "decorators": [],
+            "directives": [],
+            "contexts": [
+                {
+                    "$type": "d3i.context",
+                    "name": "OrderContext",
+                    "decorators": [],
+                    "enums": [],
+                    "value_objects": [],
+                    "entities": [],
+                    "aggregates": [],
+                    "views": [
+                        {
+                            "$type": "d3i.view",
+                            "name": "OrderView",
+                            "inherits": [],
+                            "members": [
+                                {
+                                    "$type": "d3i.view_member",
+                                    "name": "id",
+                                    "type": {
+                                        "$type": "d3i.primitive_type",
+                                        "kind": "Kind.Primitive",
+                                        "primtiveKind": "PrimtiveKind.String",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 17,
+                                            "column": 15
+                                        }
+                                    },
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 17,
+                                        "column": 12
+                                    }
+                                },
+                                {
+                                    "$type": "d3i.view_member",
+                                    "name": "address",
+                                    "type": {
+                                        "$type": "d3i.reference_type",
+                                        "kind": "Kind.Reference",
+                                        "isExternal": false,
+                                        "reference_name": "PartnerAddress",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 18,
+                                            "column": 20
+                                        }
+                                    },
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 18,
+                                        "column": 12
+                                    }
+                                },
+                                {
+                                    "$type": "d3i.view_member",
+                                    "name": "partnerType",
+                                    "type": {
+                                        "$type": "d3i.reference_type",
+                                        "kind": "Kind.Reference",
+                                        "isExternal": false,
+                                        "reference_name": "PartnerType",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 19,
+                                            "column": 24
+                                        }
+                                    },
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 19,
+                                        "column": 12
+                                    }
+                                },
+                                {
+                                    "$type": "d3i.view_member",
+                                    "name": "product",
+                                    "type": {
+                                        "$type": "d3i.primitive_type",
+                                        "kind": "Kind.Primitive",
+                                        "primtiveKind": "PrimtiveKind.String",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 20,
+                                            "column": 20
+                                        }
+                                    },
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 20,
+                                        "column": 12
+                                    }
+                                },
+                                {
+                                    "$type": "d3i.view_member",
+                                    "name": "quantity",
+                                    "type": {
+                                        "$type": "d3i.primitive_type",
+                                        "kind": "Kind.Primitive",
+                                        "primtiveKind": "PrimtiveKind.Number",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 21,
+                                            "column": 21
+                                        }
+                                    },
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 21,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "enums": [
+                                {
+                                    "$type": "d3i.enum",
+                                    "name": "PartnerType",
+                                    "enum_elements": [
+                                        {
+                                            "$type": "d3i.enum_element",
+                                            "name": "Customer",
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 8,
+                                                "column": 16
+                                            }
+                                        },
+                                        {
+                                            "$type": "d3i.enum_element",
+                                            "name": "PrivatePerson",
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 9,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 7,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "value_objects": [
+                                {
+                                    "$type": "d3i.value_object",
+                                    "name": "PartnerAddress",
+                                    "inherits": [],
+                                    "members": [
+                                        {
+                                            "$type": "d3i.value_object_member",
+                                            "name": "country",
+                                            "type": {
+                                                "$type": "d3i.reference_type",
+                                                "kind": "Kind.Reference",
+                                                "isExternal": false,
+                                                "reference_name": "Country",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 12,
+                                                    "column": 24
+                                                }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 12,
+                                                "column": 16
+                                            }
+                                        },
+                                        {
+                                            "$type": "d3i.value_object_member",
+                                            "name": "address",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 13,
+                                                    "column": 24
+                                                }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 13,
+                                                "column": 16
+                                            }
+                                        },
+                                        {
+                                            "$type": "d3i.value_object_member",
+                                            "name": "zipCode",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.Integer",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 14,
+                                                    "column": 24
+                                                }
+                                            },
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 14,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "enums": [],
+                                    "value_objects": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 11,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "decorators": [
+                                {
+                                    "$type": "d3i.decorator",
+                                    "name": "decorator",
+                                    "params": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 4,
+                                        "column": 8
+                                    }
+                                },
+                                {
+                                    "$type": "d3i.decorator",
+                                    "name": "decorator_with_param",
+                                    "params": [
+                                        {
+                                            "$type": "d3i.decorator_param",
+                                            "kind": "Kind.String",
+                                            "value": "decorator_value",
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 5,
+                                                "column": 31
+                                            }
+                                        }
+                                    ],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 5,
+                                        "column": 8
+                                    }
+                                }
+                            ],
+                            "location": {
+                                "fileName": "internal string",
+                                "line": 4,
+                                "column": 8
+                            }
+                        }
+                    ],
                     "repositories": [],
                     "acls": [],
                     "context_events": [],
@@ -1232,6 +1571,7 @@ domain SomeDomain {
                     "value_objects": [],
                     "entities": [],
                     "aggregates": [],
+                    "views": [],
                     "repositories": [
                         {
                             "$type": "d3i.repository",
@@ -1335,6 +1675,7 @@ domain SomeDomain {
                     "value_objects": [],
                     "entities": [],
                     "aggregates": [],
+                    "views": [],
                     "repositories": [],
                     "acls": [
                         {
@@ -1615,6 +1956,7 @@ domain SomeDomain {
                     "value_objects": [],
                     "entities": [],
                     "aggregates": [],
+                    "views": [],
                     "repositories": [],
                     "acls": [],
                     "context_events": [],
@@ -2017,6 +2359,7 @@ domain SomeDomain {
                     "value_objects": [],
                     "entities": [],
                     "aggregates": [],
+                    "views": [],
                     "repositories": [],
                     "acls": [],
                     "context_events": [],
