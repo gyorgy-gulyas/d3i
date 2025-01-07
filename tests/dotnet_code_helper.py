@@ -7,7 +7,7 @@ from d3i.emitters.dotnet_emmiter.DotnetEmmiter import *
 class dotnet_code_helper:
 
     @staticmethod
-    def init_roslyn(csharp_code: str):
+    def init_roslyn():
         from pathlib import Path
         from pythonnet import get_runtime_info, set_runtime
         set_runtime("coreclr")

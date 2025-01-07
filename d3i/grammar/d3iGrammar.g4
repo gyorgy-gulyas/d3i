@@ -200,6 +200,7 @@ decorator
         | NUMBER_CONSTANS 
         | STRING_LITERAL
         ;
+
 enum
     : decorator* 'enum' IDENTIFIER '{' enum_element? (',' enum_element)* '}'
     ;

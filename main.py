@@ -15,7 +15,7 @@ def __add_known_arguments():
                             default=[])
     arg_parser.add_argument("-l",
                             "--linter",
-                            help="used linter phyton file(s), if you specify multiple files, all liter will be called from the files",
+                            help="used linter phyton file(s), if you specify multiple files, all liter will be called",
                             nargs='+',
                             default=[])
     arg_parser.add_argument("-e",
@@ -42,7 +42,7 @@ def __add_known_arguments():
                             action="store_true")
     arg_parser.add_argument("-c",
                             "--config-file",
-                            help="define the configuration in json format. If the option is present, then the default ./configuration.json will be used",
+                            help="define the configuration in json format. If the option is ont present, then the default ./configuration.json will be used",
                             action="store_true")
 
 

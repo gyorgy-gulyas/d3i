@@ -100,10 +100,12 @@ class DotnetEmmiter:
 
 
 class utils:
+    @staticmethod
     def create_folder(output_dir: str, folder_name: str):
         folder_path = os.path.join(output_dir, folder_name)
         os.makedirs(folder_path, exist_ok=True)
 
+    @staticmethod
     def create_cs_file(output_dir: str, file_name: str, content: str):
         file_path = os.path.join(output_dir, file_name + ".cs")
         with open(file_path, "w") as file:

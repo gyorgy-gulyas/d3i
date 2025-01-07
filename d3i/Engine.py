@@ -5,6 +5,7 @@ from d3i.grammar.d3iGrammar import *
 from d3i.elements.ElementBuilder import *
 import d3i
 
+
 class Source:
     def __init__(self):
         self.fileName: str = None
@@ -44,13 +45,13 @@ class Session:
 
     def HasAnyError(self):
         for msg in self.diagnostics:
-            if(msg.severity == Diagnostic.Severity.Error):
+            if (msg.severity == Diagnostic.Severity.Error):
                 return True
         return False
 
     def HasAnyWarning(self):
         for msg in self.diagnostics:
-            if(msg.severity == Diagnostic.Severity.Warning):
+            if (msg.severity == Diagnostic.Severity.Warning):
                 return True
         return False
 
@@ -61,7 +62,7 @@ class Session:
     def ClearDiagnostics(self):
         self.diagnostics.clear()
 
-    def ReportDiagnostic(self, message, severity, fileName="", line=0, column=0 ):
+    def ReportDiagnostic(self, message, severity, fileName="", line=0, column=0):
         diagnostic: Diagnostic = Diagnostic()
         diagnostic.severity = severity
         diagnostic.fileName = fileName
@@ -115,8 +116,7 @@ class Engine:
                     domain_already.domain_events.extend(domain.domain_events)
                     for context in domain.contexts:
                         # find context in merged
-                        context_already: d3i.context = self.__find_context_by_name(
-                            domain_already.contexts, context.name)
+                        context_already: d3i.context = self.__find_context_by_name(domain_already.contexts, context.name)
                         if (context_already == None):
                             domain.contexts.append(context)
                         else:
@@ -152,7 +152,8 @@ class Engine:
             self.session = session
 
         def syntaxError(self, recognizer, offendingSymbol, line, column, message, e):
-            self.session.ReportDiagnostic(message,Diagnostic.Severity.Error,self.fileName,line,column)
+            self.session.ReportDiagnostic(message, Diagnostic.Severity.Error, self.fileName, line, column)
+
 
 class Diagnostic:
     def __init__(self):
@@ -164,9 +165,8 @@ class Diagnostic:
 
     def toText(self):
         return f"{self.fileName}({self.line},{self.column}): {self.severity} :{self.message}\n"
-    
+
     class Severity(Enum):
         Message = 1,
         Warning = 2,
         Error = 3,
-        
