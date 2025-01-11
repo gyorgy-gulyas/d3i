@@ -7,6 +7,9 @@ class ElementVisitor:
     def visitd3(self, d3: d3, parentData: Any) -> Any:
         pass
 
+    def visitImport(self, _import: import_, parentData: Any) -> Any:
+        pass
+
     def visitDomain(self, domain: domain, parentData: Any) -> Any:
         pass
 
@@ -88,8 +91,6 @@ class ElementVisitor:
     def visitMapType(self, map_type: map_type, parentData: Any, memberName: str) -> Any:
         pass
 
-    def visitHintedElement(self, hinted_element: hinted_base_element, parentData: Any) -> Any:
-        pass
 
     def visitDecorator(self, decorator: decorator, parentData: Any) -> Any:
         pass
@@ -98,6 +99,12 @@ class ElementVisitor:
         pass
 
     def visitDocumentLine(self, document_line: str, parentData: Any) -> Any:
+        pass
+
+    def visitInternalScopedBaseElement(self, internal_scoped_base_element: internal_scoped_base_element, parentData: Any) -> Any:
+        pass
+
+    def visitHintedBaseElement(self, hinted_base_element: hinted_base_element, parentData: Any) -> Any:
         pass
 
     def visitBaseElement(self, base_element: base_element, parentData: Any) -> Any:

@@ -1,14 +1,14 @@
 from typing import Any, Dict
-import d3i.elements.ElementVisitor
 from d3i.Engine import *
 from d3i.elements.Elements import *
+from d3i.elements.ElementVisitor import *
 
 
 def DoLint(session: Session, output_dir: str, args: Dict[str, str]):
     linter = SemanticChecker(session)
     data = session.main.visit(linter, None)
 
-class SemanticChecker(d3i.elements.ElementVisitor):
+class SemanticChecker(ElementVisitor):
     def __init__(self, session: Session):
         self.session: Session = session
 
@@ -24,21 +24,21 @@ class SemanticChecker(d3i.elements.ElementVisitor):
     def visitContext(self, context: context, parentData: Any) -> Any:
         pass
 
-    def visitEvent(self, event: event, parentData: Any) -> Any:
-        scope = self.__get_current_scope(event.parent)
+    def visitEvent(self, the_event: event, parentData: Any) -> Any:
+        scope = self.__get_current_scope(the_event.parent)
 
-        for inherit in event.inherits:
-            base_class, message = self.__get_referenced_element(event.parent, inherit)
+        for inherit in the_event.inherits:
+            base_class, message = self.__get_referenced_element(the_event.parent, inherit)
             if (base_class == None):
                 self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
-            elif (isinstance(base_class, d3i.event) == False):
+            elif (isinstance(base_class, event) == False):
                 self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an event.")
 
         for neighbour in scope.getChildren():
-            if (neighbour is event):
+            if (neighbour is the_event):
                 continue
-            if (neighbour.name == event.name):
-                self.__error(event, f"An event '{event.name}' conflicts with same name with element in {neighbour.locationText()}.")
+            if (neighbour.name == the_event.name):
+                self.__error(the_event, f"An event '{the_event.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEventMember(self, eventMember: event_member, parentData: Any) -> Any:
         parent_event: event = eventMember.parent
@@ -66,21 +66,21 @@ class SemanticChecker(d3i.elements.ElementVisitor):
                 self.__error(enum_element, f"An enum element '{enum_element.value}' with this value already exists in {neighbour.locationText()}.")
         pass
 
-    def visitValueObject(self, value_object: value_object, parentData: Any) -> Any:
-        scope = self.__get_current_scope(value_object.parent)
+    def visitValueObject(self, the_value_object: value_object, parentData: Any) -> Any:
+        scope = self.__get_current_scope(the_value_object.parent)
 
-        for inherit in value_object.inherits:
-            base_class, message = self.__get_referenced_element(value_object.parent, inherit)
+        for inherit in the_value_object.inherits:
+            base_class, message = self.__get_referenced_element(the_value_object.parent, inherit)
             if (base_class == None):
                 self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
-            elif (isinstance(base_class, d3i.value_object) == False):
+            elif (isinstance(base_class, value_object) == False):
                 self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not a value object.")
 
         for neighbour in scope.getChildren():
-            if (neighbour is value_object):
+            if (neighbour is the_value_object):
                 continue
-            if (neighbour.name == value_object.name):
-                self.__error(value_object, f"A value object '{value_object.name}' conflicts with same name with element in {neighbour.locationText()}.")
+            if (neighbour.name == the_value_object.name):
+                self.__error(the_value_object, f"A value object '{the_value_object.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitValueObjectMember(self, member: value_object_member, parentData: Any) -> Any:
         parent_value_object: value_object = member.parent
@@ -90,24 +90,24 @@ class SemanticChecker(d3i.elements.ElementVisitor):
             if (neighbour.name == member.name):
                 self.__error(member, f"An member '{member.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
-    def visitEntity(self, entity: entity, parentData: Any) -> Any:
-        parent_aggregate: aggregate = entity.parent.parent
+    def visitEntity(self, the_entity: entity, parentData: Any) -> Any:
+        parent_aggregate: aggregate = the_entity.parent.parent
         parent_context: context = parent_aggregate.parent
 
-        for inherit in entity.inherits:
-            base_class, message = self.__get_referenced_element(entity.parent, inherit)
+        for inherit in the_entity.inherits:
+            base_class, message = self.__get_referenced_element(the_entity.parent, inherit)
             if (base_class == None):
                 self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
-            elif (isinstance(base_class, d3i.entity) == False):
+            elif (isinstance(base_class, entity) == False):
                 self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an entity.")
 
         for aggr in parent_context.aggregates:
             for aggr_entity in aggr.internal_entities:
                 neighbour = aggr_entity.entity
-                if (neighbour is entity):
+                if (neighbour is the_entity):
                     continue
-                if (neighbour.name == entity.name):
-                    self.__error(entity, f"An entity '{entity.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                if (neighbour.name == the_entity.name):
+                    self.__error(the_entity, f"An entity '{the_entity.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEntityMember(self, entity_member: entity_member, parentData: Any) -> Any:
         parent_entity: entity = entity_member.parent
@@ -138,21 +138,21 @@ class SemanticChecker(d3i.elements.ElementVisitor):
     def visitAggregateEntity(self, aggregate_entity: aggregate_entity, parentData: Any) -> Any:
         pass
 
-    def visitView(self, view: view, parentData: Any) -> Any:
-        scope = self.__get_current_scope__(view.parent)
+    def visitView(self, the_view: view, parentData: Any) -> Any:
+        scope = self.__get_current_scope(the_view.parent)
 
-        for inherit in view.inherits:
-            base_class, message = self.__get_referenced_element__(view.parent, inherit)
+        for inherit in the_view.inherits:
+            base_class, message = self.__get_referenced_element__(the_view.parent, inherit)
             if (base_class == None):
-                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
-            elif (isinstance(base_class, d3i.view) == False):
-                self.__error__(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an view.")
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
+            elif (isinstance(base_class, view) == False):
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an view.")
 
         for neighbour in scope.getChildren():
-            if (neighbour is view):
+            if (neighbour is the_view):
                 continue
-            if (neighbour.name == view.name):
-                self.__error__(view, f"A view '{view.name}' conflicts with same name with element in {neighbour.locationText()}.")
+            if (neighbour.name == the_view.name):
+                self.__error(the_view, f"A view '{the_view.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitViewMember(self, view_member: view_member, parentData: Any) -> Any:
         parent_view: view = view_member.parent

@@ -29,7 +29,7 @@ class hinted_base_element(base_element):
         self.decorators: List[decorator] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
-        data = visitor.visitHintedElement(self, parentData)
+        data = visitor.visitHintedBaseElement(self, parentData)
         super().visit(visitor, parentData)
         for document_line in self.document_lines:
             visitor.visitDocumentLine(document_line, parentData)
@@ -46,6 +46,10 @@ class internal_scoped_base_element(hinted_base_element,IScope):
 
     def getChildren(self) -> List[base_element]:
         return self.enums + self.value_objects
+
+    def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
+        data = visitor.visitInternalScopedBaseElement(self, parentData)
+        return data
 
 class qualified_name(base_element):
     def __init__(self, fileName, pos):
@@ -94,6 +98,8 @@ class d3(IScope):
 
     def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
         data = visitor.visitd3(self, parentData)
+        for _import in self.imports:
+            _import.visit(visitor, data)
         for domain in self.domains:
             domain.visit(visitor, data)
         return data
@@ -106,6 +112,11 @@ class import_(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = ""
         self.d3: d3 = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitImport(self, parentData)
+        super().visit(visitor, data)
+
 
 class domain(hinted_base_element,IScope):
     def __init__(self, fileName, pos):

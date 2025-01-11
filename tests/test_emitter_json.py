@@ -1,27 +1,29 @@
 import unittest
-import d3i
-from d3i.emitters import *
 import jsondiff
+from d3i.Engine import *
+from d3i.emitters.JsonEmitter import *
 
 
 class TestEmitterJson(unittest.TestCase):
 
     def test_empty_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText(""))
+        engine = Engine()
+        session = Session(Source.CreateFromText(""))
         engine.Build(session)
 
         jsonEmmiter = JsonEmitter()
         result = jsonEmmiter.Emit(session)
-        expected = '{\n    "$type": "d3i.d3",\n    "domains": []\n}'
+        expected = """{
+    "$type": "d3i.d3",
+    "imports": [],
+    "domains": []
+}"""
         diff = jsondiff.diff(result, expected, syntax='symmetric')
         self.assertEqual(0, len(diff))
 
     def tests_decorators_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 @without_params
 @with_params( "string", 1, 3.14, identifier.sub.sub )
 domain somedomain{
@@ -33,10 +35,15 @@ domain somedomain{
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
+    "imports": [],
     "domains": [
         {
             "$type": "d3i.domain",
             "name": "somedomain",
+            "directives": [],
+            "contexts": [],
+            "domain_events": [],
+            "document_lines": [],
             "decorators": [
                 {
                     "$type": "d3i.decorator",
@@ -100,9 +107,6 @@ domain somedomain{
                     }
                 }
             ],
-            "directives": [],
-            "contexts": [],
-            "domain_events": [],
             "location": {
                 "fileName": "internal string",
                 "line": 2,
@@ -115,9 +119,8 @@ domain somedomain{
         self.assertEqual(0, len(diff))
 
     def tests_domain_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
 }
 """))
@@ -126,10 +129,10 @@ domain SomeDomain {
         jsonEmmiter = JsonEmitter()
         result = jsonEmmiter.Emit(session)
         expected = """{
-    "$type": "d3i.d3",
+    "$type": "d3",
     "domains": [
         {
-            "$type": "d3i.domain",
+            "$type": "domain",
             "name": "SomeDomain",
             "decorators": [],
             "directives": [],
@@ -147,9 +150,8 @@ domain SomeDomain {
         self.assertEqual(0, len(diff))
 
     def tests_directives_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 using PartnerContext
 namespace somedomain.subdomain.subsubdomain
                                                     
@@ -161,15 +163,15 @@ domain SomeDomain {
         jsonEmmiter = JsonEmitter()
         result = jsonEmmiter.Emit(session)
         expected = """{
-    "$type": "d3i.d3",
+    "$type": "d3",
     "domains": [
         {
-            "$type": "d3i.domain",
+            "$type": "domain",
             "name": "SomeDomain",
             "decorators": [],
             "directives": [
                 {
-                    "$type": "d3i.directive",
+                    "$type": "directive",
                     "decorators": [],
                     "keyword": "using",
                     "value": [
@@ -182,7 +184,7 @@ domain SomeDomain {
                     }
                 },
                 {
-                    "$type": "d3i.directive",
+                    "$type": "directive",
                     "decorators": [],
                     "keyword": "namespace",
                     "value": [
@@ -211,9 +213,8 @@ domain SomeDomain {
         self.assertEqual(0, len(diff))
 
     def tests_context_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     @context_decorator
     context OrderContext {
@@ -225,20 +226,20 @@ domain SomeDomain {
         jsonEmmiter = JsonEmitter()
         result = jsonEmmiter.Emit(session)
         expected = """{
-    "$type": "d3i.d3",
+    "$type": "d3",
     "domains": [
         {
-            "$type": "d3i.domain",
+            "$type": "domain",
             "name": "SomeDomain",
             "decorators": [],
             "directives": [],
             "contexts": [
                 {
-                    "$type": "d3i.context",
+                    "$type": "context",
                     "name": "OrderContext",
                     "decorators": [
                         {
-                            "$type": "d3i.decorator",
+                            "$type": "decorator",
                             "name": "context_decorator",
                             "params": [],
                             "location": {
@@ -278,9 +279,8 @@ domain SomeDomain {
         self.assertEqual(0, len(diff))
 
     def tests_enum_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext {
         @enum_decorator  
@@ -299,33 +299,33 @@ domain SomeDomain {
         jsonEmmiter = JsonEmitter()
         result = jsonEmmiter.Emit(session)
         expected = """{
-    "$type": "d3i.d3",
+    "$type": "d3",
     "domains": [
         {
-            "$type": "d3i.domain",
+            "$type": "domain",
             "name": "SomeDomain",
             "decorators": [],
             "directives": [],
             "contexts": [
                 {
-                    "$type": "d3i.context",
+                    "$type": "context",
                     "name": "OrderContext",
                     "decorators": [],
                     "enums": [
                         {
-                            "$type": "d3i.enum",
+                            "$type": "enum",
                             "name": "CustomerType",
                             "enum_elements": [
                                 {
-                                    "$type": "d3i.enum_element",
+                                    "$type": "enum_element",
                                     "name": "PrivatePerson",
                                     "decorators": [
                                         {
-                                            "$type": "d3i.decorator",
+                                            "$type": "decorator",
                                             "name": "value",
                                             "params": [
                                                 {
-                                                    "$type": "d3i.decorator_param",
+                                                    "$type": "decorator_param",
                                                     "kind": "Kind.Integer",
                                                     "value": "1",
                                                     "location": {
@@ -349,15 +349,15 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.enum_element",
+                                    "$type": "enum_element",
                                     "name": "Company",
                                     "decorators": [
                                         {
-                                            "$type": "d3i.decorator",
+                                            "$type": "decorator",
                                             "name": "value",
                                             "params": [
                                                 {
-                                                    "$type": "d3i.decorator_param",
+                                                    "$type": "decorator_param",
                                                     "kind": "Kind.Integer",
                                                     "value": "2",
                                                     "location": {
@@ -383,7 +383,7 @@ domain SomeDomain {
                             ],
                             "decorators": [
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "enum_decorator",
                                     "params": [],
                                     "location": {
@@ -393,11 +393,11 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "enum_decorator_with_param",
                                     "params": [
                                         {
-                                            "$type": "d3i.decorator_param",
+                                            "$type": "decorator_param",
                                             "kind": "Kind.String",
                                             "value": "decorator_value",
                                             "location": {
@@ -450,9 +450,8 @@ domain SomeDomain {
         self.assertEqual(0, len(diff))
 
     def tests_value_object_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext {
         @decorator  
@@ -483,30 +482,30 @@ domain SomeDomain {
         result = jsonEmmiter.Emit(session)
 
         expected = """{
-    "$type": "d3i.d3",
+    "$type": "d3",
     "domains": [
         {
-            "$type": "d3i.domain",
+            "$type": "domain",
             "name": "SomeDomain",
             "decorators": [],
             "directives": [],
             "contexts": [
                 {
-                    "$type": "d3i.context",
+                    "$type": "context",
                     "name": "OrderContext",
                     "decorators": [],
                     "enums": [],
                     "value_objects": [
                         {
-                            "$type": "d3i.value_object",
+                            "$type": "value_object",
                             "name": "PartnerAddress",
                             "inherits": [],
                             "members": [
                                 {
-                                    "$type": "d3i.value_object_member",
+                                    "$type": "value_object_member",
                                     "name": "country",
                                     "type": {
-                                        "$type": "d3i.reference_type",
+                                        "$type": "reference_type",
                                         "kind": "Kind.Reference",
                                         "isExternal": false,
                                         "reference_name": "Country",
@@ -518,11 +517,11 @@ domain SomeDomain {
                                     },
                                     "decorators": [
                                         {
-                                            "$type": "d3i.decorator",
+                                            "$type": "decorator",
                                             "name": "sample_decorator",
                                             "params": [
                                                 {
-                                                    "$type": "d3i.decorator_param",
+                                                    "$type": "decorator_param",
                                                     "kind": "Kind.String",
                                                     "value": "listOfContries",
                                                     "location": {
@@ -546,10 +545,10 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.value_object_member",
+                                    "$type": "value_object_member",
                                     "name": "address",
                                     "type": {
-                                        "$type": "d3i.primitive_type",
+                                        "$type": "primitive_type",
                                         "kind": "Kind.Primitive",
                                         "primtiveKind": "PrimtiveKind.String",
                                         "location": {
@@ -560,11 +559,11 @@ domain SomeDomain {
                                     },
                                     "decorators": [
                                         {
-                                            "$type": "d3i.decorator",
+                                            "$type": "decorator",
                                             "name": "max_length",
                                             "params": [
                                                 {
-                                                    "$type": "d3i.decorator_param",
+                                                    "$type": "decorator_param",
                                                     "kind": "Kind.Integer",
                                                     "value": "100",
                                                     "location": {
@@ -588,10 +587,10 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.value_object_member",
+                                    "$type": "value_object_member",
                                     "name": "zipCode",
                                     "type": {
-                                        "$type": "d3i.primitive_type",
+                                        "$type": "primitive_type",
                                         "kind": "Kind.Primitive",
                                         "primtiveKind": "PrimtiveKind.Integer",
                                         "location": {
@@ -608,10 +607,10 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.value_object_member",
+                                    "$type": "value_object_member",
                                     "name": "private_member",
                                     "type": {
-                                        "$type": "d3i.reference_type",
+                                        "$type": "reference_type",
                                         "kind": "Kind.Reference",
                                         "isExternal": true,
                                         "reference_name": "java.util.map.HashMap<>",
@@ -631,11 +630,11 @@ domain SomeDomain {
                             ],
                             "enums": [
                                 {
-                                    "$type": "d3i.enum",
+                                    "$type": "enum",
                                     "name": "PartnerType",
                                     "enum_elements": [
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "Customer",
                                             "decorators": [],
                                             "location": {
@@ -645,7 +644,7 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "PrivatePerson",
                                             "decorators": [],
                                             "location": {
@@ -665,15 +664,15 @@ domain SomeDomain {
                             ],
                             "value_objects": [
                                 {
-                                    "$type": "d3i.value_object",
+                                    "$type": "value_object",
                                     "name": "internal_valueobject",
                                     "inherits": [],
                                     "members": [
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "data_1",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
@@ -690,10 +689,10 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "data_2",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.Date",
                                                 "location": {
@@ -722,7 +721,7 @@ domain SomeDomain {
                             ],
                             "decorators": [
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "decorator",
                                     "params": [],
                                     "location": {
@@ -732,11 +731,11 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "decorator_with_param",
                                     "params": [
                                         {
-                                            "$type": "d3i.decorator_param",
+                                            "$type": "decorator_param",
                                             "kind": "Kind.String",
                                             "value": "decorator_value",
                                             "location": {
@@ -788,9 +787,8 @@ domain SomeDomain {
         self.assertEqual(0, len(diff))
 
     def tests_aggregate_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext {
         @decorator  
@@ -826,16 +824,16 @@ domain SomeDomain {
         jsonEmmiter = JsonEmitter()
         result = jsonEmmiter.Emit(session)
         expected = """{
-    "$type": "d3i.d3",
+    "$type": "d3",
     "domains": [
         {
-            "$type": "d3i.domain",
+            "$type": "domain",
             "name": "SomeDomain",
             "decorators": [],
             "directives": [],
             "contexts": [
                 {
-                    "$type": "d3i.context",
+                    "$type": "context",
                     "name": "OrderContext",
                     "decorators": [],
                     "enums": [],
@@ -843,22 +841,22 @@ domain SomeDomain {
                     "entities": [],
                     "aggregates": [
                         {
-                            "$type": "d3i.aggregate",
+                            "$type": "aggregate",
                             "name": "OrderAggregate",
                             "internal_entities": [
                                 {
-                                    "$type": "d3i.aggregate_entity",
+                                    "$type": "aggregate_entity",
                                     "isRoot": "True",
                                     "entity": {
-                                        "$type": "d3i.entity",
+                                        "$type": "entity",
                                         "name": "OrderHeader",
                                         "inherits": [],
                                         "members": [
                                             {
-                                                "$type": "d3i.entity_member",
+                                                "$type": "entity_member",
                                                 "name": "id",
                                                 "type": {
-                                                    "$type": "d3i.primitive_type",
+                                                    "$type": "primitive_type",
                                                     "kind": "Kind.Primitive",
                                                     "primtiveKind": "PrimtiveKind.String",
                                                     "location": {
@@ -875,10 +873,10 @@ domain SomeDomain {
                                                 }
                                             },
                                             {
-                                                "$type": "d3i.entity_member",
+                                                "$type": "entity_member",
                                                 "name": "address",
                                                 "type": {
-                                                    "$type": "d3i.reference_type",
+                                                    "$type": "reference_type",
                                                     "kind": "Kind.Reference",
                                                     "isExternal": false,
                                                     "reference_name": "PartnerAddress",
@@ -896,10 +894,10 @@ domain SomeDomain {
                                                 }
                                             },
                                             {
-                                                "$type": "d3i.entity_member",
+                                                "$type": "entity_member",
                                                 "name": "partnerType",
                                                 "type": {
-                                                    "$type": "d3i.reference_type",
+                                                    "$type": "reference_type",
                                                     "kind": "Kind.Reference",
                                                     "isExternal": false,
                                                     "reference_name": "PartnerType",
@@ -933,18 +931,18 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.aggregate_entity",
+                                    "$type": "aggregate_entity",
                                     "isRoot": "False",
                                     "entity": {
-                                        "$type": "d3i.entity",
+                                        "$type": "entity",
                                         "name": "OrderItem",
                                         "inherits": [],
                                         "members": [
                                             {
-                                                "$type": "d3i.entity_member",
+                                                "$type": "entity_member",
                                                 "name": "order_id",
                                                 "type": {
-                                                    "$type": "d3i.primitive_type",
+                                                    "$type": "primitive_type",
                                                     "kind": "Kind.Primitive",
                                                     "primtiveKind": "PrimtiveKind.String",
                                                     "location": {
@@ -961,10 +959,10 @@ domain SomeDomain {
                                                 }
                                             },
                                             {
-                                                "$type": "d3i.entity_member",
+                                                "$type": "entity_member",
                                                 "name": "item",
                                                 "type": {
-                                                    "$type": "d3i.primitive_type",
+                                                    "$type": "primitive_type",
                                                     "kind": "Kind.Primitive",
                                                     "primtiveKind": "PrimtiveKind.String",
                                                     "location": {
@@ -981,10 +979,10 @@ domain SomeDomain {
                                                 }
                                             },
                                             {
-                                                "$type": "d3i.entity_member",
+                                                "$type": "entity_member",
                                                 "name": "quantity",
                                                 "type": {
-                                                    "$type": "d3i.primitive_type",
+                                                    "$type": "primitive_type",
                                                     "kind": "Kind.Primitive",
                                                     "primtiveKind": "PrimtiveKind.Number",
                                                     "location": {
@@ -1019,11 +1017,11 @@ domain SomeDomain {
                             ],
                             "enums": [
                                 {
-                                    "$type": "d3i.enum",
+                                    "$type": "enum",
                                     "name": "PartnerType",
                                     "enum_elements": [
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "Customer",
                                             "decorators": [],
                                             "location": {
@@ -1033,7 +1031,7 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "PrivatePerson",
                                             "decorators": [],
                                             "location": {
@@ -1053,15 +1051,15 @@ domain SomeDomain {
                             ],
                             "value_objects": [
                                 {
-                                    "$type": "d3i.value_object",
+                                    "$type": "value_object",
                                     "name": "PartnerAddress",
                                     "inherits": [],
                                     "members": [
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "country",
                                             "type": {
-                                                "$type": "d3i.reference_type",
+                                                "$type": "reference_type",
                                                 "kind": "Kind.Reference",
                                                 "isExternal": false,
                                                 "reference_name": "Country",
@@ -1079,10 +1077,10 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "address",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
@@ -1099,10 +1097,10 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "zipCode",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.Integer",
                                                 "location": {
@@ -1131,7 +1129,7 @@ domain SomeDomain {
                             ],
                             "decorators": [
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "decorator",
                                     "params": [],
                                     "location": {
@@ -1141,11 +1139,11 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "decorator_with_param",
                                     "params": [
                                         {
-                                            "$type": "d3i.decorator_param",
+                                            "$type": "decorator_param",
                                             "kind": "Kind.String",
                                             "value": "decorator_value",
                                             "location": {
@@ -1195,9 +1193,8 @@ domain SomeDomain {
         self.assertEqual(0, len(diff))
 
     def tests_view_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext {
         @decorator  
@@ -1228,16 +1225,16 @@ domain SomeDomain {
         data = root.visit(jsonEmmiter, None)
         result = json.dumps(data, indent=4)
         expected = """{
-    "$type": "d3i.d3",
+    "$type": "d3",
     "domains": [
         {
-            "$type": "d3i.domain",
+            "$type": "domain",
             "name": "SomeDomain",
             "decorators": [],
             "directives": [],
             "contexts": [
                 {
-                    "$type": "d3i.context",
+                    "$type": "context",
                     "name": "OrderContext",
                     "decorators": [],
                     "enums": [],
@@ -1246,15 +1243,15 @@ domain SomeDomain {
                     "aggregates": [],
                     "views": [
                         {
-                            "$type": "d3i.view",
+                            "$type": "view",
                             "name": "OrderView",
                             "inherits": [],
                             "members": [
                                 {
-                                    "$type": "d3i.view_member",
+                                    "$type": "view_member",
                                     "name": "id",
                                     "type": {
-                                        "$type": "d3i.primitive_type",
+                                        "$type": "primitive_type",
                                         "kind": "Kind.Primitive",
                                         "primtiveKind": "PrimtiveKind.String",
                                         "location": {
@@ -1271,10 +1268,10 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.view_member",
+                                    "$type": "view_member",
                                     "name": "address",
                                     "type": {
-                                        "$type": "d3i.reference_type",
+                                        "$type": "reference_type",
                                         "kind": "Kind.Reference",
                                         "isExternal": false,
                                         "reference_name": "PartnerAddress",
@@ -1292,10 +1289,10 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.view_member",
+                                    "$type": "view_member",
                                     "name": "partnerType",
                                     "type": {
-                                        "$type": "d3i.reference_type",
+                                        "$type": "reference_type",
                                         "kind": "Kind.Reference",
                                         "isExternal": false,
                                         "reference_name": "PartnerType",
@@ -1313,10 +1310,10 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.view_member",
+                                    "$type": "view_member",
                                     "name": "product",
                                     "type": {
-                                        "$type": "d3i.primitive_type",
+                                        "$type": "primitive_type",
                                         "kind": "Kind.Primitive",
                                         "primtiveKind": "PrimtiveKind.String",
                                         "location": {
@@ -1333,10 +1330,10 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.view_member",
+                                    "$type": "view_member",
                                     "name": "quantity",
                                     "type": {
-                                        "$type": "d3i.primitive_type",
+                                        "$type": "primitive_type",
                                         "kind": "Kind.Primitive",
                                         "primtiveKind": "PrimtiveKind.Number",
                                         "location": {
@@ -1355,11 +1352,11 @@ domain SomeDomain {
                             ],
                             "enums": [
                                 {
-                                    "$type": "d3i.enum",
+                                    "$type": "enum",
                                     "name": "PartnerType",
                                     "enum_elements": [
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "Customer",
                                             "decorators": [],
                                             "location": {
@@ -1369,7 +1366,7 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "PrivatePerson",
                                             "decorators": [],
                                             "location": {
@@ -1389,15 +1386,15 @@ domain SomeDomain {
                             ],
                             "value_objects": [
                                 {
-                                    "$type": "d3i.value_object",
+                                    "$type": "value_object",
                                     "name": "PartnerAddress",
                                     "inherits": [],
                                     "members": [
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "country",
                                             "type": {
-                                                "$type": "d3i.reference_type",
+                                                "$type": "reference_type",
                                                 "kind": "Kind.Reference",
                                                 "isExternal": false,
                                                 "reference_name": "Country",
@@ -1415,10 +1412,10 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "address",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
@@ -1435,10 +1432,10 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "zipCode",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.Integer",
                                                 "location": {
@@ -1467,7 +1464,7 @@ domain SomeDomain {
                             ],
                             "decorators": [
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "decorator",
                                     "params": [],
                                     "location": {
@@ -1477,11 +1474,11 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "decorator_with_param",
                                     "params": [
                                         {
-                                            "$type": "d3i.decorator_param",
+                                            "$type": "decorator_param",
                                             "kind": "Kind.String",
                                             "value": "decorator_value",
                                             "location": {
@@ -1530,9 +1527,8 @@ domain SomeDomain {
         self.assertEqual(0, len(diff))
 
     def tests_repository_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext {
         @storage( "mongo" )
@@ -1545,16 +1541,16 @@ domain SomeDomain {
         jsonEmmiter = JsonEmitter()
         result = jsonEmmiter.Emit(session)
         expected = """{
-    "$type": "d3i.d3",
+    "$type": "d3",
     "domains": [
         {
-            "$type": "d3i.domain",
+            "$type": "domain",
             "name": "SomeDomain",
             "decorators": [],
             "directives": [],
             "contexts": [
                 {
-                    "$type": "d3i.context",
+                    "$type": "context",
                     "name": "OrderContext",
                     "decorators": [],
                     "enums": [],
@@ -1564,16 +1560,16 @@ domain SomeDomain {
                     "views": [],
                     "repositories": [
                         {
-                            "$type": "d3i.repository",
+                            "$type": "repository",
                             "name": "orders",
                             "referenced_name": "Order",
                             "decorators": [
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "storage",
                                     "params": [
                                         {
-                                            "$type": "d3i.decorator_param",
+                                            "$type": "decorator_param",
                                             "kind": "Kind.String",
                                             "value": "mongo",
                                             "location": {
@@ -1621,9 +1617,8 @@ domain SomeDomain {
         self.assertEqual(0, len(diff))
 
     def tests_acl_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext {
         @decoration( "value" )
@@ -1648,16 +1643,16 @@ domain SomeDomain {
         jsonEmmiter = JsonEmitter()
         result = jsonEmmiter.Emit(session)
         expected = """{
-    "$type": "d3i.d3",
+    "$type": "d3",
     "domains": [
         {
-            "$type": "d3i.domain",
+            "$type": "domain",
             "name": "SomeDomain",
             "decorators": [],
             "directives": [],
             "contexts": [
                 {
-                    "$type": "d3i.context",
+                    "$type": "context",
                     "name": "OrderContext",
                     "decorators": [],
                     "enums": [],
@@ -1668,18 +1663,18 @@ domain SomeDomain {
                     "repositories": [],
                     "acls": [
                         {
-                            "$type": "d3i.acl",
+                            "$type": "acl",
                             "name": "partnerACL",
                             "operations": [
                                 {
-                                    "$type": "d3i.operation",
+                                    "$type": "operation",
                                     "name": "getPartnerData",
                                     "operation_params": [
                                         {
-                                            "$type": "d3i.operation_param",
+                                            "$type": "operation_param",
                                             "name": "partnerId",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
@@ -1690,7 +1685,7 @@ domain SomeDomain {
                                             },
                                             "decorators": [
                                                 {
-                                                    "$type": "d3i.decorator",
+                                                    "$type": "decorator",
                                                     "name": "required",
                                                     "params": [],
                                                     "location": {
@@ -1709,9 +1704,9 @@ domain SomeDomain {
                                     ],
                                     "operation_returns": [
                                         {
-                                            "$type": "d3i.operation_return",
+                                            "$type": "operation_return",
                                             "type": {
-                                                "$type": "d3i.reference_type",
+                                                "$type": "reference_type",
                                                 "kind": "Kind.Reference",
                                                 "isExternal": false,
                                                 "reference_name": "PartnerData",
@@ -1731,7 +1726,7 @@ domain SomeDomain {
                                     ],
                                     "decorators": [
                                         {
-                                            "$type": "d3i.decorator",
+                                            "$type": "decorator",
                                             "name": "post",
                                             "params": [],
                                             "location": {
@@ -1750,11 +1745,11 @@ domain SomeDomain {
                             ],
                             "enums": [
                                 {
-                                    "$type": "d3i.enum",
+                                    "$type": "enum",
                                     "name": "PartnerType",
                                     "enum_elements": [
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "Customer",
                                             "decorators": [],
                                             "location": {
@@ -1764,7 +1759,7 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "PrivatePerson",
                                             "decorators": [],
                                             "location": {
@@ -1784,15 +1779,15 @@ domain SomeDomain {
                             ],
                             "value_objects": [
                                 {
-                                    "$type": "d3i.value_object",
+                                    "$type": "value_object",
                                     "name": "PartnerData",
                                     "inherits": [],
                                     "members": [
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "address",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
@@ -1809,10 +1804,10 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "type",
                                             "type": {
-                                                "$type": "d3i.reference_type",
+                                                "$type": "reference_type",
                                                 "kind": "Kind.Reference",
                                                 "isExternal": false,
                                                 "reference_name": "PartnerType",
@@ -1842,11 +1837,11 @@ domain SomeDomain {
                             ],
                             "decorators": [
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "decoration",
                                     "params": [
                                         {
-                                            "$type": "d3i.decorator_param",
+                                            "$type": "decorator_param",
                                             "kind": "Kind.String",
                                             "value": "value",
                                             "location": {
@@ -1893,9 +1888,8 @@ domain SomeDomain {
         self.assertEqual(0, len(diff))
 
     def tests_service_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext {
         @decoration( "value" )
@@ -1928,16 +1922,16 @@ domain SomeDomain {
         jsonEmmiter = JsonEmitter()
         result = jsonEmmiter.Emit(session)
         expected = """{
-    "$type": "d3i.d3",
+    "$type": "d3",
     "domains": [
         {
-            "$type": "d3i.domain",
+            "$type": "domain",
             "name": "SomeDomain",
             "decorators": [],
             "directives": [],
             "contexts": [
                 {
-                    "$type": "d3i.context",
+                    "$type": "context",
                     "name": "OrderContext",
                     "decorators": [],
                     "enums": [],
@@ -1950,18 +1944,18 @@ domain SomeDomain {
                     "context_events": [],
                     "services": [
                         {
-                            "$type": "d3i.service",
+                            "$type": "service",
                             "name": "OrderService",
                             "operations": [
                                 {
-                                    "$type": "d3i.operation",
+                                    "$type": "operation",
                                     "name": "getOrder",
                                     "operation_params": [
                                         {
-                                            "$type": "d3i.operation_param",
+                                            "$type": "operation_param",
                                             "name": "orderId",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
@@ -1972,7 +1966,7 @@ domain SomeDomain {
                                             },
                                             "decorators": [
                                                 {
-                                                    "$type": "d3i.decorator",
+                                                    "$type": "decorator",
                                                     "name": "required",
                                                     "params": [],
                                                     "location": {
@@ -1991,9 +1985,9 @@ domain SomeDomain {
                                     ],
                                     "operation_returns": [
                                         {
-                                            "$type": "d3i.operation_return",
+                                            "$type": "operation_return",
                                             "type": {
-                                                "$type": "d3i.reference_type",
+                                                "$type": "reference_type",
                                                 "kind": "Kind.Reference",
                                                 "isExternal": false,
                                                 "reference_name": "OrderData",
@@ -2005,11 +1999,11 @@ domain SomeDomain {
                                             },
                                             "decorators": [
                                                 {
-                                                    "$type": "d3i.decorator",
+                                                    "$type": "decorator",
                                                     "name": "status",
                                                     "params": [
                                                         {
-                                                            "$type": "d3i.decorator_param",
+                                                            "$type": "decorator_param",
                                                             "kind": "Kind.Integer",
                                                             "value": "200",
                                                             "location": {
@@ -2033,9 +2027,9 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.operation_return",
+                                            "$type": "operation_return",
                                             "type": {
-                                                "$type": "d3i.reference_type",
+                                                "$type": "reference_type",
                                                 "kind": "Kind.Reference",
                                                 "isExternal": false,
                                                 "reference_name": "ErrorNotFound",
@@ -2047,11 +2041,11 @@ domain SomeDomain {
                                             },
                                             "decorators": [
                                                 {
-                                                    "$type": "d3i.decorator",
+                                                    "$type": "decorator",
                                                     "name": "status",
                                                     "params": [
                                                         {
-                                                            "$type": "d3i.decorator_param",
+                                                            "$type": "decorator_param",
                                                             "kind": "Kind.Integer",
                                                             "value": "404",
                                                             "location": {
@@ -2077,7 +2071,7 @@ domain SomeDomain {
                                     ],
                                     "decorators": [
                                         {
-                                            "$type": "d3i.decorator",
+                                            "$type": "decorator",
                                             "name": "post",
                                             "params": [],
                                             "location": {
@@ -2094,13 +2088,13 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.operation",
+                                    "$type": "operation",
                                     "name": "closeAllOrder",
                                     "operation_params": [],
                                     "operation_returns": [],
                                     "decorators": [
                                         {
-                                            "$type": "d3i.decorator",
+                                            "$type": "decorator",
                                             "name": "put",
                                             "params": [],
                                             "location": {
@@ -2119,15 +2113,15 @@ domain SomeDomain {
                             ],
                             "events": [
                                 {
-                                    "$type": "d3i.event",
+                                    "$type": "event",
                                     "name": "OrderPlaced",
                                     "inherits": [],
                                     "members": [
                                         {
-                                            "$type": "d3i.event_member",
+                                            "$type": "event_member",
                                             "name": "orderId",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
@@ -2154,11 +2148,11 @@ domain SomeDomain {
                             ],
                             "enums": [
                                 {
-                                    "$type": "d3i.enum",
+                                    "$type": "enum",
                                     "name": "PartnerType",
                                     "enum_elements": [
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "Customer",
                                             "decorators": [],
                                             "location": {
@@ -2168,7 +2162,7 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "PrivatePerson",
                                             "decorators": [],
                                             "location": {
@@ -2188,15 +2182,15 @@ domain SomeDomain {
                             ],
                             "value_objects": [
                                 {
-                                    "$type": "d3i.value_object",
+                                    "$type": "value_object",
                                     "name": "OrderData",
                                     "inherits": [],
                                     "members": [
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "address",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
@@ -2213,10 +2207,10 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "type",
                                             "type": {
-                                                "$type": "d3i.reference_type",
+                                                "$type": "reference_type",
                                                 "kind": "Kind.Reference",
                                                 "isExternal": false,
                                                 "reference_name": "PartnerType",
@@ -2246,11 +2240,11 @@ domain SomeDomain {
                             ],
                             "decorators": [
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "decoration",
                                     "params": [
                                         {
-                                            "$type": "d3i.decorator_param",
+                                            "$type": "decorator_param",
                                             "kind": "Kind.String",
                                             "value": "value",
                                             "location": {
@@ -2295,9 +2289,8 @@ domain SomeDomain {
         self.assertEqual(0, len(diff))
 
     def tests_interface_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext {
         @decoration( "value" )
@@ -2330,16 +2323,16 @@ domain SomeDomain {
         jsonEmmiter = JsonEmitter()
         result = jsonEmmiter.Emit(session)
         expected = """{
-    "$type": "d3i.d3",
+    "$type": "d3",
     "domains": [
         {
-            "$type": "d3i.domain",
+            "$type": "domain",
             "name": "SomeDomain",
             "decorators": [],
             "directives": [],
             "contexts": [
                 {
-                    "$type": "d3i.context",
+                    "$type": "context",
                     "name": "OrderContext",
                     "decorators": [],
                     "enums": [],
@@ -2352,18 +2345,18 @@ domain SomeDomain {
                     "context_events": [],
                     "services": [
                         {
-                            "$type": "d3i.interface",
+                            "$type": "interface",
                             "name": "OrderInterface",
                             "operations": [
                                 {
-                                    "$type": "d3i.operation",
+                                    "$type": "operation",
                                     "name": "getOrder",
                                     "operation_params": [
                                         {
-                                            "$type": "d3i.operation_param",
+                                            "$type": "operation_param",
                                             "name": "orderId",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
@@ -2374,7 +2367,7 @@ domain SomeDomain {
                                             },
                                             "decorators": [
                                                 {
-                                                    "$type": "d3i.decorator",
+                                                    "$type": "decorator",
                                                     "name": "required",
                                                     "params": [],
                                                     "location": {
@@ -2393,9 +2386,9 @@ domain SomeDomain {
                                     ],
                                     "operation_returns": [
                                         {
-                                            "$type": "d3i.operation_return",
+                                            "$type": "operation_return",
                                             "type": {
-                                                "$type": "d3i.reference_type",
+                                                "$type": "reference_type",
                                                 "kind": "Kind.Reference",
                                                 "isExternal": false,
                                                 "reference_name": "OrderData",
@@ -2407,11 +2400,11 @@ domain SomeDomain {
                                             },
                                             "decorators": [
                                                 {
-                                                    "$type": "d3i.decorator",
+                                                    "$type": "decorator",
                                                     "name": "status",
                                                     "params": [
                                                         {
-                                                            "$type": "d3i.decorator_param",
+                                                            "$type": "decorator_param",
                                                             "kind": "Kind.Integer",
                                                             "value": "200",
                                                             "location": {
@@ -2435,9 +2428,9 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.operation_return",
+                                            "$type": "operation_return",
                                             "type": {
-                                                "$type": "d3i.reference_type",
+                                                "$type": "reference_type",
                                                 "kind": "Kind.Reference",
                                                 "isExternal": false,
                                                 "reference_name": "ErrorNotFound",
@@ -2449,11 +2442,11 @@ domain SomeDomain {
                                             },
                                             "decorators": [
                                                 {
-                                                    "$type": "d3i.decorator",
+                                                    "$type": "decorator",
                                                     "name": "status",
                                                     "params": [
                                                         {
-                                                            "$type": "d3i.decorator_param",
+                                                            "$type": "decorator_param",
                                                             "kind": "Kind.Integer",
                                                             "value": "404",
                                                             "location": {
@@ -2479,7 +2472,7 @@ domain SomeDomain {
                                     ],
                                     "decorators": [
                                         {
-                                            "$type": "d3i.decorator",
+                                            "$type": "decorator",
                                             "name": "post",
                                             "params": [],
                                             "location": {
@@ -2496,13 +2489,13 @@ domain SomeDomain {
                                     }
                                 },
                                 {
-                                    "$type": "d3i.operation",
+                                    "$type": "operation",
                                     "name": "closeAllOrder",
                                     "operation_params": [],
                                     "operation_returns": [],
                                     "decorators": [
                                         {
-                                            "$type": "d3i.decorator",
+                                            "$type": "decorator",
                                             "name": "put",
                                             "params": [],
                                             "location": {
@@ -2521,15 +2514,15 @@ domain SomeDomain {
                             ],
                             "events": [
                                 {
-                                    "$type": "d3i.event",
+                                    "$type": "event",
                                     "name": "OrderPlaced",
                                     "inherits": [],
                                     "members": [
                                         {
-                                            "$type": "d3i.event_member",
+                                            "$type": "event_member",
                                             "name": "orderId",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
@@ -2556,11 +2549,11 @@ domain SomeDomain {
                             ],
                             "enums": [
                                 {
-                                    "$type": "d3i.enum",
+                                    "$type": "enum",
                                     "name": "PartnerType",
                                     "enum_elements": [
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "Customer",
                                             "decorators": [],
                                             "location": {
@@ -2570,7 +2563,7 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.enum_element",
+                                            "$type": "enum_element",
                                             "name": "PrivatePerson",
                                             "decorators": [],
                                             "location": {
@@ -2590,15 +2583,15 @@ domain SomeDomain {
                             ],
                             "value_objects": [
                                 {
-                                    "$type": "d3i.value_object",
+                                    "$type": "value_object",
                                     "name": "OrderData",
                                     "inherits": [],
                                     "members": [
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "address",
                                             "type": {
-                                                "$type": "d3i.primitive_type",
+                                                "$type": "primitive_type",
                                                 "kind": "Kind.Primitive",
                                                 "primtiveKind": "PrimtiveKind.String",
                                                 "location": {
@@ -2615,10 +2608,10 @@ domain SomeDomain {
                                             }
                                         },
                                         {
-                                            "$type": "d3i.value_object_member",
+                                            "$type": "value_object_member",
                                             "name": "type",
                                             "type": {
-                                                "$type": "d3i.reference_type",
+                                                "$type": "reference_type",
                                                 "kind": "Kind.Reference",
                                                 "isExternal": false,
                                                 "reference_name": "PartnerType",
@@ -2648,11 +2641,11 @@ domain SomeDomain {
                             ],
                             "decorators": [
                                 {
-                                    "$type": "d3i.decorator",
+                                    "$type": "decorator",
                                     "name": "decoration",
                                     "params": [
                                         {
-                                            "$type": "d3i.decorator_param",
+                                            "$type": "decorator_param",
                                             "kind": "Kind.String",
                                             "value": "value",
                                             "location": {

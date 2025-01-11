@@ -1,14 +1,13 @@
 import unittest
-import d3i
-from d3i.linters import *
+from d3i.Engine import *
+from d3i.linters.SemanticChecker import *
 
 
 class TestLinterSemanticChecker(unittest.TestCase):
 
     def test_empty_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText(""))
+        engine = Engine()
+        session = Session(Source.CreateFromText(""))
         root = engine.Build(session)
 
         self.assertFalse(session.HasAnyError())
@@ -17,9 +16,8 @@ class TestLinterSemanticChecker(unittest.TestCase):
         self.assertEqual(len(session.diagnostics), 0)
 
     def test_conflict_service_event_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
         service OrderService {
@@ -45,9 +43,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,12):", "(5,12)"]))
 
     def test_conflict_interface_event_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         interface IOrderInterface {
@@ -73,9 +70,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,12):", "(5,12)"]))
 
     def test_conflict_event_member_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
         service OrderService {
@@ -100,9 +96,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,16):", "(6,16)"]))
 
     def test_conflict_context_enum_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         enum TheEnum {
@@ -129,9 +124,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,8):", "(4,8)"]))
 
     def test_conflict_inner_enum_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         service OrderService { 
@@ -160,9 +154,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(8,12):", "(5,12)"]))
 
     def test_conflict_enum_element_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         enum SomeEnum {
@@ -185,9 +178,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,12):", "(5,12)"]))
 
     def test_conflict_context_valueobject_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         valueobject TheValueObject {
@@ -211,9 +203,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,8):", "(4,8)"]))
 
     def test_conflict_inner_valueobject_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         service OrderService { 
@@ -239,9 +230,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,12):", "(5,12)"]))
 
     def test_conflict_valueobject_member_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         valueobject SomeValueobject {
@@ -264,9 +254,8 @@ domain SomeDomain {
         self.assertTrue("(6,12)" in session.diagnostics[1].toText())
 
     def test_conflict_entity_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         aggregate OrderAggregate {
@@ -301,9 +290,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[5].toText() for location in ["(13,17):", "(7,12)"]))
 
     def test_conflict_entity_member_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         aggregate OrderAggregate {
@@ -328,9 +316,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,16):", "(7,16)"]))
 
     def test_conflict_aggregate_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         aggregate TheAggregate {
@@ -363,9 +350,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(9,8):", "(4,8)"]))
 
     def test_conflict_all_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         enum TheName { }
@@ -452,9 +438,8 @@ domain SomeDomain {
         self.assertTrue(any(all(x in s for x in ['TheName', '(11,8):', '(10,8)']) for s in messages))
 
     def test_aggregate_no_root_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         aggregate OrderAggregate {
@@ -476,9 +461,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "There is no root"]))
 
     def test_aggregate_more_root_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         aggregate OrderAggregate {
@@ -504,9 +488,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "More than one root"]))
 
     def test_repository_unknown_reference_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         repository TheRepository : NotDefined
@@ -523,9 +506,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "NotDefined"]))
 
     def test_conflict_acl_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         acl TheAcl {
@@ -549,9 +531,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,8):", "(4,8)"]))
 
     def test_conflict_acl_operation_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         acl TheAcl {
@@ -574,9 +555,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,12):", "(5,12)"]))
 
     def test_conflict_service_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         service TheService {
@@ -600,9 +580,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,8):", "(4,8)"]))
 
     def test_conflict_service_operation_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         acl TheService {
@@ -625,9 +604,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,12):", "(5,12)"]))
 
     def test_conflict_interface_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         interface TheInterface {
@@ -651,9 +629,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,8):", "(4,8)"]))
 
     def test_conflict_interface_operation_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         interface TheInterface {
@@ -676,9 +653,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,12):", "(5,12)"]))
 
     def test_conflict_operation_param_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         interface TheInterface {
@@ -700,9 +676,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,44):", "(6,27)"]))
 
     def test_reference_type_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         interface TheInterface {
@@ -753,9 +728,8 @@ domain SomeDomain {
 
 
     def test_inheritence_not_exists_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         interface TheInterface {
@@ -778,9 +752,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["NotExist", "(5,48):"]))
 
     def test_inheritence_wrong_type_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
             aggregate Order {
