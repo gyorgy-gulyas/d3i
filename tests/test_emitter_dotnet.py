@@ -1,7 +1,8 @@
 import unittest
-import d3i
 from tests.dotnet_code_helper import *
 from d3i.emitters.dotnet_emmiter.ModelEmitter import *
+from d3i.elements.Elements import *
+from d3i.Engine import *
 
 
 class TestEmitterDotnetDefault(unittest.TestCase):
@@ -10,9 +11,8 @@ class TestEmitterDotnetDefault(unittest.TestCase):
         dotnet_code_helper.init_roslyn()
 
     def test_modelemitter_enum_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain WebShop {
     context CustomerContext {
         enum CustomerType{
@@ -30,7 +30,7 @@ using System;
 using System.Collections.Generic;
 
 namespace WebShop.CustomerContext
-{l
+{
     enum CustomerType
     {
         PrivatePerson,
