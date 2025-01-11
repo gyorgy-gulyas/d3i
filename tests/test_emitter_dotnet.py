@@ -30,7 +30,7 @@ using System;
 using System.Collections.Generic;
 
 namespace WebShop.CustomerContext
-{
+{l
     enum CustomerType
     {
         PrivatePerson,

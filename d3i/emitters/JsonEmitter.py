@@ -336,7 +336,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         parentData[memberName] = data
         return data
 
-    def visitDecoratedElement(self, decorated_element: decorated_base_element, parentData: Any) -> Any:
+    def visitDecoratedElement(self, decorated_element: hinted_base_element, parentData: Any) -> Any:
         data = []
         parentData["decorators"] = data
         return data

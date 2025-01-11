@@ -8,12 +8,21 @@ else:
 # This class defines a complete listener for a parse tree produced by d3iGrammar.
 class d3iGrammarListener(ParseTreeListener):
 
-    # Enter a parse tree produced by d3iGrammar#d3i.
-    def enterD3i(self, ctx:d3iGrammar.D3iContext):
+    # Enter a parse tree produced by d3iGrammar#d3.
+    def enterD3(self, ctx:d3iGrammar.D3Context):
         pass
 
-    # Exit a parse tree produced by d3iGrammar#d3i.
-    def exitD3i(self, ctx:d3iGrammar.D3iContext):
+    # Exit a parse tree produced by d3iGrammar#d3.
+    def exitD3(self, ctx:d3iGrammar.D3Context):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#import_rule.
+    def enterImport_rule(self, ctx:d3iGrammar.Import_ruleContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#import_rule.
+    def exitImport_rule(self, ctx:d3iGrammar.Import_ruleContext):
         pass
 
 

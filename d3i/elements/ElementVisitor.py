@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any
-from d3i.elements.Elements import *
+from .Elements import *
 
 class ElementVisitor:
 
@@ -88,13 +88,16 @@ class ElementVisitor:
     def visitMapType(self, map_type: map_type, parentData: Any, memberName: str) -> Any:
         pass
 
-    def visitDecoratedElement(self, decorated_element: decorated_base_element, parentData: Any) -> Any:
+    def visitHintedElement(self, hinted_element: hinted_base_element, parentData: Any) -> Any:
         pass
 
     def visitDecorator(self, decorator: decorator, parentData: Any) -> Any:
         pass
 
     def visitDecoratorParam(self, decorator_param: decorator_param, parentData: Any) -> Any:
+        pass
+
+    def visitDocumentLine(self, document_line: str, parentData: Any) -> Any:
         pass
 
     def visitBaseElement(self, base_element: base_element, parentData: Any) -> Any:

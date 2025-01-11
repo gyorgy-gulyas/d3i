@@ -4,16 +4,20 @@ options {
     caseInsensitive = true;
 }
 
-d3i
-    : domain* EOF
+d3
+    : import_rule* domain* EOF
+    ;
+
+import_rule
+    : DOCUMENT_LINE* 'import' qualifiedName
     ;
 
 domain
-    : directive* decorator* 'domain' IDENTIFIER '{' domain_element* '}'
+    : directive* DOCUMENT_LINE* decorator* 'domain' IDENTIFIER '{' domain_element* '}'
     ;
 
     directive
-        : IDENTIFIER qualifiedName
+        : DOCUMENT_LINE* IDENTIFIER qualifiedName
         ;
         
     domain_element
@@ -21,7 +25,7 @@ domain
         ;
     
 context
-    :  decorator* 'context' IDENTIFIER '{' context_element* '}'
+    :  DOCUMENT_LINE* decorator* 'context' IDENTIFIER '{' context_element* '}'
     ;
 
     context_element
@@ -36,7 +40,7 @@ context
         ;
 
 value_object
-    : decorator* 'valueobject' IDENTIFIER inherits? '{' value_object_element* '}'
+    : DOCUMENT_LINE* decorator* 'valueobject' IDENTIFIER inherits? '{' value_object_element* '}'
     ;
 
     value_object_element
@@ -46,11 +50,11 @@ value_object
         ;
         
         value_object_member
-            : decorator* IDENTIFIER ':' type
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
             ;
 
 event
-    :  decorator* 'event' IDENTIFIER inherits? '{' event_element* '}'
+    :  DOCUMENT_LINE* decorator* 'event' IDENTIFIER inherits? '{' event_element* '}'
     ;
 
     event_element
@@ -60,11 +64,11 @@ event
         ;
 
     event_member
-        : decorator* IDENTIFIER ':' type
+        : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
         ;
         
 entity
-    :  decorator* 'entity' IDENTIFIER inherits? '{' entity_element* '}'
+    :  DOCUMENT_LINE* decorator* 'entity' IDENTIFIER inherits? '{' entity_element* '}'
     ;
 
     entity_element
@@ -74,11 +78,11 @@ entity
         ;
 
         entity_member
-            : decorator* IDENTIFIER ':' type
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
             ;
         
 aggregate
-    :  decorator* 'aggregate' IDENTIFIER '{' aggregate_element* '}'
+    :  DOCUMENT_LINE* decorator* 'aggregate' IDENTIFIER '{' aggregate_element* '}'
     ;
 
     aggregate_element
@@ -92,7 +96,7 @@ aggregate
         ;
 
 view
-    :  decorator* 'view' IDENTIFIER inherits? '{' view_element* '}'
+    :  DOCUMENT_LINE* decorator* 'view' IDENTIFIER inherits? '{' view_element* '}'
     ;
 
     view_element
@@ -102,15 +106,15 @@ view
         ;
 
         view_member
-            : decorator* IDENTIFIER ':' type
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
             ;
 
 repository
-    : decorator* 'repository' IDENTIFIER ':' IDENTIFIER
+    : DOCUMENT_LINE* decorator* 'repository' IDENTIFIER ':' IDENTIFIER
     ;
 
 service
-    :  decorator* 'service' IDENTIFIER '{' service_element*  '}'
+    :  DOCUMENT_LINE* decorator* 'service' IDENTIFIER '{' service_element*  '}'
     ;
 
     service_element
@@ -121,7 +125,7 @@ service
         ;
 
 interface
-    :  decorator* 'interface' IDENTIFIER '{' interface_element*  '}'
+    :  DOCUMENT_LINE* decorator* 'interface' IDENTIFIER '{' interface_element*  '}'
     ;
 
     interface_element
@@ -132,20 +136,20 @@ interface
         ;
     
 operation
-    : decorator* IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' ((':' operation_return )? ('|' operation_return)*)
+    : DOCUMENT_LINE* decorator* IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' ((':' operation_return )? ('|' operation_return)*)
     ;
 
     operation_param
-        : decorator* IDENTIFIER ':' type
+        : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
         ;
 
         operation_return
-            : decorator* type
+            : DOCUMENT_LINE* decorator* type
             ;
 
 
 acl
-    :  decorator* 'acl' IDENTIFIER '{' acl_element* '}'
+    :  DOCUMENT_LINE* decorator* 'acl' IDENTIFIER '{' acl_element* '}'
     ;
 
     acl_element
@@ -171,6 +175,8 @@ type
         | 'string'
         | 'boolean'
         | 'bytes'
+        | 'stream'
+        | 'any'
         ;
 
     reference_type
@@ -202,11 +208,11 @@ decorator
         ;
 
 enum
-    : decorator* 'enum' IDENTIFIER '{' enum_element? (',' enum_element)* '}'
+    : DOCUMENT_LINE* decorator* 'enum' IDENTIFIER '{' enum_element? (',' enum_element)* '}'
     ;
 
     enum_element
-        : decorator* IDENTIFIER
+        : DOCUMENT_LINE* decorator* IDENTIFIER
         ;
 
 inherits

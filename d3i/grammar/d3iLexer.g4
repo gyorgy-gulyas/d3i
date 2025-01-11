@@ -21,6 +21,7 @@ PIPE : '|' ;
 
 
 // declaration keywords
+IMPORT : 'import' ;
 DOMAIN : 'domain' ;
 CONTEXT : 'context' ;
 EVENT : 'event' ;
@@ -37,6 +38,7 @@ REPOSITORY : 'repository' ;
 // qualifier keywords
 ROOT : 'root' ;
 OR : 'or' ;
+INHERITS : 'inherits' ;
 
 // built-in types
 INTEGER : 'integer' ;
@@ -48,10 +50,11 @@ DATETIME : 'dateTime' ;
 STRING : 'string' ;
 BOOLEAN : 'boolean' ;
 BYTES : 'bytes' ;
+STREAM: 'stream';
+ANY: 'any';
 LIST : 'list' ;
 MAP : 'map' ;
 EXTERNAL : 'external' ;
-INHERITS : 'inherits' ;
 
 // constans
 INTEGER_CONSTANS : [0-9]+ ;
@@ -62,7 +65,6 @@ STRING_LITERAL: '"' .*? '"';
 IDENTIFIER: [a-z][a-z_0-9]* ;
 WS: [ \t\n\r\f]+ -> skip ;
 
-
-
+DOCUMENT_LINE: '#' ~[\r\n]*;
 LINE_COMMENT : '//' ~[\r\n]* -> channel(COMMENT_CHANNEL);
 BLOCK_COMMENT : '/*' .*? '*/' -> channel(COMMENT_CHANNEL);

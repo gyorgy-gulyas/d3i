@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List
 from enum import Enum
-from d3i.elements.ElementVisitor import *
+from .ElementVisitor import *
 
 class IScope:
     def getChildren(self) -> List[base_element]:
@@ -22,20 +22,23 @@ class base_element:
         return f"'{self.fileName}({self.line},{self.column})'"
 
 
-class decorated_base_element(base_element):
+class hinted_base_element(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
+        self.document_lines: List[str] = []
         self.decorators: List[decorator] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
-        data = visitor.visitDecoratedElement(self, parentData)
+        data = visitor.visitHintedElement(self, parentData)
         super().visit(visitor, parentData)
+        for document_line in self.document_lines:
+            visitor.visitDocumentLine(document_line, parentData)
         for decorator in self.decorators:
             decorator.visit(visitor, data)
         return data
 
 
-class internal_scoped_base_element(decorated_base_element,IScope):
+class internal_scoped_base_element(hinted_base_element,IScope):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.enums: List[enum] = []
@@ -86,6 +89,7 @@ class decorator_param(base_element):
 
 class d3(IScope):
     def __init__(self):
+        self.imports: List[import_] = []
         self.domains: List[domain] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
@@ -97,8 +101,13 @@ class d3(IScope):
     def getChildren(self) -> List[base_element]:
         return self.domains
 
+class import_(hinted_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = ""
+        self.d3: d3 = None
 
-class domain(decorated_base_element,IScope):
+class domain(hinted_base_element,IScope):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -163,7 +172,7 @@ class context(internal_scoped_base_element):
         return super().getChildren() + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces
 
 
-class enum(decorated_base_element):
+class enum(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -176,7 +185,7 @@ class enum(decorated_base_element):
             enum_element.visit(visitor, data)
 
 
-class enum_element(decorated_base_element):
+class enum_element(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.value = None
@@ -204,7 +213,7 @@ class value_object(internal_scoped_base_element):
             internal_value_object.visit(visitor, data)
 
 
-class value_object_member(decorated_base_element):
+class value_object_member(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -235,7 +244,7 @@ class event(internal_scoped_base_element):
             internal_value_object.visit(visitor, data)
 
 
-class event_member(decorated_base_element):
+class event_member(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -266,7 +275,7 @@ class entity(internal_scoped_base_element):
             internal_value_object.visit(visitor, data)
 
 
-class entity_member(decorated_base_element):
+class entity_member(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -329,7 +338,7 @@ class view(internal_scoped_base_element):
             internal_value_object.visit(visitor, data)
 
 
-class view_member(decorated_base_element):
+class view_member(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -341,7 +350,7 @@ class view_member(decorated_base_element):
             self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
 
-class repository(decorated_base_element):
+class repository(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -396,7 +405,7 @@ class interface(internal_scoped_base_element):
     def getChildren(self) -> List[base_element]:
         return super().getChildren() + self.events
 
-class operation(decorated_base_element):
+class operation(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -412,7 +421,7 @@ class operation(decorated_base_element):
             operation_return.visit(visitor, data)
 
 
-class operation_param(decorated_base_element):
+class operation_param(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -425,7 +434,7 @@ class operation_param(decorated_base_element):
         super().visit(visitor, data)
 
 
-class operation_return(decorated_base_element):
+class operation_return(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.type: type = None

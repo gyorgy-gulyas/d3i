@@ -9,8 +9,13 @@ else:
 
 class d3iGrammarVisitor(ParseTreeVisitor):
 
-    # Visit a parse tree produced by d3iGrammar#d3i.
-    def visitD3i(self, ctx:d3iGrammar.D3iContext):
+    # Visit a parse tree produced by d3iGrammar#d3.
+    def visitD3(self, ctx:d3iGrammar.D3Context):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#import_rule.
+    def visitImport_rule(self, ctx:d3iGrammar.Import_ruleContext):
         return self.visitChildren(ctx)
 
 
