@@ -8,7 +8,14 @@ from d3i.Engine import *
 from d3i.linters.SemanticChecker import *
 
 
+# Adds CLI arguments to the parser
 def __add_known_arguments(arg_parser: argparse.ArgumentParser):
+    """
+    Adds predefined command-line arguments to the argument parser.
+
+    Parameters:
+        arg_parser (argparse.ArgumentParser): The argument parser instance to configure.
+    """
     arg_parser.add_argument("-i",
                             "--input",
                             help="input d3 file",
@@ -51,7 +58,16 @@ def __add_known_arguments(arg_parser: argparse.ArgumentParser):
 
 # Reads the configuration file and returns it as a dictionary
 def __read_config_file(args, unknown_args) -> Dict[str, str]:
-    """Determine the configuration file to use."""
+    """
+    Reads configuration from a file (or default file) and merges any additional unknown CLI arguments.
+
+    Parameters:
+        args: Parsed known arguments.
+        unknown_args (List[str]): Extra command-line arguments passed in key-value form.
+
+    Returns:
+        Dict[str, str]: Combined configuration dictionary.
+    """
     # Use the provided config file or fallback to the default
     if (args.config_file != None):
         config_file = args.config_file
@@ -73,9 +89,19 @@ def __read_config_file(args, unknown_args) -> Dict[str, str]:
 
     return configuration
 
+
 # Parses the input files, creates a session, and returns it
 def __parse_input_files(args, configuration: Dict[str, str]) -> Session:
-    """Parses the input files and creates a session."""
+    """
+    Parses the input D3 file, creates an engine and session, and builds the AST.
+
+    Parameters:
+        args: Parsed CLI arguments.
+        configuration (Dict[str, str]): Loaded configuration dictionary.
+
+    Returns:
+        Session: A parsed and built session instance.
+    """
     engine = Engine(configuration)
 
     # Check if the input file exists, otherwise exit
@@ -94,9 +120,17 @@ def __parse_input_files(args, configuration: Dict[str, str]) -> Session:
 
     return session
 
+
 # Checks for errors in the session and exits if conditions are met
 def __check_errors(session: Session, args, action: str):
-    """Check for errors in the session and handle abort conditions."""
+    """
+    Checks for diagnostics (errors and warnings) and handles abort conditions based on CLI flags.
+
+    Parameters:
+        session (Session): The session object containing diagnostics.
+        args: Parsed CLI arguments.
+        action (str): The current processing phase (e.g., "parsing", "linting", "emitting").
+    """
     # If there are diagnostics (errors or warnings), print them
     if (session.HasDiagnostic() == True):
         session.PrintDiagnostics()
@@ -116,8 +150,14 @@ def __check_errors(session: Session, args, action: str):
 
 # Calls the linters specified in the arguments
 def __call_linters(session: Session, args, configuration: Dict[str, str]):
-    """Call the linters for the session."""
+    """
+    Calls the built-in semantic checker and any additional linter modules.
 
+    Parameters:
+        session (Session): The session to analyze.
+        args: Parsed CLI arguments.
+        configuration (Dict[str, str]): Loaded configuration dictionary.
+    """
     # Call the default semantic checker linter
     if (args.verbose):
         print(f"information: calling 'SemanticChecker")
@@ -136,8 +176,14 @@ def __call_linters(session: Session, args, configuration: Dict[str, str]):
 
 # Calls the emitters specified in the arguments
 def __call_emiters(session: Session, args, configuration: Dict[str, str]):
-    """Call the emitters for the session."""
+    """
+    Calls the emitter modules (built-in or external) to generate output based on the session.
 
+    Parameters:
+        session (Session): The session to emit from.
+        args: Parsed CLI arguments.
+        configuration (Dict[str, str]): Loaded configuration dictionary.
+    """
     # Execute each emitter file provided in the arguments
     for emitter_name in args.emitter:
         if (args.verbose):
@@ -159,15 +205,21 @@ def __call_emiters(session: Session, args, configuration: Dict[str, str]):
         spec.loader.exec_module(module)
         module.DoEmit(session, args.output_dir, configuration)
 
+
 # Main function to run the script
 def main():
-    """Main function to process input files and call linters and emitters."""
+    """
+    Main function to process input files and call linters and emitters.
+    This function orchestrates argument parsing, configuration loading,
+    session creation, validation, linting, emitting, and error checking.
+    """
     # Create argument parser and add known arguments
     arg_parser = argparse.ArgumentParser(description="This program processes d3i files and produces results according to the specified emitter.")
     __add_known_arguments(arg_parser)
 
     # Parse known arguments and unknown arguments
     args, unknown_args = arg_parser.parse_known_args()
+
     # Check if at least one input file is specified, otherwise print error
     if (len(args.input) == 0):
         print("at least one input must be specified, use -h to see help.")
@@ -184,6 +236,7 @@ def main():
     # Run emitters on the session
     __call_emiters(session, args, configuration)
     __check_errors(session, args, "emitting")
+
 
 # Run the main function if this is the main script
 if __name__ == "__main__":
