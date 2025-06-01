@@ -19,25 +19,25 @@ AT : '@' ;
 ARROW : '=>' ;
 PIPE : '|' ;
 
-
 // declaration keywords
-IMPORT : 'import' ;
-DOMAIN : 'domain' ;
-CONTEXT : 'context' ;
-EVENT : 'event' ;
-ENTITY : 'entity' ;
-AGGREGATE : 'aggregate' ;
-VIEW : 'view' ;
-SERVICE : 'service' ;
-INTERFACE : 'interface' ;
+
 ACL : 'acl' ;
-VALUEOBJECT : 'valueobject' ;
+AGGREGATE : 'aggregate' ;
+CONTEXT : 'context' ;
+DOMAIN : 'domain' ;
+ENTITY : 'entity' ;
 ENUM : 'enum' ;
+EVENT : 'event' ;
+IMPORT : 'import' ;
+INTERFACE : 'interface' ;
 REPOSITORY : 'repository' ;
+SERVICE : 'service' ;
+TRAIT : 'trait' ;
+VALUEOBJECT : 'valueobject' ;
+VIEW : 'view' ;
 
 // qualifier keywords
 ROOT : 'root' ;
-OR : 'or' ;
 INHERITS : 'inherits' ;
 
 // built-in types

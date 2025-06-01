@@ -98,6 +98,33 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#trait.
+    def enterTrait(self, ctx:d3iGrammar.TraitContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#trait.
+    def exitTrait(self, ctx:d3iGrammar.TraitContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#trait_element.
+    def enterTrait_element(self, ctx:d3iGrammar.Trait_elementContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#trait_element.
+    def exitTrait_element(self, ctx:d3iGrammar.Trait_elementContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#trait_object_member.
+    def enterTrait_object_member(self, ctx:d3iGrammar.Trait_object_memberContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#trait_object_member.
+    def exitTrait_object_member(self, ctx:d3iGrammar.Trait_object_memberContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#event.
     def enterEvent(self, ctx:d3iGrammar.EventContext):
         pass
