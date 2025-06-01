@@ -887,6 +887,10 @@ class ElementBuilder(d3iGrammarVisitor):
             result.primtiveKind = primitive_type.PrimtiveKind.Boolean
         elif (ctx.BYTES() != None):
             result.primtiveKind = primitive_type.PrimtiveKind.Bytes
+        elif (ctx.STREAM() != None):
+            result.primtiveKind = primitive_type.PrimtiveKind.Stream
+        elif (ctx.ANY() != None):
+            result.primtiveKind = primitive_type.PrimtiveKind.Any
 
         return result
 

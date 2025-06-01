@@ -2,22 +2,56 @@ import os
 import io
 from typing import Dict
 from d3i.elements.Elements import *
+from d3i.Engine import *
 
+def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
+    """
+    Creates an instance of DotnetEmmiter, initializes it with the output directory and configuration,
+    and then emits the dotnet code based on the provided session.
+    """
+    dotnetEmitter = DotnetEmitter(output_dir, configuration)
 
-class DotnetEmmiter:
+    # Generate the .NET code for the session
+    results: List[dotnet_code] = dotnetEmitter.Emit(session)
+
+    for code in results:
+        dir_name = os.path.dirname(code.fullPath)
+        if dir_name and not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+
+        with open(code.fullPath, "w") as file:
+            file.write(code.content)
+
+    return results
+
+class DotnetEmitter:
     def __init__(self, output_dir: str, configuration: Dict[str, str]):
         self.configuration: dotnet_configuration = dotnet_configuration(configuration, output_dir)
 
+    def Emit(self, session: Session):
+        """
+        Emits the .NET code based on d3 file
+        """
+        result: List[dotnet_code] = []
+
+        return result
+
     def fileHeader(self) -> str:
+        """
+        Returns the file header to be included in the generated .cs files.
+        """
         return self.configuration.fileHeader
 
     def defaultUsings(self) -> str:
+        """
+        Returns the default 'using' statements to be included in the .cs files.
+        """
         using_statements: List[str] = []
 
         for using in self.configuration.defaultUsings:
             using_statements.append(f"using {using};")
 
-        return "\n".join(using_statements)
+        return "\n".join(using_statements) + "\n"
 
     def beginFile(self) -> str:
         buffer = io.StringIO()
@@ -70,6 +104,8 @@ class DotnetEmmiter:
 
     def typeTextPrimitive(self, type: primitive_type, indent: int):
         match type.primtiveKind:
+            case primitive_type.PrimtiveKind.Any:
+                return "object"
             case primitive_type.PrimtiveKind.Integer:
                 return "int"
             case primitive_type.PrimtiveKind.Number:
@@ -88,6 +124,8 @@ class DotnetEmmiter:
                 return "bool"
             case primitive_type.PrimtiveKind.Bytes:
                 return "byte[]"
+            case primitive_type.PrimtiveKind.Stream:
+                return "Stream"
 
     def typeTextReference(self, type: reference_type, indent: int):
         return type.reference_name.getText()

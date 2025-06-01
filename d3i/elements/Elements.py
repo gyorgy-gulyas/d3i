@@ -511,6 +511,7 @@ class primitive_type(type):
         self.primtiveKind: primitive_type.PrimtiveKind = None
 
     class PrimtiveKind(Enum):
+        Any = 0
         Integer = 1
         Number = 2
         Float = 2
@@ -520,6 +521,7 @@ class primitive_type(type):
         String = 6,
         Boolean = 7,
         Bytes = 8,
+        Stream = 8,
 
 
 class reference_type(type):
