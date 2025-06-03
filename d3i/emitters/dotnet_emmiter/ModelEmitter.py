@@ -4,7 +4,7 @@ from d3i.emitters.dotnet_emmiter.DotnetEmmiter import *
 from d3i.Engine import Session
 
 
-class ModelEmmiter(DotnetEmmiter):
+class ModelEmmiter(DotnetEmitter):
     def __init__(self, output_dir: str = "./", configuration: Dict[str, str] = {}):
         super().__init__(output_dir, configuration)
 

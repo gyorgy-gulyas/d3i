@@ -80,6 +80,7 @@ class JsonEmitter(ElementVisitor):
             "$type": "d3i.context",
             "name": context.name,
             "entities": [],
+            "composites": [],
             "aggregates": [],
             "views": [],
             "repositories": [],

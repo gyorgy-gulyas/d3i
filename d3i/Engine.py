@@ -228,6 +228,11 @@ class Engine:
                                 imported_value_object.parent = context_already
                                 context_already.value_objects.append(imported_value_object)
 
+                            # merge composite
+                            for imported_composit in imported_context.composites:
+                                imported_composit.parent = context_already
+                                context_already.composit.append(imported_composit)
+
                             # merge aggregate
                             for imported_aggregate in imported_context.aggregates:
                                 imported_aggregate.parent = context_already

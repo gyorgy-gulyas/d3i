@@ -151,6 +151,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(context_element.value_object())
                 child.parent = result
                 result.value_objects.append(child)
+            elif (context_element.composite() != None):
+                child = self.visit(context_element.composite())
+                child.parent = result
+                result.composites.append(child)
             elif (context_element.aggregate() != None):
                 child = self.visit(context_element.aggregate())
                 child.parent = result
@@ -239,6 +243,88 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#value_object_member.
     def visitValue_object_member(self, ctx: d3iGrammar.Value_object_memberContext):
         result = value_object_member(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+        if (ctx.type_() != None):
+            result.type = self.visit(ctx.type_())
+            result.type.parent = result
+
+        counter = 0
+        while True:
+            document_line = ctx.DOCUMENT_LINE((counter))
+            if (document_line == None):
+                break
+            counter = counter + 1
+            result.document_lines.append(document_line.getText()[1:])
+
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if (decorator == None):
+                break
+            counter = counter + 1
+            child = self.visit(decorator)
+            child.parent = result
+            result.decorators.append(child)
+
+        return result
+
+    # Visit a parse tree produced by d3iGrammar#composite.
+    def visitComposite(self, ctx:d3iGrammar.CompositeContext):
+        result = composite(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+
+        if (ctx.inherits() != None):
+            result.inherits = result.value = self.visit(ctx.inherits())
+
+        counter = 0
+        while True:
+            document_line = ctx.DOCUMENT_LINE((counter))
+            if (document_line == None):
+                break
+            counter = counter + 1
+            result.document_lines.append(document_line.getText()[1:])
+
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if (decorator == None):
+                break
+            counter = counter + 1
+            child = self.visit(decorator)
+            child.parent = result
+            result.decorators.append(child)
+
+        counter = 0
+        while True:
+            composite_element: d3iGrammar.Composite_elementContext = ctx.composite_element(
+                (counter))
+            if (composite_element == None):
+                break
+            elif (composite_element.composite_member() != None):
+                child = self.visit(composite_element.composite_member())
+                child.parent = result
+                result.members.append(child)
+            elif (composite_element.enum()):
+                child = self.visit(composite_element.enum())
+                child.parent = result
+                result.enums.append(child)
+            elif (composite_element.value_object()):
+                child = self.visit(composite_element.value_object())
+                child.parent = result
+                result.value_objects.append(child)
+            counter = counter + 1
+
+        return result
+
+    # Visit a parse tree produced by d3iGrammar#composite_element.
+    def visitComposite_element(self, ctx:d3iGrammar.Composite_elementContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by d3iGrammar#composite_member.
+    def visitComposite_member(self, ctx:d3iGrammar.Composite_memberContext):
+        result = composite_member(self.fileName, ctx.start)
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
         if (ctx.type_() != None):
@@ -1045,7 +1131,7 @@ class ElementBuilder(d3iGrammarVisitor):
 
         counter = 0
         while True:
-            base_class = ctx.qualifiedName((counter))
+            base_class = ctx.qualifiedName(counter)
             if (base_class == None):
                 break
             counter = counter + 1

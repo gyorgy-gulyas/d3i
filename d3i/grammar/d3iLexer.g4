@@ -24,7 +24,7 @@ PIPE : '|' ;
 ACL : 'acl' ;
 AGGREGATE : 'aggregate' ;
 CONTEXT : 'context' ;
-COMPOSIT : 'composit' ;
+COMPOSITE : 'composite' ;
 DOMAIN : 'domain' ;
 ENTITY : 'entity' ;
 ENUM : 'enum' ;

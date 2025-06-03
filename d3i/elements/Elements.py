@@ -152,6 +152,7 @@ class context(internal_scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
+        self.composites: List[composite] = []
         self.aggregates: List[aggregate] = []
         self.views: List[view] = []
         self.repositories: List[repository] = []
@@ -166,6 +167,8 @@ class context(internal_scoped_base_element):
             enum.visit(visitor, data)
         for value_object in self.value_objects:
             value_object.visit(visitor, data)
+        for composit in self.composites:
+            composit.visit(visitor, data)
         for aggregate in self.aggregates:
             aggregate.visit(visitor, data)
         for view in self.views:
@@ -180,7 +183,7 @@ class context(internal_scoped_base_element):
             interface.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return super().getChildren() + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces
+        return super().getChildren() + self.composites + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces
 
 
 class enum(hinted_base_element):
@@ -236,6 +239,36 @@ class value_object_member(hinted_base_element):
             self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
 
+
+class composite(internal_scoped_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.inherits: List[qualified_name] = []
+        self.name: str = None
+        self.members: List[composite_member] = []
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitComposit(self, parentData)
+        super().visit(visitor, data)
+        for member in self.members:
+            member.visit(visitor, data)
+        for internal_enum in self.enums:
+            internal_enum.visit(visitor, data)
+        for internal_value_object in self.value_objects:
+            internal_value_object.visit(visitor, data)
+
+
+class composite_member(hinted_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = None
+        self.type: type = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitCompositMember(self, parentData)
+        if (self.type != None):
+            self.type.visit(visitor, data, "type")
+        super().visit(visitor, data)
 
 class event(internal_scoped_base_element):
     def __init__(self, fileName, pos):

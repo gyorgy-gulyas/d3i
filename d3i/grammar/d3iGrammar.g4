@@ -31,6 +31,7 @@ context
     context_element
         : enum
         | value_object
+        | composite
         | aggregate
         | view
         | repository
@@ -53,7 +54,19 @@ value_object
             : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
             ;
 
+composite
+    : DOCUMENT_LINE* decorator* 'composite' IDENTIFIER inherits? '{' composite_element* '}'
+    ;
 
+    composite_element
+        : composite_member
+        | enum
+        | value_object
+        ;
+        
+        composite_member
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
+            ;
 
 event
     :  DOCUMENT_LINE* decorator* 'event' IDENTIFIER inherits? '{' event_element* '}'

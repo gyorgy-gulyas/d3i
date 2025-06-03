@@ -128,7 +128,26 @@ domain SomeDomain {
 
         jsonEmmiter = JsonEmitter()
         result = jsonEmmiter.Emit(session)
-        expected = """"""
+        expected = """{
+    "$type": "d3i.d3",
+    "imports": [],
+    "domains": [
+        {
+            "$type": "d3i.domain",
+            "name": "SomeDomain",
+            "directives": [],
+            "contexts": [],
+            "domain_events": [],
+            "document_lines": [],
+            "decorators": [],
+            "location": {
+                "fileName": "internal string",
+                "line": 2,
+                "column": 0
+            }
+        }
+    ]
+}"""
         diff = jsondiff.diff(result, expected, syntax='symmetric')
         self.assertEqual(0, len(diff))
 

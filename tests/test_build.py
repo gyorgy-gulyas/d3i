@@ -2,7 +2,6 @@ from __future__ import annotations
 import unittest
 from d3i.Engine import *
 
-
 class TestBuild(unittest.TestCase):
 
     def test_empty_ok(self):
@@ -291,6 +290,115 @@ domain somedomain {
         self.assertEqual(enum_inner.name, "InnerEnum")
         self.assertEqual(len(enum_inner.enum_elements), 2)
 
+    def test_composite(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        @decorator_composite
+        composite WithAddress {
+            @required
+            city:string
+            street:string
+            country:General.Country
+            @required
+            zipCode:integer
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        composite: composite = context.composites[0]
+        self.assertEqual(len(composite.decorators), 1)
+        self.assertEqual(composite.name, "WithAddress")
+        self.assertEqual(len(composite.members), 4)
+        member: composite_member = composite.members[0]
+        self.assertEqual(member.name, "city")
+        self.assertEqual(member.type.kind, type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, primitive_type.PrimtiveKind.String)
+        self.assertEqual(member.decorators[0].name, "required")
+        member: composite_member = composite.members[1]
+        self.assertEqual(member.name, "street")
+        self.assertEqual(member.type.kind, type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, primitive_type.PrimtiveKind.String)
+        member: composite_member = composite.members[2]
+        self.assertEqual(member.name, "country")
+        self.assertEqual(member.type.kind, type.Kind.Reference)
+        self.assertEqual(member.type.reference_name.getText(), "General.Country")
+        member: composite_member = composite.members[3]
+        self.assertEqual(member.name, "zipCode")
+        self.assertEqual(member.type.kind, type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, primitive_type.PrimtiveKind.Integer)
+
+    def test_composite_inner_valueobject(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        @decorator_composite
+        composite WithAddress {
+            valueobject Inner{
+                inner_1:string
+                inner_2:integer
+            }
+            @required
+            city:string
+            street:string
+            country:General.Country
+            @required
+            zipCode:integer
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        composite: composite = context.composites[0]
+        self.assertEqual(len(composite.decorators), 1)
+        self.assertEqual(composite.name, "WithAddress")
+        self.assertEqual(len(composite.members), 4)
+        value_object_inner: value_object = composite.value_objects[0]
+        member: value_object_member = value_object_inner.members[0]
+        self.assertEqual(member.name, "inner_1")
+        self.assertEqual(member.type.kind, type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, primitive_type.PrimtiveKind.String)
+        member: value_object_member = value_object_inner.members[1]
+        self.assertEqual(member.name, "inner_2")
+        self.assertEqual(member.type.kind, type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, primitive_type.PrimtiveKind.Integer)
+
+    def test_composite_inner_enum(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        @decorator_composite
+        composite WithAddress {
+            enum InnerEnum{
+                Value1,
+                Value2
+            }
+            @required
+            city:string
+            street:string
+            country:General.Country
+            @required
+            zipCode:integer
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        composite: composite = context.composites[0]
+        self.assertEqual(len(composite.decorators), 1)
+        self.assertEqual(composite.name, "WithAddress")
+        self.assertEqual(len(composite.members), 4)
+        enum_inner: enum = composite.enums[0]
+        self.assertEqual(enum_inner.name, "InnerEnum")
+        self.assertEqual(len(enum_inner.enum_elements), 2)
+
     def test_entity(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
@@ -384,6 +492,95 @@ domain somedomain {
         inner_value_object: value_object = entity.value_objects[0]
         self.assertEqual(inner_value_object.name, "Credit")
         self.assertEqual(len(inner_value_object.members), 2)
+
+    def test_entity_inheritance_base_entity(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        aggregate Base {
+            entity Object {
+                @required
+                HumanReadableKey:string
+            }
+        }
+
+        aggregate CustomerAggregate {
+            @decorator_entity
+            entity Partner {
+                @required
+                name:string
+                address:Address
+            }
+
+            @decorator_entity
+            entity Customer inherits Partner, Base.Object {
+                @required
+                discountCategory:integer
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        entity: entity = context.aggregates[1].internal_entities[1].entity
+        self.assertEqual(entity.name, "Customer")
+        self.assertEqual(len(entity.members), 1)
+        member: entity_member = entity.members[0]
+        self.assertEqual(member.name, "discountCategory")
+        self.assertEqual(member.type.kind, type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, primitive_type.PrimtiveKind.Integer)
+        self.assertEqual(member.decorators[0].name, "required")
+        self.assertEqual(len(entity.inherits), 2)
+        base_entity_name:qualified_name = entity.inherits[0]
+        self.assertEqual(base_entity_name.getText(), "Partner" )
+        base_entity_name = entity.inherits[1]
+        self.assertEqual(base_entity_name.getText(), "Base.Object" )
+
+    
+    def test_entity_inheritance_base_composit(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        composite Object {
+            @required
+            HumanReadableKey:string
+        }
+
+        aggregate CustomerAggregate {
+            @decorator_entity
+            entity Partner {
+                @required
+                name:string
+                address:Address
+            }
+
+            @decorator_entity
+            entity Customer inherits Partner, Object {
+                @required
+                discountCategory:integer
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        entity: entity = context.aggregates[0].internal_entities[1].entity
+        self.assertEqual(entity.name, "Customer")
+        self.assertEqual(len(entity.members), 1)
+        member: entity_member = entity.members[0]
+        self.assertEqual(member.name, "discountCategory")
+        self.assertEqual(member.type.kind, type.Kind.Primitive)
+        self.assertEqual(member.type.primtiveKind, primitive_type.PrimtiveKind.Integer)
+        self.assertEqual(member.decorators[0].name, "required")
+        self.assertEqual(len(entity.inherits), 2)
+        base_entity_name:qualified_name = entity.inherits[0]
+        self.assertEqual(base_entity_name.getText(), "Partner" )
+        base_entity_name = entity.inherits[1]
+        self.assertEqual(base_entity_name.getText(), "Object" )
 
     def test_aggregate(self):
         engine = Engine()
@@ -781,55 +978,6 @@ domain somedomain {
         self.assertEqual(operation_return.type.kind, type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "ErrorNotFound")
 
-
-def test_context_event(self):
-        engine = Engine()
-        session = Session(Source.CreateFromText("""
-domain somedomain {
-    context context_1 {
-        @decorator
-        event OrderPlaced {
-            valueobject EventData {
-                data_1:string
-                data_1:string
-            }
-            enum Importance {
-                High,
-                Normal,
-                Low
-            }
-
-            orderId:string
-            importance:Importance
-            @decorator_data
-            data:EventData
-        }
-    }
-}
-"""))
-        root = engine.Build(session)
-        context: context = root.domains[0].contexts[0]
-        self.assertEqual(len(context.context_events), 1)
-        event: event = context.context_events[0]
-        self.assertEqual(event.name, "OrderPlaced")
-        self.assertEqual(len(event.members), 3)
-        self.assertEqual(len(event.enums), 1)
-        self.assertEqual(len(event.value_objects), 1)
-        member: event_member = event.members[0]
-        self.assertEqual(member.name, "orderId")
-        self.assertEqual(member.type.kind, type.Kind.Primitive)
-        self.assertEqual(member.type.primtiveKind, primitive_type.PrimtiveKind.String)
-        self.assertEqual(len(member.decorators), 0)
-        member: event_member = event.members[1]
-        self.assertEqual(member.name, "importance")
-        self.assertEqual(len(member.decorators), 0)
-        self.assertEqual(member.type.kind, type.Kind.Reference)
-        self.assertEqual(member.type.reference_name.getText(), "Importance")
-        member: event_member = event.members[2]
-        self.assertEqual(member.name, "data")
-        self.assertEqual(len(member.decorators), 1)
-        self.assertEqual(member.type.kind, type.Kind.Reference)
-        self.assertEqual(member.type.reference_name.getText(), "EventData")
 
 if __name__ == "__main__":
     unittest.main()
