@@ -2,8 +2,15 @@ import os
 import shutil
 import glob
 
-os.system("java -jar ./tools/antlr/antlr-4.13.2-complete.jar -o ./d3i/grammar -Dlanguage=Python3 ./d3i/grammar/d3iLexer.g4")
-os.system("java -jar ./tools/antlr/antlr-4.13.2-complete.jar -o ./d3i/grammar -Dlanguage=Python3 ./d3i/grammar/d3iGrammar.g4 -visitor")
+
+# A saját Java JDK bin könyvtárad helye
+java_bin_path = r"C:/java/bin"
+env = os.environ.copy()
+env["PATH"] = java_bin_path + os.pathsep + env["PATH"]
+
+
+os.system("C:/java/bin/java -jar ./tools/antlr/antlr-4.13.2-complete.jar -o ./d3i/grammar -Dlanguage=Python3 ./d3i/grammar/d3iLexer.g4")
+os.system("C:/java/bin/java -jar ./tools/antlr/antlr-4.13.2-complete.jar -o ./d3i/grammar -Dlanguage=Python3 ./d3i/grammar/d3iGrammar.g4 -visitor")
 
 source_directory = './d3i/grammar'
 destination_directory = './d3i/grammar/.antlr'

@@ -24,6 +24,7 @@ PIPE : '|' ;
 ACL : 'acl' ;
 AGGREGATE : 'aggregate' ;
 CONTEXT : 'context' ;
+COMPOSIT : 'composit' ;
 DOMAIN : 'domain' ;
 ENTITY : 'entity' ;
 ENUM : 'enum' ;
@@ -32,7 +33,6 @@ IMPORT : 'import' ;
 INTERFACE : 'interface' ;
 REPOSITORY : 'repository' ;
 SERVICE : 'service' ;
-TRAIT : 'trait' ;
 VALUEOBJECT : 'valueobject' ;
 VIEW : 'view' ;
 

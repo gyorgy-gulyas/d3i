@@ -31,7 +31,6 @@ context
     context_element
         : enum
         | value_object
-        | trait
         | aggregate
         | view
         | repository
@@ -54,19 +53,7 @@ value_object
             : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
             ;
 
-trait
-    : DOCUMENT_LINE* decorator* 'trait' IDENTIFIER inherits? '{' trait_element* '}'
-    ;
 
-    trait_element
-        : trait_object_member
-        | enum
-        | value_object
-        ;
-        
-        trait_object_member
-            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
-            ;
 
 event
     :  DOCUMENT_LINE* decorator* 'event' IDENTIFIER inherits? '{' event_element* '}'
