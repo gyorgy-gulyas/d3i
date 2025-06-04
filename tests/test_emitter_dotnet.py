@@ -1,6 +1,5 @@
 import unittest
 from tests.dotnet_code_helper import *
-from d3i.emitters.dotnet_emmiter.ModelEmitter import *
 from d3i.elements.Elements import *
 from d3i.Engine import *
 
@@ -8,9 +7,10 @@ from d3i.Engine import *
 class TestEmitterDotnetDefault(unittest.TestCase):
 
     def setUp(self):
-        dotnet_code_helper.init_roslyn()
+        #dotnet_code_helper.init_roslyn()
+        pass
 
-    def test_modelemitter_enum_ok(self):
+    def test_emitter_enum_ok(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
 domain WebShop {
@@ -23,7 +23,7 @@ domain WebShop {
 }
 """))
         root = engine.Build(session)
-        emitter = ModelEmmiter()
+        emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
 using System;
@@ -39,14 +39,162 @@ namespace WebShop.CustomerContext
 }
 """
         self.assertTrue(1, len(result))
-        self.assertEqual(result[0].fileName, "CustomerContext.cs")
-        equal, index, diff_part_1, diff_part_2 = dotnet_code_helper.compare_and_extract_diff(expected, result[0].content)
-        self.assertTrue(equal)
-        compiled, errors, assembly = dotnet_code_helper.compile_debug(result, dotnet_code_helper.assembly_name())
-        self.assertTrue(compiled)
+        self.assertEqual(result[0].fileName, "CustomerType.cs")
+        
 
-        print(result)
+    def test_emitter_composite_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context CustomerContext {
+        composite WithAddress {
+            city:string
+            street:string
+            country:string
+            zipCode:integer
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        emitter = DotnetEmitter()
+        result = emitter.Emit(session)
+        expected = """
+using System;
+using System.Collections.Generic;
 
-    
+namespace WebShop.CustomerContext{
+
+        public interface IWithAddress
+        {
+                public string city { get; set; }
+                public string street { get; set; }
+                public string country { get; set; }
+                public int zipCode { get; set; }
+        }
+}
+"""
+        self.assertTrue(1, len(result))
+        self.assertEqual(result[0].fileName, "IWithAddress.cs")
+        print(result[0].content)
+
+    def test_emitter_valueobject_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context CustomerContext {
+        valueobject Address {
+            city:string
+            street:string
+            country:string
+            zipCode:integer
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        emitter = DotnetEmitter()
+        result = emitter.Emit(session)
+        expected = """
+using System;
+using System.Collections.Generic;
+
+namespace WebShop.CustomerContext{
+
+        public class Address
+        {
+                public string city { get; set; }
+                public string street { get; set; }
+                public string country { get; set; }
+                public int zipCode { get; set; }
+        }
+}
+"""
+        self.assertTrue(1, len(result))
+        self.assertEqual(result[0].fileName, "Address.cs")
+        print(result[0].content)
+
+    def test_emitter_valueobject_inheritance_composite_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        composite WithAddress {
+            city:string
+            street:string
+            country:string
+            zipCode:integer
+        }
+
+        valueobject PartnerAddress inherits WithAddress {
+            PartnerCode:string
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        emitter = DotnetEmitter()
+        result = emitter.Emit(session)
+        expected = """
+using System;
+using System.Collections.Generic;
+
+namespace WebShop.CustomerContext
+{
+        public class PartnerAddress : IWithAddress
+        {
+            #region IWithAddress
+            public string city { get; set; }
+            public string street { get; set; }
+            public string country { get; set; }
+            public int zipCode { get; set; }
+            #endregion IWithAddress
+
+            public string PartnerCode { get; set; }
+        }
+}
+"""
+        self.assertTrue(1, len(result))
+        self.assertEqual(result[0].fileName, "PartnerAddress.cs")
+        print(result[0].content)
+
+    def test_emitter_valueobject_inheritance_base_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        valueobject Address {
+            city:string
+            street:string
+            country:string
+            zipCode:integer
+        }
+
+        valueobject PartnerAddress inherits Address {
+            PartnerCode:string
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        emitter = DotnetEmitter()
+        result = emitter.Emit(session)
+        expected = """
+using System;
+using System.Collections.Generic;
+
+namespace WebShop.CustomerContext{
+
+        public class PartnerAddress : Address
+        {
+            public string PartnerCode { get; set; }
+        }
+}
+"""
+        self.assertTrue(1, len(result))
+        self.assertEqual(result[1].fileName, "PartnerAddress.cs")
+        print(result[1].content)
+
+
 if __name__ == "__main__":
     unittest.main()

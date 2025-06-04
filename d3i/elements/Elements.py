@@ -395,15 +395,23 @@ class view_member(hinted_base_element):
         super().visit(visitor, data)
 
 class repository(hinted_base_element):
+    class Kind(Enum):
+        DocumentStore = 1
+        RelationalSQL = 2
+        BlobStore = 3
+        WideColumnStore = 4
+        ColumnarOLAP = 5
+        SearchEngine = 6
+
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
         self.referenced_name: str = None
+        self.kind: repository.Kind = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitRepository(self, parentData)
         super().visit(visitor, data)
-
 
 class service(internal_scoped_base_element):
     def __init__(self, fileName, pos):

@@ -687,6 +687,8 @@ class ElementBuilder(d3iGrammarVisitor):
             child.parent = result
             result.decorators.append(child)
 
+        result.kind = repository.Kind.RelationalSQL
+
         return result
 
     # Visit a parse tree produced by d3iGrammar#service.

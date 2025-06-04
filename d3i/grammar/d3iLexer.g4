@@ -20,7 +20,6 @@ ARROW : '=>' ;
 PIPE : '|' ;
 
 // declaration keywords
-
 ACL : 'acl' ;
 AGGREGATE : 'aggregate' ;
 CONTEXT : 'context' ;

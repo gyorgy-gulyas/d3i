@@ -1,8 +1,10 @@
 import os
 import io
 from typing import Dict
+from typing import List
 from d3i.elements.Elements import *
 from d3i.Engine import *
+
 
 def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
     """
@@ -24,8 +26,12 @@ def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
 
     return results
 
+
 class DotnetEmitter:
-    def __init__(self, output_dir: str, configuration: Dict[str, str]):
+    def __init__(self, output_dir: str = "./", configuration: Dict[str, str] = {}):
+        """
+        Initializes the DotnetEmmiter instance with the provided output directory and configuration.
+        """
         self.configuration: dotnet_configuration = dotnet_configuration(configuration, output_dir)
 
     def Emit(self, session: Session):
@@ -33,6 +39,46 @@ class DotnetEmitter:
         Emits the .NET code based on d3 file
         """
         result: List[dotnet_code] = []
+
+        # Iterate over all domain in the session
+        for domain in session.main.domains:
+            path: str = self.configuration.output_dir
+            for context in domain.contexts:
+
+                # Process all enum in the context
+                for enum in context.enums:
+                    content: str = self.beginFile(domain, context)
+                    content += self.enumText(enum, indent=1)
+                    content += self.endFile()
+                    result.append(dotnet_code(path, enum.name, content))
+
+                # Process all value_object in the context
+                for valueobject in context.value_objects:
+                    content: str = self.beginFile(domain, context)
+                    content += self.valueobjectText(valueobject, indent=1)
+                    content += self.endFile()
+                    result.append(dotnet_code(path, valueobject.name, content))
+
+                # Process all composite in the context
+                for composite in context.composites:
+                    content: str = self.beginFile(domain, context)
+                    content += self.compositeText(composite, indent=1)
+                    content += self.endFile()
+                    result.append(dotnet_code(path, "I"+composite.name, content))
+
+                # Process all aggregate in the context
+                for aggregate in context.aggregates:
+                    for entity in aggregate.enums:
+                        content: str = self.beginFile(domain, context, aggregate)
+                        content += self.enumText(enum, indent=1)
+                        content += self.endFile()
+                        result.append(dotnet_code(path, "I"+composite.name, content))
+
+                    for entity in aggregate.internal_entities:
+                        content: str = self.beginFile(domain, context, aggregate)
+                        content += self.entityText(enum, indent=1)
+                        content += self.endFile()
+                        result.append(dotnet_code(path, "I"+composite.name, content))
 
         return result
 
@@ -53,42 +99,164 @@ class DotnetEmitter:
 
         return "\n".join(using_statements) + "\n"
 
-    def beginFile(self) -> str:
+    def beginFile(self, domain: domain, context: context, aggregate: aggregate) -> str:
+        return self.__beginFile({domain.name, context.name, aggregate.name})
+
+    def beginFile(self, domain: domain, context: context) -> str:
+        return self.__beginFile({domain.name, context.name})
+
+    def __beginFile(self, names: List[str]) -> str:
         buffer = io.StringIO()
         buffer.write(self.fileHeader())
         buffer.write("\n")
         buffer.write(self.defaultUsings())
         buffer.write("\n")
+        buffer.write(f"namespace {".".join(names)}\n")
+        buffer.write("{\n")
         return buffer.getvalue()
 
     def endFile(self):
         buffer = io.StringIO()
-        buffer.write("\n")
+        buffer.write("}\n")
         return buffer.getvalue()
 
     def enumText(self, enum: enum, indent: int = 1):
+        """
+        Generates the .NET code for an enum.
+        """
         buffer = io.StringIO()
         buffer.write("\n")
-        buffer.write(f"{'\t'*indent}enum {enum.name}\n")
-        buffer.write(f"{'\t'*indent}{{\n")
+        # Add documentation lines for the enum
+        buffer.write(self.documentLines(enum, indent))
+        # Write the enum declaration with indentation
+        buffer.write(f"{self.tab(indent)}public enum {enum.name}\n")
+        buffer.write(f"{self.tab(indent)}{{\n")
+        # Loop through each enum element and generate code for each
         for enum_element in enum.enum_elements:
-            buffer.write(f"{'\t'*(indent+1)}{enum_element.value},\n")
-        buffer.write(f"{'\t'*indent}}}\n")
+            buffer.write(self.documentLines(enum_element, indent+1))
+            # Write each enum element value
+            buffer.write(f"{self.tab(indent+1)}{enum_element.value},\n")
+        buffer.write(f"{self.tab(indent)}}}\n")
         return buffer.getvalue()
 
-    def valueObjectText(self, value_object: value_object, indent: int = 1):
+    def valueobjectText(self, valueobject: value_object, indent: int = 1):
+        """
+        Generates the .NET code for an value_object
+        """
+        base_composites: List[composite] = []
+        inherit_names: List[str] = []
+        for inherit in valueobject.inherits:
+            base = utils.get_referenced_element(valueobject.parent, inherit)
+            if (isinstance(base, composite) == True):
+                base_composites.append(base)
+                inherit_names.append(utils.join_with_I(inherit.names))
+            if (isinstance(base, value_object) == True):
+                inherit_names.append(inherit.getText())
+
         buffer = io.StringIO()
         buffer.write("\n")
-        buffer.write(f"{'\t'*indent}enum {enum.name}")
-        buffer.write("{")
-        for member in value_object.members:
-            buffer.write(f"{self.memberText(member.name, member.type, indent+1)},")
-        buffer.write(f"{'\t'*indent}enum {enum.name}")
+        # Add documentation lines for the composite
+        buffer.write(self.documentLines(valueobject, indent))
+        # Write the value_object declaration with indentation
+        buffer.write(f"{self.tab(indent)}public class {valueobject.name}")
+        # Write inherits if any
+        if (len(inherit_names)):
+            buffer.write(" : ")
+            buffer.write(",".join(inherit_names))
+        buffer.write(f"\n{self.tab(indent)}{{\n")
+
+        # Loop through each coposite members and generate code for each
+        for base_composite in base_composites:
+            buffer.write(f"{self.tab(indent+1)}#region I{base_composite.name}\n")
+            for member in base_composite.members:
+                # Write each member
+                buffer.write(self.documentLines(member, indent+1))
+                buffer.write(self.propertyText(member.name, member.type, indent+1))
+            buffer.write(f"{self.tab(indent+1)}#endregion I{base_composite.name}\n\n")
+
+        # Loop through each valueobject members and generate code for each
+        for member in valueobject.members:
+            # Write each member
+            buffer.write(self.documentLines(member, indent+1))
+            buffer.write(self.propertyText(member.name, member.type, indent+1))
+
+        buffer.write(f"{self.tab(indent)}}}\n")
+
         return buffer.getvalue()
 
-    def memberText(self, member_name: str, type: type, indent: int):
+    def entityText(self, _entity: entity, indent: int = 1):
+        """
+        Generates the .NET code for an entity
+        """
+        base_composites: List[composite] = []
+        inherit_names: List[str] = []
+        hasBaseEntity = False
+        for inherit in _entity.inherits:
+            base = utils.get_referenced_element(_entity.parent, inherit)
+            if (isinstance(base, composite) == True):
+                base_composites.append(base)
+                inherit_names.append(utils.join_with_I(inherit.names))
+            if (isinstance(base, entity) == True):
+                hasBaseEntity = True
+                inherit_names.append(inherit.getText())
+
+        if (hasBaseEntity == False):
+            inherit_names.insert(0, "Entity")
+
         buffer = io.StringIO()
-        buffer.write(f"{'\t'*indent}public {self.typeText(type)} {member_name} {{ get; set; }}")
+        buffer.write("\n")
+        # Add documentation lines for the composite
+        buffer.write(self.documentLines(_entity, indent))
+        # Write the entity declaration with indentation
+        buffer.write(f"{self.tab(indent)}public partial class {_entity.name}")
+        # Write inherits if any
+        if (len(inherit_names)):
+            buffer.write(" : ")
+            buffer.write(",".join(inherit_names))
+        buffer.write(f"\n{self.tab(indent)}{{\n")
+
+        # Loop through each coposite members and generate code for each
+        for base_composite in base_composites:
+            buffer.write(f"{self.tab(indent+1)}#region I{base_composite.name}\n")
+            for member in base_composite.members:
+                # Write each member
+                buffer.write(self.documentLines(member, indent+1))
+                buffer.write(self.propertyText(member.name, member.type, indent+1))
+            buffer.write(f"{self.tab(indent+1)}#endregion I{base_composite.name}\n\n")
+
+        # Loop through each entity members and generate code for each
+        for member in _entity.members:
+            # Write each member
+            buffer.write(self.documentLines(member, indent+1))
+            buffer.write(self.propertyText(member.name, member.type, indent+1))
+
+        buffer.write(f"{self.tab(indent)}}}\n")
+
+        return buffer.getvalue()
+
+    def compositeText(self, composite: composite, indent: int = 1):
+        """
+        Generates the .NET code for an composite, just the interface.
+        """
+        buffer = io.StringIO()
+        buffer.write("\n")
+        # Add documentation lines for the composite
+        buffer.write(self.documentLines(composite, indent))
+        # Write the composite interface declaration with indentation
+        buffer.write(f"{self.tab(indent)}public interface I{composite.name}\n")
+        buffer.write(f"{self.tab(indent)}{{\n")
+        # Loop through each composite members and generate code for each
+        for member in composite.members:
+            buffer.write(self.documentLines(member, indent+1))
+            # Write each member
+            buffer.write(self.propertyText(member.name, member.type, indent+1))
+        buffer.write(f"{self.tab(indent)}}}\n")
+
+        return buffer.getvalue()
+
+    def propertyText(self, member_name: str, type: type, indent: int):
+        buffer = io.StringIO()
+        buffer.write(f"{'\t'*indent}public {self.typeText(type)} {member_name} {{ get; set; }}\n")
         return buffer.getvalue()
 
     def typeText(self, type: type):
@@ -102,7 +270,10 @@ class DotnetEmitter:
             case type.Kind.Map:
                 return self.typeTextMap(type)
 
-    def typeTextPrimitive(self, type: primitive_type, indent: int):
+    def typeTextPrimitive(self, type: primitive_type):
+        """
+        Converts a primitive type to its .NET representation.
+        """
         match type.primtiveKind:
             case primitive_type.PrimtiveKind.Any:
                 return "object"
@@ -113,11 +284,11 @@ class DotnetEmitter:
             case primitive_type.PrimtiveKind.Float:
                 return "double"
             case primitive_type.PrimtiveKind.Date:
-                return "System.DateOnly"
+                return "DateOnly"
             case primitive_type.PrimtiveKind.Time:
-                return "System.TimeOnly"
+                return "TimeOnly"
             case primitive_type.PrimtiveKind.DateTime:
-                return "System.DateTime"
+                return "DateTime"
             case primitive_type.PrimtiveKind.String:
                 return "string"
             case primitive_type.PrimtiveKind.Boolean:
@@ -136,6 +307,21 @@ class DotnetEmitter:
     def typeTextMap(self, type: map_type, indent: int):
         return f"System.Generic.Dictionary<{self.typeText(type.key_type)},{self.typeText(type.value_type)}>"
 
+    def tab(self, indent=1):
+        return '\t'*indent
+
+    def documentLines(self, hinted_element: hinted_base_element, indent: int = 1):
+        """
+        Generates documentation lines for the provided element.
+        """
+        buffer = io.StringIO()
+        # Loop through each document line of the hinted element
+        for document_line in hinted_element.document_lines:
+            # Write the documentation line with the specified indentation
+            buffer.write(f"{self.tab(indent)}///{document_line}")
+            buffer.write("\n")
+        return buffer.getvalue()
+
 
 class utils:
     @staticmethod
@@ -148,6 +334,64 @@ class utils:
         file_path = os.path.join(output_dir, file_name + ".cs")
         with open(file_path, "w") as file:
             file.write(content)
+
+    def join_with_I(words: List[str]):
+        if not words:
+            return ""
+        if len(words) == 1:
+            return "I" + words[0]
+        return ".".join(words[:-1]) + ".I" + words[-1]
+
+    @staticmethod
+    def get_referenced_element(parent: base_element, name: qualified_name) -> IScope:
+
+        scope = utils.__get_current_scope(parent)
+        element = None
+        # go up until we find the element for the first part of the name
+        while True:
+            if (scope == None):
+                break
+
+            # is the scope that has a child with the name we are looking for
+            for child in scope.getChildren():
+                if (child.name == name.names[0]):
+                    element = child
+                    break
+
+            if (element != None):
+                break
+
+            scope = scope.parent
+
+        if (element == None):
+            return None
+
+        # processing the rest of the name part if exist
+        for name_part in name.names[1:]:
+            if (isinstance(element, IScope) == False):
+                return None
+
+            scope: IScope = element
+            element = None
+            for child in scope.getChildren():
+                if (child.name == name_part):
+                    element = child
+
+            if (element == None):
+                return None
+
+        return element
+
+    def __get_current_scope(element: base_element) -> IScope:
+        current_scope = element
+        while True:
+            if isinstance(current_scope, IScope):
+                break
+            elif (current_scope == None):
+                break
+            current_scope = current_scope.parent
+
+        return current_scope
 
 
 class dotnet_configuration:
@@ -191,7 +435,10 @@ class dotnet_configuration:
 
 
 class dotnet_code:
-    def __init__(self, fullPath: str, content: str):
-        self.fullPath: str = fullPath
-        self.fileName: str = os.path.basename(fullPath)
+    def __init__(self, directory: str, name: str, content: str):
+        """
+        Initializes a dotnet_code instance with the file path, file name, and content.
+        """
+        self.fileName: str = name + ".cs"
+        self.fullPath: str = os.path.join(directory, self.fileName)
         self.content: str = content

@@ -729,6 +729,7 @@ domain somedomain {
         repository: repository = context.repositories[0]
         self.assertEqual(repository.name, "orders")
         self.assertEqual(repository.referenced_name, "Order")
+        self.assertEqual(repository.kind, repository.Kind.RelationalSQL)
 
     def test_service_event(self):
         engine = Engine()
