@@ -447,6 +447,60 @@ namespace WebShop.CustomerContext
         self.assertEqual(result[1].fileName, "OrderView.cs")
         print(result[1].content)
 
+    def test_emitter_acl_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain somedomain {
+    context context_1 {
+        @decorator
+        acl CustomerACL {
+            valueobject OrderData {
+                name:string
+                kind:CustomerKind
+                Address:string
+            }
+            enum CustomerKind {
+                PrivatePerson,
+                Company
+            }
+          
+            #getting order data based on customer id    
+            @verb("get")
+            getOrderData( @fromBody customerId: string )
+                : #order data when any found for given customer
+                  @status(200) OrderData
+                | #error message when any bussines logig error is occured
+                  #for example: customer not found
+                  @status(401) Error
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        emitter = DotnetEmitter()
+        result = emitter.Emit(session)
+        expected = """
+using System;
+using System.Collections.Generic;
+
+namespace WebShop.CustomerContext
+{
+    public partial class OrderView : Entity, IXmlSerializable
+    {
+        #region IXmlSerializable
+        public string xmlValue { get; set; }
+        #endregion IXmlSerializable
+
+        public string customerName { get; set; }
+        public DateOnly orderDate { get; set; }
+        public string orderId { get; set; }
+        public decimal orderedQuantity { get; set; }
+    }
+}
+"""
+        self.assertTrue(1, len(result))
+        self.assertEqual(result[0].fileName, "ICustomerACL.cs")
+        print(result[0].content)
 
 
 

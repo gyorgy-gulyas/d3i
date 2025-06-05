@@ -93,6 +93,13 @@ class DotnetEmitter:
                     content += self.endFile()
                     result.append(dotnet_code(path, view.name, content))
 
+                # Process all acl in the context
+                for acl in context.acls:
+                    content: str = self.beginFile({domain.name, context.name})
+                    content += self.aclInterfaceText(acl, indent=1)
+                    content += self.endFile()
+                    result.append(dotnet_code(path, "I"+acl.name, content))
+
         return result
 
     def fileHeader(self) -> str:
@@ -311,6 +318,69 @@ class DotnetEmitter:
 
         return buffer.getvalue()
 
+    def aclInterfaceText(self, acl: acl, indent: int = 1):
+        """
+        Generates the .NET code for acl, just the interface.
+        """
+        buffer = io.StringIO()
+        buffer.write("\n")
+        # Add documentation lines for the acl
+        buffer.write(self.documentLines(acl, indent))
+        # Write the acl interface declaration with indentation
+        buffer.write(f"{self.tab(indent)}public interface I{acl.name}\n")
+        buffer.write(f"{self.tab(indent)}{{\n")
+        # Loop through each composite members and generate code for each
+        for operation in acl.operations:
+            # Write each operation
+            buffer.write(self.interfaceFunctionText(operation, indent+1))
+        buffer.write(f"{self.tab(indent)}}}\n")
+        return buffer.getvalue()
+
+    def interfaceFunctionText(self, operation:operation, indent: int):
+        buffer = io.StringIO()
+
+        # Add summary for operation
+        if(len(operation.document_lines) > 0 ):
+            buffer.write(f"{self.tab(indent)}/// <summary>\n")
+            for line in operation.document_lines:
+                buffer.write(f"{self.tab(indent)}/// {line}\n")
+            buffer.write(f"{self.tab(indent)}/// </summary>\n")
+        
+        # Add param comments for operation
+        for param in operation.operation_params:
+            if(len(param.document_lines) == 1 ):
+                buffer.write(f"{self.tab(indent)}/// <param name='{param.name}'>{param.document_lines[0]}</param>\n")
+            elif(len(param.document_lines) > 1 ):
+                buffer.write(f"{self.tab(indent)}/// <param name='{param.name}'>\n")
+                for line in param.document_lines:
+                    buffer.write(f"{self.tab(indent)}/// {line}\n")
+                buffer.write(f"{self.tab(indent)}/// </param>\n")
+        
+        # Add response code comments
+        for returns in operation.operation_returns:
+            status_decorator: decorator = next((d for d in returns.decorators if d.name == "status"), None)
+            if(status_decorator != None and len(status_decorator.params) > 0 ):
+                code = status_decorator.params[0].value
+                if(len(returns.document_lines) == 1 ):
+                    buffer.write(f"{self.tab(indent)}/// <response code='{code}'>{returns.document_lines[0]}</response>\n")
+                elif(len(returns.document_lines) > 1 ):
+                    buffer.write(f"{self.tab(indent)}/// <response code='{code}'>\n")
+                    for line in returns.document_lines:
+                        buffer.write(f"{self.tab(indent)}/// {line}\n")
+                    buffer.write(f"{self.tab(indent)}/// </response>\n")
+
+        # Add return value
+        buffer.write(f"{self.tab(indent)}public ActionResult")
+        if( len(operation.operation_returns) >  0 ):
+            buffer.write( f"<{self.typeText(operation.operation_returns[0].type)}>" )
+        # Add function name
+        buffer.write(f" {operation.name}(")
+        # Add parameters
+        buffer.write(", ".join( [self.typeText(param.type) + " " + param.name for param in operation.operation_params]))
+        buffer.write(");\n")
+
+        return buffer.getvalue()
+
     def propertyText(self, member_name: str, type: type, indent: int):
         buffer = io.StringIO()
         buffer.write(f"{'\t'*indent}public {self.typeText(type)} {member_name} {{ get; set; }}\n")
@@ -355,13 +425,13 @@ class DotnetEmitter:
             case primitive_type.PrimtiveKind.Stream:
                 return "Stream"
 
-    def typeTextReference(self, type: reference_type, indent: int):
+    def typeTextReference(self, type: reference_type):
         return type.reference_name.getText()
 
-    def typeTextList(self, type: list_type, indent: int):
+    def typeTextList(self, type: list_type):
         return f"System.Generic.List<{self.typeText(type.item_type)}>"
 
-    def typeTextMap(self, type: map_type, indent: int):
+    def typeTextMap(self, type: map_type):
         return f"System.Generic.Dictionary<{self.typeText(type.key_type)},{self.typeText(type.value_type)}>"
 
     def tab(self, indent=1):
