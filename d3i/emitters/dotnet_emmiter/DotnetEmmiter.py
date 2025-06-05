@@ -47,38 +47,51 @@ class DotnetEmitter:
 
                 # Process all enum in the context
                 for enum in context.enums:
-                    content: str = self.beginFile(domain, context)
+                    content: str = self.beginFile({domain.name, context.name})
                     content += self.enumText(enum, indent=1)
                     content += self.endFile()
                     result.append(dotnet_code(path, enum.name, content))
 
                 # Process all value_object in the context
                 for valueobject in context.value_objects:
-                    content: str = self.beginFile(domain, context)
+                    content: str = self.beginFile({domain.name, context.name})
                     content += self.valueobjectText(valueobject, indent=1)
                     content += self.endFile()
                     result.append(dotnet_code(path, valueobject.name, content))
 
                 # Process all composite in the context
                 for composite in context.composites:
-                    content: str = self.beginFile(domain, context)
+                    content: str = self.beginFile({domain.name, context.name})
                     content += self.compositeText(composite, indent=1)
                     content += self.endFile()
                     result.append(dotnet_code(path, "I"+composite.name, content))
 
                 # Process all aggregate in the context
                 for aggregate in context.aggregates:
-                    for entity in aggregate.enums:
-                        content: str = self.beginFile(domain, context, aggregate)
+                    for enum in aggregate.enums:
+                        content: str = self.beginFile({domain.name, context.name, aggregate.name})
                         content += self.enumText(enum, indent=1)
                         content += self.endFile()
                         result.append(dotnet_code(path, "I"+composite.name, content))
 
-                    for entity in aggregate.internal_entities:
-                        content: str = self.beginFile(domain, context, aggregate)
-                        content += self.entityText(enum, indent=1)
+                    for valueobject in aggregate.value_objects:
+                        content: str = self.beginFile({domain.name, context.name, aggregate.name})
+                        content += self.valueobjectText(valueobject, indent=1)
                         content += self.endFile()
-                        result.append(dotnet_code(path, "I"+composite.name, content))
+                        result.append(dotnet_code(path, valueobject.name, content))
+
+                    for aggregate_entity in aggregate.internal_entities:
+                        content: str = self.beginFile({domain.name, context.name, aggregate.name})
+                        content += self.entityText(aggregate_entity.entity, indent=1)
+                        content += self.endFile()
+                        result.append(dotnet_code(path, aggregate_entity.entity.name, content))
+
+                # Process all view in the context
+                for view in context.views:
+                    content: str = self.beginFile({domain.name, context.name})
+                    content += self.viewText(view, indent=1)
+                    content += self.endFile()
+                    result.append(dotnet_code(path, view.name, content))
 
         return result
 
@@ -99,13 +112,7 @@ class DotnetEmitter:
 
         return "\n".join(using_statements) + "\n"
 
-    def beginFile(self, domain: domain, context: context, aggregate: aggregate) -> str:
-        return self.__beginFile({domain.name, context.name, aggregate.name})
-
-    def beginFile(self, domain: domain, context: context) -> str:
-        return self.__beginFile({domain.name, context.name})
-
-    def __beginFile(self, names: List[str]) -> str:
+    def beginFile(self, names: List[str]) -> str:
         buffer = io.StringIO()
         buffer.write(self.fileHeader())
         buffer.write("\n")
@@ -162,7 +169,7 @@ class DotnetEmitter:
         # Write inherits if any
         if (len(inherit_names)):
             buffer.write(" : ")
-            buffer.write(",".join(inherit_names))
+            buffer.write(", ".join(inherit_names))
         buffer.write(f"\n{self.tab(indent)}{{\n")
 
         # Loop through each coposite members and generate code for each
@@ -212,7 +219,7 @@ class DotnetEmitter:
         # Write inherits if any
         if (len(inherit_names)):
             buffer.write(" : ")
-            buffer.write(",".join(inherit_names))
+            buffer.write(", ".join(inherit_names))
         buffer.write(f"\n{self.tab(indent)}{{\n")
 
         # Loop through each coposite members and generate code for each
@@ -226,6 +233,56 @@ class DotnetEmitter:
 
         # Loop through each entity members and generate code for each
         for member in _entity.members:
+            # Write each member
+            buffer.write(self.documentLines(member, indent+1))
+            buffer.write(self.propertyText(member.name, member.type, indent+1))
+
+        buffer.write(f"{self.tab(indent)}}}\n")
+
+        return buffer.getvalue()
+    
+    def viewText(self, _view: view, indent: int = 1):
+        """
+        Generates the .NET code for an view
+        """
+        base_composites: List[composite] = []
+        inherit_names: List[str] = []
+        hasBaseView = False
+        for inherit in _view.inherits:
+            base = utils.get_referenced_element(_view.parent, inherit)
+            if (isinstance(base, composite) == True):
+                base_composites.append(base)
+                inherit_names.append(utils.join_with_I(inherit.names))
+            if (isinstance(base, view) == True):
+                hasBaseView = True
+                inherit_names.append(inherit.getText())
+
+        if (hasBaseView == False):
+            inherit_names.insert(0, "Entity")
+
+        buffer = io.StringIO()
+        buffer.write("\n")
+        # Add documentation lines for the composite
+        buffer.write(self.documentLines(_view, indent))
+        # Write the view declaration with indentation
+        buffer.write(f"{self.tab(indent)}public partial class {_view.name}")
+        # Write inherits if any
+        if (len(inherit_names)):
+            buffer.write(" : ")
+            buffer.write(", ".join(inherit_names))
+        buffer.write(f"\n{self.tab(indent)}{{\n")
+
+        # Loop through each coposite members and generate code for each
+        for base_composite in base_composites:
+            buffer.write(f"{self.tab(indent+1)}#region I{base_composite.name}\n")
+            for member in base_composite.members:
+                # Write each member
+                buffer.write(self.documentLines(member, indent+1))
+                buffer.write(self.propertyText(member.name, member.type, indent+1))
+            buffer.write(f"{self.tab(indent+1)}#endregion I{base_composite.name}\n\n")
+
+        # Loop through each view members and generate code for each
+        for member in _view.members:
             # Write each member
             buffer.write(self.documentLines(member, indent+1))
             buffer.write(self.propertyText(member.name, member.type, indent+1))
@@ -422,6 +479,8 @@ class dotnet_configuration:
             value = configuration["dotnet.default_usings"]
             if (isinstance(value, list) and all(isinstance(item, str) for item in value)):
                 self.defaultUsings = value
+        self.defaultUsings.append( "PolyPersist.Net")
+        self.defaultUsings.append( "PolyPersist.Net.Core")
 
     def __read_createFolderStructure(self, configuration: Dict[str, str]):
         self.createFolderStructure: bool = True
