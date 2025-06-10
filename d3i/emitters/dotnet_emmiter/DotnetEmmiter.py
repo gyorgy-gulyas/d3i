@@ -102,8 +102,12 @@ class DotnetEmitter:
                     result.append(dotnet_code(path, "I"+acl.name, content))
 
                     # proto
-                    content += self.aclProtoFile({domain.name, context.name}, acl, indent=0)
+                    content = self.aclProtoFile(domain, context, acl, indent=0)
                     result.append(dotnet_code(path, acl.name, content, ".proto"))
+
+                    # proto service file
+                    content = self.aclGrpcControllerFile(domain, context, acl, indent=1)
+                    result.append(dotnet_code(path, acl.name+"GrpcController", content))
 
         return result
 
@@ -252,7 +256,7 @@ class DotnetEmitter:
         buffer.write(f"{self.tab(indent)}}}\n")
 
         return buffer.getvalue()
-    
+
     def viewText(self, _view: view, indent: int = 1):
         """
         Generates the .NET code for an view
@@ -343,7 +347,56 @@ class DotnetEmitter:
         buffer.write(f"{self.tab(indent)}}}\n")
         return buffer.getvalue()
 
-    def aclProtoFile(self, names: List[str], acl: acl, indent: int = 1):
+    def interfaceFunctionText(self, operation: operation, indent: int):
+        buffer = io.StringIO()
+
+        # Add summary for operation
+        if (len(operation.document_lines) > 0):
+            buffer.write(f"{self.tab(indent)}/// <summary>\n")
+            for line in operation.document_lines:
+                buffer.write(f"{self.tab(indent)}/// {line}\n")
+            buffer.write(f"{self.tab(indent)}/// </summary>\n")
+
+        # Add param comments for operation
+        for param in operation.operation_params:
+            if (len(param.document_lines) == 1):
+                buffer.write(f"{self.tab(indent)}/// <param name='{param.name}'>{param.document_lines[0]}</param>\n")
+            elif (len(param.document_lines) > 1):
+                buffer.write(f"{self.tab(indent)}/// <param name='{param.name}'>\n")
+                for line in param.document_lines:
+                    buffer.write(f"{self.tab(indent)}/// {line}\n")
+                buffer.write(f"{self.tab(indent)}/// </param>\n")
+
+        # Add response code comments
+        for returns in operation.operation_returns:
+            status_decorator: decorator = next((d for d in returns.decorators if d.name == "status"), None)
+            if (status_decorator != None and len(status_decorator.params) > 0):
+                code = status_decorator.params[0].value
+                if (len(returns.document_lines) == 1):
+                    buffer.write(f"{self.tab(indent)}/// <response code='{code}'>{returns.document_lines[0]}</response>\n")
+                elif (len(returns.document_lines) > 1):
+                    buffer.write(f"{self.tab(indent)}/// <response code='{code}'>\n")
+                    for line in returns.document_lines:
+                        buffer.write(f"{self.tab(indent)}/// {line}\n")
+                    buffer.write(f"{self.tab(indent)}/// </response>\n")
+
+        # Add return value
+        buffer.write(f"{self.tab(indent)}public Response")
+        if (len(operation.operation_returns) > 0):
+            buffer.write("<")
+            buffer.write(", ".join(self.typeText(item.type) for item in operation.operation_returns))
+            buffer.write(">")
+        # Add function name
+        buffer.write(f" {operation.name}( CallingContext ctx")
+        # Add parameters
+        if (len(operation.operation_params) > 0):
+            buffer.write(f", ")
+        buffer.write(", ".join([self.typeText(param.type) + " " + param.name for param in operation.operation_params]))
+        buffer.write(");\n")
+
+        return buffer.getvalue()
+
+    def aclProtoFile(self, domain: domain, context: context, acl: acl, indent: int = 1):
         """
         Generates the proto file for ACL
         """
@@ -357,15 +410,15 @@ class DotnetEmitter:
 
         # namespace
         buffer.write("\n")
-        buffer.write(f"option csharp_namespace = \"{".".join(names)}\";")
+        buffer.write(f"option csharp_namespace = \"{domain.name}.{context.name}\";")
         buffer.write("\n")
 
-        # package 
+        # package
         buffer.write("\n")
-        buffer.write(f"package {acl.name}\";")
+        buffer.write(f"package {acl.name}Package\";")
         buffer.write("\n")
 
-        # imports 
+        # imports
         buffer.write("\n")
         buffer.write("import \"google/protobuf/empty.proto\";\n")
         buffer.write("import \"servicekit/protobuf/error.proto\";\n")
@@ -388,7 +441,7 @@ class DotnetEmitter:
             # Request message
             buffer.write(f"\n")
             buffer.write(f"message {operation.name}Request {{\n")
-            index:int = 1
+            index: int = 1
             for param in operation.operation_params:
                 buffer.write(self.documentLines(param, indent+2))
                 buffer.write(f"{self.tab(indent+2)}{self.typeText(param.type)} {param.name} = {index};\n")
@@ -398,14 +451,14 @@ class DotnetEmitter:
             # Response message
             buffer.write(f"message {operation.name}Response {{\n")
             buffer.write(f"{self.tab(indent+1)}oneof result {{\n")
-            if( len(operation.operation_returns) == 0 ):
+            if (len(operation.operation_returns) == 0):
                 buffer.write(f"{self.tab(indent+2)}google.protobuf.Empty Success = 1;\n")
                 buffer.write(f"{self.tab(indent+2)}servicekit.protobuf.Error Error = 2;\n")
             else:
-                index:int = 1
+                index: int = 1
                 for returns in operation.operation_returns:
                     buffer.write(f"{self.tab(indent+2)}{self.typeText(returns.type)} Value{index} = {index};\n")
-                    index= index+1
+                    index = index+1
                 buffer.write(f"{self.tab(indent+2)}servicekit.protobuf.Error Error = {index};\n")
 
             buffer.write(f"{self.tab(1)}}}\n")
@@ -413,53 +466,115 @@ class DotnetEmitter:
 
         return buffer.getvalue()
 
-    def interfaceFunctionText(self, operation:operation, indent: int):
+    def aclGrpcControllerFile(self, domain: domain, context: context, acl: acl, indent: int = 1):
+        """
+        Generates the .NET GRPC controller code for acl
+        """
         buffer = io.StringIO()
+        buffer.write(self.fileHeader())
+        buffer.write("\n")
+        buffer.write(self.defaultUsings())
+        buffer.write(f"using Google.Protobuf.WellKnownTypes;\n")
+        buffer.write(f"using Grpc.Core;\n")
+        buffer.write("\n")
+        buffer.write(f"namespace {domain.name}.{context.name};\n")
+        buffer.write("{\n")
 
-        # Add summary for operation
-        if(len(operation.document_lines) > 0 ):
-            buffer.write(f"{self.tab(indent)}/// <summary>\n")
-            for line in operation.document_lines:
-                buffer.write(f"{self.tab(indent)}/// {line}\n")
-            buffer.write(f"{self.tab(indent)}/// </summary>\n")
-        
-        # Add param comments for operation
-        for param in operation.operation_params:
-            if(len(param.document_lines) == 1 ):
-                buffer.write(f"{self.tab(indent)}/// <param name='{param.name}'>{param.document_lines[0]}</param>\n")
-            elif(len(param.document_lines) > 1 ):
-                buffer.write(f"{self.tab(indent)}/// <param name='{param.name}'>\n")
-                for line in param.document_lines:
-                    buffer.write(f"{self.tab(indent)}/// {line}\n")
-                buffer.write(f"{self.tab(indent)}/// </param>\n")
-        
-        # Add response code comments
-        for returns in operation.operation_returns:
-            status_decorator: decorator = next((d for d in returns.decorators if d.name == "status"), None)
-            if(status_decorator != None and len(status_decorator.params) > 0 ):
-                code = status_decorator.params[0].value
-                if(len(returns.document_lines) == 1 ):
-                    buffer.write(f"{self.tab(indent)}/// <response code='{code}'>{returns.document_lines[0]}</response>\n")
-                elif(len(returns.document_lines) > 1 ):
-                    buffer.write(f"{self.tab(indent)}/// <response code='{code}'>\n")
-                    for line in returns.document_lines:
-                        buffer.write(f"{self.tab(indent)}/// {line}\n")
-                    buffer.write(f"{self.tab(indent)}/// </response>\n")
+        # Add documentation lines for the acl
+        buffer.write(self.documentLines(acl, indent))
+        # class declaration
+        buffer.write(f"{self.tab(indent)}public class {acl.name}GrpcController : {domain.name}.{context.name}.{acl.name}Package.{acl.name}Base \n")
+        buffer.write(f"{self.tab(indent)}{{\n")
+        # class members
+        buffer.write(f"{self.tab(indent+1)}private readonly ILogger<{acl.name}GrpcController> _logger;\n")
+        buffer.write(f"{self.tab(indent+1)}private readonly I{acl.name} _service;\n")
+        buffer.write(f"\n")
+        # class constructor
+        buffer.write(f"{self.tab(indent+1)}public {acl.name}GrpcController( ILogger<{acl.name}GrpcController> logger, I{acl.name} service )\n")
+        buffer.write(f"{self.tab(indent+1)}{{\n")
+        buffer.write(f"{self.tab(indent+2)}_logger = logger; \n")
+        buffer.write(f"{self.tab(indent+2)}_service = service; \n")
+        buffer.write(f"{self.tab(indent+1)}}}\n")
 
-        # Add return value
-        buffer.write(f"{self.tab(indent)}public Response")
-        if( len(operation.operation_returns) >  0 ):
-            buffer.write( "<" )
-            buffer.write(", ".join(self.typeText(item.type) for item in operation.operation_returns))
-            buffer.write( ">" )
-        # Add function name
-        buffer.write(f" {operation.name}( CallingContext ctx")
-        # Add parameters
-        if( len(operation.operation_params)>0):
-            buffer.write(f", ")
-        buffer.write(", ".join( [self.typeText(param.type) + " " + param.name for param in operation.operation_params]))
-        buffer.write(");\n")
+        # Add functions based on operations
+        for operation in acl.operations:
+            buffer.write(f"\n")
+            buffer.write(f"{self.tab(indent+2)}public async Task<{operation.name}Response> {operation.name}( {operation.name}Request, ServerCallContext grpcContext)\n")
+            buffer.write(f"{self.tab(indent+2)}{{\n")
+            buffer.write(f"{self.tab(indent+3)}using(LogContext.PushProperty( \"Scope\", \"{acl.name}.{operation.name}\" ))\n")
+            buffer.write(f"{self.tab(indent+3)}{{\n")
+            buffer.write(f"{self.tab(indent+4)}CallingContext ctx = grpcContext.CreateCallingContext( Logger );\n")
+            buffer.write(f"{self.tab(indent+4)}try\n")
+            buffer.write(f"{self.tab(indent+4)}{{\n")
+            buffer.write(f"{self.tab(indent+5)}var response = await _service.{operation.name}( ctx );\n")
+            buffer.write(f"{self.tab(indent+5)}\n")
+            if (len(operation.operation_returns) > 0):
+                index: int = 1
+                for returns in operation.operation_returns:
+                    buffer.write(f"{self.tab(indent+5)}if( response.HasValue{index}() == true )\n")
+                    buffer.write(f"{self.tab(indent+5)}{{\n")
+                    buffer.write(f"{self.tab(indent+6)}return new {operation.name}Response {{\n")
+                    buffer.write(f"{self.tab(indent+7)} Value{index} = response.Value{index}\n")
+                    buffer.write(f"{self.tab(indent+6)}}}\n")
+                    buffer.write(f"{self.tab(indent+5)}}}\n")
+                    buffer.write(f"{self.tab(indent+5)}\n")
+                    index = index+1
 
+                buffer.write(f"{self.tab(indent+5)}if( response.IsSuccess() == false )\n")
+                buffer.write(f"{self.tab(indent+5)}{{\n")
+                buffer.write(f"{self.tab(indent+6)}return new {operation.name}Response {{\n")
+                buffer.write(f"{self.tab(indent+7)}Error = new () {{\n")
+                buffer.write(f"{self.tab(indent+8)}Status = response.Error.Status,\n")
+                buffer.write(f"{self.tab(indent+8)}MessageText = response.Error.MessageText,\n")
+                buffer.write(f"{self.tab(indent+8)}AdditionalInformation = response.Error.AdditionalInformation\n")
+                buffer.write(f"{self.tab(indent+7)}}}\n")
+                buffer.write(f"{self.tab(indent+6)}}}\n")
+                buffer.write(f"{self.tab(indent+5)}}}\n")
+                buffer.write(f"{self.tab(indent+5)}\n")
+
+                buffer.write(f"{self.tab(indent+5)}return new {operation.name}Response {{\n")
+                buffer.write(f"{self.tab(indent+6)}Error = new () {{\n")
+                buffer.write(f"{self.tab(indent+7)}Status = Statuses.NotImplemented,\n")
+                buffer.write(f"{self.tab(indent+7)}MessageText = \"Not handled reponse in GRPC Controller when calling '{acl.name}.{operation.name}'\",\n")
+                buffer.write(f"{self.tab(indent+6)}}}\n")
+                buffer.write(f"{self.tab(indent+5)}}}\n")
+            else:
+                buffer.write(f"{self.tab(indent+5)}if( response.IsSuccess() == true )\n")
+                buffer.write(f"{self.tab(indent+5)}{{\n")
+                buffer.write(f"{self.tab(indent+6)}return new {operation.name}Response {{\n")
+                buffer.write(f"{self.tab(indent+7)}Success = new Empty();\n")
+                buffer.write(f"{self.tab(indent+6)}}}\n")
+                buffer.write(f"{self.tab(indent+5)}}}\n")
+                buffer.write(f"{self.tab(indent+5)}else\n")
+                buffer.write(f"{self.tab(indent+5)}{{\n")
+                buffer.write(f"{self.tab(indent+6)}return new {operation.name}Response {{\n")
+                buffer.write(f"{self.tab(indent+7)}Error = new () {{\n")
+                buffer.write(f"{self.tab(indent+8)}Status = response.Error.Status,\n")
+                buffer.write(f"{self.tab(indent+8)}MessageText = response.Error.MessageText,\n")
+                buffer.write(f"{self.tab(indent+8)}AdditionalInformation = response.Error.AdditionalInformation\n")
+                buffer.write(f"{self.tab(indent+7)}}}\n")
+                buffer.write(f"{self.tab(indent+6)}}}\n")
+                buffer.write(f"{self.tab(indent+5)}}}\n")
+                buffer.write(f"{self.tab(indent+5)}\n")
+
+            buffer.write(f"{self.tab(indent+5)}\n")
+            buffer.write(f"{self.tab(indent+4)}}}\n")
+            buffer.write(f"{self.tab(indent+4)}catch(Exception ex)\n")
+            buffer.write(f"{self.tab(indent+4)}{{\n")
+            buffer.write(f"{self.tab(indent+5)}return new {operation.name}Response {{\n")
+            buffer.write(f"{self.tab(indent+6)}Error = new () {{\n")
+            buffer.write(f"{self.tab(indent+7)}Status = InternalError,\n")
+            buffer.write(f"{self.tab(indent+7)}MessageText = ex.Message,\n")
+            buffer.write(f"{self.tab(indent+7)}AdditionalInformation = ex.ToString()\n")
+            buffer.write(f"{self.tab(indent+6)}}}\n")
+            buffer.write(f"{self.tab(indent+5)}}}\n")
+            buffer.write(f"{self.tab(indent+4)}}}\n")
+            buffer.write(f"{self.tab(indent+3)}}}\n")
+            buffer.write(f"{self.tab(indent+2)}}}\n")
+
+        # end of class and namepace
+        buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write("}")
         return buffer.getvalue()
 
     def propertyText(self, member_name: str, type: type, indent: int):
@@ -630,9 +745,9 @@ class dotnet_configuration:
             value = configuration["dotnet.default_usings"]
             if (isinstance(value, list) and all(isinstance(item, str) for item in value)):
                 self.defaultUsings = value
-        self.defaultUsings.append( "PolyPersist.Net")
-        self.defaultUsings.append( "PolyPersist.Net.Core")
-        self.defaultUsings.append( "ServiceKit.Net")
+        self.defaultUsings.append("PolyPersist.Net")
+        self.defaultUsings.append("PolyPersist.Net.Core")
+        self.defaultUsings.append("ServiceKit.Net")
 
     def __read_createFolderStructure(self, configuration: Dict[str, str]):
         self.createFolderStructure: bool = True
@@ -646,7 +761,7 @@ class dotnet_configuration:
 
 
 class dotnet_code:
-    def __init__(self, directory: str, name: str, content: str, extension:str=".cs"):
+    def __init__(self, directory: str, name: str, content: str, extension: str = ".cs"):
         """
         Initializes a dotnet_code instance with the file path, file name, and content.
         """

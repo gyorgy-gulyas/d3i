@@ -485,11 +485,12 @@ domain somedomain {
         result = emitter.Emit(session)
         expected = """
 """
-        self.assertTrue(1, len(result))
         self.assertEqual(result[0].fileName, "ICustomerACL.cs")
         self.assertEqual(result[1].fileName, "CustomerACL.proto")
+        self.assertEqual(result[2].fileName, "CustomerACLGrpcController.cs")
         print(result[0].content)
-        print(result[1].content)
+        #print(result[1].content)
+        print(result[2].content)
 
 
 
