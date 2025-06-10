@@ -95,10 +95,15 @@ class DotnetEmitter:
 
                 # Process all acl in the context
                 for acl in context.acls:
+                    # interface
                     content: str = self.beginFile({domain.name, context.name})
                     content += self.aclInterfaceText(acl, indent=1)
                     content += self.endFile()
                     result.append(dotnet_code(path, "I"+acl.name, content))
+
+                    # proto
+                    content += self.aclProtoFile({domain.name, context.name}, acl, indent=0)
+                    result.append(dotnet_code(path, acl.name, content, ".proto"))
 
         return result
 
@@ -329,11 +334,83 @@ class DotnetEmitter:
         # Write the acl interface declaration with indentation
         buffer.write(f"{self.tab(indent)}public interface I{acl.name}\n")
         buffer.write(f"{self.tab(indent)}{{\n")
-        # Loop through each composite members and generate code for each
+        # Loop through each acl operations and generate code for each
         for operation in acl.operations:
             # Write each operation
             buffer.write(self.interfaceFunctionText(operation, indent+1))
+            buffer.write("\n")
+
         buffer.write(f"{self.tab(indent)}}}\n")
+        return buffer.getvalue()
+
+    def aclProtoFile(self, names: List[str], acl: acl, indent: int = 1):
+        """
+        Generates the proto file for ACL
+        """
+        buffer = io.StringIO()
+
+        # proto 3 syntax
+        buffer.write(self.fileHeader())
+        buffer.write("\n")
+        buffer.write("syntax = \"proto3\";")
+        buffer.write("\n")
+
+        # namespace
+        buffer.write("\n")
+        buffer.write(f"option csharp_namespace = \"{".".join(names)}\";")
+        buffer.write("\n")
+
+        # package 
+        buffer.write("\n")
+        buffer.write(f"package {acl.name}\";")
+        buffer.write("\n")
+
+        # imports 
+        buffer.write("\n")
+        buffer.write("import \"google/protobuf/empty.proto\";\n")
+        buffer.write("import \"servicekit/protobuf/error.proto\";\n")
+        buffer.write("\n")
+
+        # Add documentation lines for the acl service
+        buffer.write(self.documentLines(acl, indent))
+        buffer.write("\n")
+        buffer.write(f"service {acl.name} {{\n")
+        # Loop through each acl operations and generate code for each
+        for operation in acl.operations:
+            # Write each operation as RPC call
+            buffer.write(self.documentLines(operation, indent+1))
+            buffer.write(f"{self.tab(indent+1)}rpc {operation.name} ({operation.name}Request) returns ({operation.name}Response);\n")
+        buffer.write("\n")
+        buffer.write(f"}}")
+
+        # Add messages based on operations
+        for operation in acl.operations:
+            # Request message
+            buffer.write(f"\n")
+            buffer.write(f"message {operation.name}Request {{\n")
+            index:int = 1
+            for param in operation.operation_params:
+                buffer.write(self.documentLines(param, indent+2))
+                buffer.write(f"{self.tab(indent+2)}{self.typeText(param.type)} {param.name} = {index};\n")
+            buffer.write(f"}}\n")
+            buffer.write(f"\n")
+
+            # Response message
+            buffer.write(f"message {operation.name}Response {{\n")
+            buffer.write(f"{self.tab(indent+1)}oneof result {{\n")
+            if( len(operation.operation_returns) == 0 ):
+                buffer.write(f"{self.tab(indent+2)}google.protobuf.Empty Success = 1;\n")
+                buffer.write(f"{self.tab(indent+2)}servicekit.protobuf.Error Error = 2;\n")
+            else:
+                index:int = 1
+                for returns in operation.operation_returns:
+                    buffer.write(f"{self.tab(indent+2)}{self.typeText(returns.type)} Value{index} = {index};\n")
+                    index= index+1
+                buffer.write(f"{self.tab(indent+2)}servicekit.protobuf.Error Error = {index};\n")
+
+            buffer.write(f"{self.tab(1)}}}\n")
+            buffer.write(f"}}\n")
+
         return buffer.getvalue()
 
     def interfaceFunctionText(self, operation:operation, indent: int):
@@ -370,12 +447,16 @@ class DotnetEmitter:
                     buffer.write(f"{self.tab(indent)}/// </response>\n")
 
         # Add return value
-        buffer.write(f"{self.tab(indent)}public ActionResult")
+        buffer.write(f"{self.tab(indent)}public Response")
         if( len(operation.operation_returns) >  0 ):
-            buffer.write( f"<{self.typeText(operation.operation_returns[0].type)}>" )
+            buffer.write( "<" )
+            buffer.write(", ".join(self.typeText(item.type) for item in operation.operation_returns))
+            buffer.write( ">" )
         # Add function name
-        buffer.write(f" {operation.name}(")
+        buffer.write(f" {operation.name}( CallingContext ctx")
         # Add parameters
+        if( len(operation.operation_params)>0):
+            buffer.write(f", ")
         buffer.write(", ".join( [self.typeText(param.type) + " " + param.name for param in operation.operation_params]))
         buffer.write(");\n")
 
@@ -551,6 +632,7 @@ class dotnet_configuration:
                 self.defaultUsings = value
         self.defaultUsings.append( "PolyPersist.Net")
         self.defaultUsings.append( "PolyPersist.Net.Core")
+        self.defaultUsings.append( "ServiceKit.Net")
 
     def __read_createFolderStructure(self, configuration: Dict[str, str]):
         self.createFolderStructure: bool = True
@@ -564,10 +646,10 @@ class dotnet_configuration:
 
 
 class dotnet_code:
-    def __init__(self, directory: str, name: str, content: str):
+    def __init__(self, directory: str, name: str, content: str, extension:str=".cs"):
         """
         Initializes a dotnet_code instance with the file path, file name, and content.
         """
-        self.fileName: str = name + ".cs"
+        self.fileName: str = name + extension
         self.fullPath: str = os.path.join(directory, self.fileName)
         self.content: str = content

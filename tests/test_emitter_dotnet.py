@@ -472,6 +472,10 @@ domain somedomain {
                 | #error message when any bussines logig error is occured
                   #for example: customer not found
                   @status(401) Error
+
+            #delete order based on orderId 
+            @verb("post")
+            deleteOrder( orderId: string )
         }
     }
 }
@@ -480,27 +484,12 @@ domain somedomain {
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
-using System;
-using System.Collections.Generic;
-
-namespace WebShop.CustomerContext
-{
-    public partial class OrderView : Entity, IXmlSerializable
-    {
-        #region IXmlSerializable
-        public string xmlValue { get; set; }
-        #endregion IXmlSerializable
-
-        public string customerName { get; set; }
-        public DateOnly orderDate { get; set; }
-        public string orderId { get; set; }
-        public decimal orderedQuantity { get; set; }
-    }
-}
 """
         self.assertTrue(1, len(result))
         self.assertEqual(result[0].fileName, "ICustomerACL.cs")
+        self.assertEqual(result[1].fileName, "CustomerACL.proto")
         print(result[0].content)
+        print(result[1].content)
 
 
 
