@@ -72,7 +72,7 @@ class DotnetEmitter:
                         content: str = self.beginFile({domain.name, context.name, aggregate.name})
                         content += self.enumText(enum, indent=1)
                         content += self.endFile()
-                        result.append(dotnet_code(path, "I"+composite.name, content))
+                        result.append(dotnet_code(path, enum.name, content))
 
                     for valueobject in aggregate.value_objects:
                         content: str = self.beginFile({domain.name, context.name, aggregate.name})
@@ -108,6 +108,39 @@ class DotnetEmitter:
                     # proto service file
                     content = self.aclGrpcControllerFile(domain, context, acl, indent=1)
                     result.append(dotnet_code(path, acl.name+"GrpcController", content))
+
+                # Process all service in the context
+                for service in context.services:
+                    # interface
+                    content: str = self.beginFile({domain.name, context.name})
+                    content += self.serviceInterfaceText(service, indent=1)
+                    content += self.endFile()
+                    result.append(dotnet_code(path, "I"+service.name, content))
+
+                    # proto
+                    content = self.serviceProtoFile(domain, context, service, indent=0)
+                    result.append(dotnet_code(path, service.name, content, ".proto"))
+
+                    # proto service file
+                    content = self.serviceGrpcControllerFile(domain, context, service, indent=1)
+                    result.append(dotnet_code(path, service.name+"GrpcController", content))
+
+                # Process all inerface in the context
+                for interface in context.interfaces:
+                    # interface
+                    content: str = self.beginFile({domain.name, context.name})
+                    content += self.interfaceInterfaceText(interface, indent=1)
+                    content += self.endFile()
+                    result.append(dotnet_code(path, "I"+interface.name, content))
+
+                    # proto
+                    content = self.interfaceProtoFile(domain, context, interface, indent=0)
+                    result.append(dotnet_code(path, interface.name, content, ".proto"))
+
+                    # proto service file
+                    content = self.interfaceGrpcControllerFile(domain, context, interface, indent=1)
+                    result.append(dotnet_code(path, interface.name+"GrpcController", content))
+
 
         return result
 
@@ -331,15 +364,33 @@ class DotnetEmitter:
         """
         Generates the .NET code for acl, just the interface.
         """
+        return self.interfaceClassText( acl, acl.name, acl.operations, indent)
+
+    def serviceInterfaceText(self, service: service, indent: int = 1):
+        """
+        Generates the .NET code for service, just the interface.
+        """
+        return self.interfaceClassText( service, service.name, service.operations, indent)
+
+    def interfaceInterfaceText(self, interface: interface, indent: int = 1):
+        """
+        Generates the .NET code for interface, just the interface.
+        """
+        return self.interfaceClassText( interface, interface.name, interface.operations, indent)
+
+    def interfaceClassText(self, element: hinted_base_element, elementName:str, operations: List[operation], indent: int = 1):
+        """
+        Generates the .NET code for element, just the interface.
+        """
         buffer = io.StringIO()
         buffer.write("\n")
-        # Add documentation lines for the acl
-        buffer.write(self.documentLines(acl, indent))
-        # Write the acl interface declaration with indentation
-        buffer.write(f"{self.tab(indent)}public interface I{acl.name}\n")
+        # Add documentation lines for the element
+        buffer.write(self.documentLines(element, indent))
+        # Write the interface class declaration with indentation
+        buffer.write(f"{self.tab(indent)}public interface I{elementName}\n")
         buffer.write(f"{self.tab(indent)}{{\n")
-        # Loop through each acl operations and generate code for each
-        for operation in acl.operations:
+        # Loop through each operations and generate code for each
+        for operation in operations:
             # Write each operation
             buffer.write(self.interfaceFunctionText(operation, indent+1))
             buffer.write("\n")
@@ -397,9 +448,17 @@ class DotnetEmitter:
         return buffer.getvalue()
 
     def aclProtoFile(self, domain: domain, context: context, acl: acl, indent: int = 1):
+        return self.protoFile( domain, context, acl, acl.name, acl.operations, indent )
+
+    def serviceProtoFile(self, domain: domain, context: context, service: service, indent: int = 1):
+        return self.protoFile( domain, context, service, service.name, service.operations, indent )
+
+    def interfaceProtoFile(self, domain: domain, context: context, interface: interface, indent: int = 1):
+        return self.protoFile( domain, context, interface, interface.name, interface.operations, indent )
+
+    def protoFile(self, domain: domain, context: context, element: hinted_base_element, elementName: str, operations: List[operation], indent: int = 1):
         """
-        Generates the proto file for ACL
-        """
+        Generates the proto file for element        """
         buffer = io.StringIO()
 
         # proto 3 syntax
@@ -415,7 +474,7 @@ class DotnetEmitter:
 
         # package
         buffer.write("\n")
-        buffer.write(f"package {acl.name}Package\";")
+        buffer.write(f"package {elementName}Package\";")
         buffer.write("\n")
 
         # imports
@@ -424,12 +483,12 @@ class DotnetEmitter:
         buffer.write("import \"servicekit/protobuf/error.proto\";\n")
         buffer.write("\n")
 
-        # Add documentation lines for the acl service
-        buffer.write(self.documentLines(acl, indent))
+        # Add documentation lines for the service
+        buffer.write(self.documentLines(element, indent))
         buffer.write("\n")
-        buffer.write(f"service {acl.name} {{\n")
-        # Loop through each acl operations and generate code for each
-        for operation in acl.operations:
+        buffer.write(f"service {elementName} {{\n")
+        # Loop through each operations and generate code for each
+        for operation in operations:
             # Write each operation as RPC call
             buffer.write(self.documentLines(operation, indent+1))
             buffer.write(f"{self.tab(indent+1)}rpc {operation.name} ({operation.name}Request) returns ({operation.name}Response);\n")
@@ -437,7 +496,7 @@ class DotnetEmitter:
         buffer.write(f"}}")
 
         # Add messages based on operations
-        for operation in acl.operations:
+        for operation in operations:
             # Request message
             buffer.write(f"\n")
             buffer.write(f"message {operation.name}Request {{\n")
@@ -467,6 +526,15 @@ class DotnetEmitter:
         return buffer.getvalue()
 
     def aclGrpcControllerFile(self, domain: domain, context: context, acl: acl, indent: int = 1):
+        return self.grpcControllerFile( domain, context, acl, acl.name, acl.operations, indent )
+
+    def serviceGrpcControllerFile(self, domain: domain, context: context, service: service, indent: int = 1):
+        return self.grpcControllerFile( domain, context, service, service.name, service.operations, indent )
+
+    def interfaceGrpcControllerFile(self, domain: domain, context: context, interface: interface, indent: int = 1):
+        return self.grpcControllerFile( domain, context, interface, interface.name, interface.operations, indent )
+
+    def grpcControllerFile(self, domain: domain, context: context, element: hinted_base_element, elementName:str, operations: List[operation], indent: int = 1):
         """
         Generates the .NET GRPC controller code for acl
         """
@@ -481,27 +549,27 @@ class DotnetEmitter:
         buffer.write("{\n")
 
         # Add documentation lines for the acl
-        buffer.write(self.documentLines(acl, indent))
+        buffer.write(self.documentLines(element, indent))
         # class declaration
-        buffer.write(f"{self.tab(indent)}public class {acl.name}GrpcController : {domain.name}.{context.name}.{acl.name}Package.{acl.name}Base \n")
+        buffer.write(f"{self.tab(indent)}public class {elementName}GrpcController : {domain.name}.{context.name}.{elementName}Package.{element.name}Base \n")
         buffer.write(f"{self.tab(indent)}{{\n")
         # class members
-        buffer.write(f"{self.tab(indent+1)}private readonly ILogger<{acl.name}GrpcController> _logger;\n")
-        buffer.write(f"{self.tab(indent+1)}private readonly I{acl.name} _service;\n")
+        buffer.write(f"{self.tab(indent+1)}private readonly ILogger<{elementName}GrpcController> _logger;\n")
+        buffer.write(f"{self.tab(indent+1)}private readonly I{elementName} _service;\n")
         buffer.write(f"\n")
         # class constructor
-        buffer.write(f"{self.tab(indent+1)}public {acl.name}GrpcController( ILogger<{acl.name}GrpcController> logger, I{acl.name} service )\n")
+        buffer.write(f"{self.tab(indent+1)}public {elementName}GrpcController( ILogger<{elementName}GrpcController> logger, I{elementName} service )\n")
         buffer.write(f"{self.tab(indent+1)}{{\n")
         buffer.write(f"{self.tab(indent+2)}_logger = logger; \n")
         buffer.write(f"{self.tab(indent+2)}_service = service; \n")
         buffer.write(f"{self.tab(indent+1)}}}\n")
 
         # Add functions based on operations
-        for operation in acl.operations:
+        for operation in operations:
             buffer.write(f"\n")
             buffer.write(f"{self.tab(indent+2)}public async Task<{operation.name}Response> {operation.name}( {operation.name}Request, ServerCallContext grpcContext)\n")
             buffer.write(f"{self.tab(indent+2)}{{\n")
-            buffer.write(f"{self.tab(indent+3)}using(LogContext.PushProperty( \"Scope\", \"{acl.name}.{operation.name}\" ))\n")
+            buffer.write(f"{self.tab(indent+3)}using(LogContext.PushProperty( \"Scope\", \"{elementName}.{operation.name}\" ))\n")
             buffer.write(f"{self.tab(indent+3)}{{\n")
             buffer.write(f"{self.tab(indent+4)}CallingContext ctx = grpcContext.CreateCallingContext( Logger );\n")
             buffer.write(f"{self.tab(indent+4)}try\n")
@@ -535,7 +603,7 @@ class DotnetEmitter:
                 buffer.write(f"{self.tab(indent+5)}return new {operation.name}Response {{\n")
                 buffer.write(f"{self.tab(indent+6)}Error = new () {{\n")
                 buffer.write(f"{self.tab(indent+7)}Status = Statuses.NotImplemented,\n")
-                buffer.write(f"{self.tab(indent+7)}MessageText = \"Not handled reponse in GRPC Controller when calling '{acl.name}.{operation.name}'\",\n")
+                buffer.write(f"{self.tab(indent+7)}MessageText = \"Not handled reponse in GRPC Controller when calling '{element.name}.{operation.name}'\",\n")
                 buffer.write(f"{self.tab(indent+6)}}}\n")
                 buffer.write(f"{self.tab(indent+5)}}}\n")
             else:

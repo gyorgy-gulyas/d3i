@@ -1,7 +1,7 @@
 from io import StringIO
 import os
 import tempfile
-from d3i.emitters.dotnet_emmiter.DotnetEmmiter import *
+from d3i.emitters.DotnetEmitter import *
 
 
 class dotnet_code_helper:

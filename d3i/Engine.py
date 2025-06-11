@@ -135,6 +135,8 @@ class Engine:
         session.syntaxTree = self.__create_syntax_tree(session.source, session)
         # Create element tree from the syntax tree
         session.main = self.__create_element_tree(session.syntaxTree, session.source, session)
+        # Merge contracts into the main contract
+        session.main = self.__merge_d3s(session)
 
         return session.main
 

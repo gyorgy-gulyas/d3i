@@ -52,8 +52,7 @@ def __add_known_arguments(arg_parser: argparse.ArgumentParser):
                             action="store_true")
     arg_parser.add_argument("-c",
                             "--config-file",
-                            help="define the configuration in json format. If the option is ont present, then the default ./configuration.json will be used",
-                            action="store_true")
+                            help="define the configuration in json format. If the option is ont present, then the default ./configuration.json will be used" )
 
 
 # Reads the configuration file and returns it as a dictionary
