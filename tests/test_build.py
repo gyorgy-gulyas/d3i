@@ -788,7 +788,7 @@ domain somedomain {
 domain somedomain {
     context context_1 {
         @decorator
-        interface IOrderService{
+        interface IOrderService version 1{
             event OrderPlaced {
                 valueobject EventData {
                     data_1:string
@@ -934,7 +934,7 @@ domain somedomain {
 domain somedomain {
     context context_1 {
         @decorator
-        interface OrderService {
+        interface OrderService version 2 {
             valueobject OrderDTO {
                 name:string
                 kind:CustomerKind
@@ -958,6 +958,7 @@ domain somedomain {
         self.assertEqual(len(context.interfaces), 1)
         interface: interface = context.interfaces[0]
         self.assertEqual(interface.name, "OrderService")
+        self.assertEqual(interface.version, 2)
         self.assertEqual(len(interface.operations), 1)
         self.assertEqual(len(interface.enums), 1)
         self.assertEqual(len(interface.value_objects), 1)

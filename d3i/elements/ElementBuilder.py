@@ -751,6 +751,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
+        if( ctx.VERSION() != None):
+            result.version = int(ctx.INTEGER_CONSTANS().getText())
+
         counter = 0
         while True:
             document_line = ctx.DOCUMENT_LINE((counter))
@@ -878,6 +881,7 @@ class ElementBuilder(d3iGrammarVisitor):
     def visitOperation_return(self, ctx: d3iGrammar.Operation_returnContext):
         result = operation_return(self.fileName, ctx.start)
         result.type = self.visit(ctx.type_())
+        result.type.parent = result
 
         counter = 0
         while True:
@@ -1002,6 +1006,7 @@ class ElementBuilder(d3iGrammarVisitor):
         result = list_type(self.fileName, ctx.start)
         result.kind = type.Kind.List
         result.item_type = self.visit(ctx.type_())
+        result.item_type.parent = result
 
         return result
 
@@ -1010,7 +1015,9 @@ class ElementBuilder(d3iGrammarVisitor):
         result = map_type(self.fileName, ctx.start)
         result.kind = type.Kind.Map
         result.key_type = self.visit(ctx.type_(0))
+        result.key_type.parent = result
         result.value_type = self.visit(ctx.type_(1))
+        result.value_type.parent = result
 
         return result
 

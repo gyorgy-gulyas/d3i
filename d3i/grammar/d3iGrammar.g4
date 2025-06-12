@@ -140,7 +140,7 @@ service
         ;
 
 interface
-    :  DOCUMENT_LINE* decorator* 'interface' IDENTIFIER '{' interface_element*  '}'
+    :  DOCUMENT_LINE* decorator* 'interface' IDENTIFIER 'version' INTEGER_CONSTANS '{' interface_element*  '}'
     ;
 
     interface_element
@@ -149,7 +149,7 @@ interface
         | value_object
         | event
         ;
-    
+   
 operation
     : DOCUMENT_LINE* decorator* IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' ((':' operation_return )? ('|' operation_return)*)
     ;

@@ -42,104 +42,104 @@ class DotnetEmitter:
 
         # Iterate over all domain in the session
         for domain in session.main.domains:
-            path: str = self.configuration.output_dir
+            output_path: str = self.configuration.output_dir
             for context in domain.contexts:
 
                 # Process all enum in the context
                 for enum in context.enums:
-                    content: str = self.beginFile({domain.name, context.name})
+                    content: str = self.beginFile([domain.name, context.name])
                     content += self.enumText(enum, indent=1)
                     content += self.endFile()
-                    result.append(dotnet_code(path, enum.name, content))
+                    result.append(dotnet_code(output_path, [domain.name, context.name, "models"], enum.name, content))
 
                 # Process all value_object in the context
                 for valueobject in context.value_objects:
-                    content: str = self.beginFile({domain.name, context.name})
+                    content: str = self.beginFile([domain.name, context.name])
                     content += self.valueobjectText(valueobject, indent=1)
                     content += self.endFile()
-                    result.append(dotnet_code(path, valueobject.name, content))
+                    result.append(dotnet_code(output_path, [domain.name, context.name, "models"], valueobject.name, content))
 
                 # Process all composite in the context
                 for composite in context.composites:
-                    content: str = self.beginFile({domain.name, context.name})
+                    content: str = self.beginFile([domain.name, context.name])
                     content += self.compositeText(composite, indent=1)
                     content += self.endFile()
-                    result.append(dotnet_code(path, "I"+composite.name, content))
+                    result.append(dotnet_code(output_path, [domain.name, context.name, "models"], "I"+composite.name, content))
 
                 # Process all aggregate in the context
                 for aggregate in context.aggregates:
                     for enum in aggregate.enums:
-                        content: str = self.beginFile({domain.name, context.name, aggregate.name})
+                        content: str = self.beginFile([domain.name, context.name, aggregate.name])
                         content += self.enumText(enum, indent=1)
                         content += self.endFile()
-                        result.append(dotnet_code(path, enum.name, content))
+                        result.append(dotnet_code(output_path, [domain.name, context.name, "models"], enum.name, content))
 
                     for valueobject in aggregate.value_objects:
-                        content: str = self.beginFile({domain.name, context.name, aggregate.name})
+                        content: str = self.beginFile([domain.name, context.name, aggregate.name])
                         content += self.valueobjectText(valueobject, indent=1)
                         content += self.endFile()
-                        result.append(dotnet_code(path, valueobject.name, content))
+                        result.append(dotnet_code(output_path, [domain.name, context.name, "models"], valueobject.name, content))
 
                     for aggregate_entity in aggregate.internal_entities:
-                        content: str = self.beginFile({domain.name, context.name, aggregate.name})
+                        content: str = self.beginFile([domain.name, context.name, aggregate.name])
                         content += self.entityText(aggregate_entity.entity, indent=1)
                         content += self.endFile()
-                        result.append(dotnet_code(path, aggregate_entity.entity.name, content))
+                        result.append(dotnet_code(output_path, [domain.name, context.name, "models"], aggregate_entity.entity.name, content))
 
                 # Process all view in the context
                 for view in context.views:
-                    content: str = self.beginFile({domain.name, context.name})
+                    content: str = self.beginFile([domain.name, context.name])
                     content += self.viewText(view, indent=1)
                     content += self.endFile()
-                    result.append(dotnet_code(path, view.name, content))
+                    result.append(dotnet_code(output_path, [domain.name, context.name, "models"], view.name, content))
 
                 # Process all acl in the context
                 for acl in context.acls:
                     # interface
-                    content: str = self.beginFile({domain.name, context.name})
+                    content: str = self.beginFile([domain.name, context.name])
                     content += self.aclInterfaceText(acl, indent=1)
                     content += self.endFile()
-                    result.append(dotnet_code(path, "I"+acl.name, content))
+                    result.append(dotnet_code(output_path, [domain.name, context.name, "Service/interfaces"], "I"+acl.name, content))
 
                     # proto
-                    content = self.aclProtoFile(domain, context, acl, indent=0)
-                    result.append(dotnet_code(path, acl.name, content, ".proto"))
+                    #content = self.aclProtoFile(domain, context, acl, indent=0)
+                    #result.append(dotnet_code(output_path, [domain.name, context.name, acl.name, "Service/protos"], acl.name, content, ".proto"))
 
                     # proto service file
-                    content = self.aclGrpcControllerFile(domain, context, acl, indent=1)
-                    result.append(dotnet_code(path, acl.name+"GrpcController", content))
+                    #content = self.aclGrpcControllerFile(domain, context, acl, indent=1)
+                    #result.append(dotnet_code(output_path, [domain.name, context.name, acl.name, "Service/controllers"], acl.name+"GrpcController", content))
 
                 # Process all service in the context
                 for service in context.services:
                     # interface
-                    content: str = self.beginFile({domain.name, context.name})
+                    content: str = self.beginFile([domain.name, context.name])
                     content += self.serviceInterfaceText(service, indent=1)
                     content += self.endFile()
-                    result.append(dotnet_code(path, "I"+service.name, content))
+                    result.append(dotnet_code(output_path, [domain.name, context.name, "Service/interfaces"], "I"+service.name, content))
 
                     # proto
-                    content = self.serviceProtoFile(domain, context, service, indent=0)
-                    result.append(dotnet_code(path, service.name, content, ".proto"))
+                    #content = self.serviceProtoFile(domain, context, service, indent=0)
+                    #result.append(dotnet_code(output_path, [domain.name, context.name, service.name, "Service/protos"], service.name, content, ".proto"))
 
                     # proto service file
-                    content = self.serviceGrpcControllerFile(domain, context, service, indent=1)
-                    result.append(dotnet_code(path, service.name+"GrpcController", content))
+                    #content = self.serviceGrpcControllerFile(domain, context, service, indent=1)
+                    #result.append(dotnet_code(output_path, [domain.name, context.name, service.name, "Service/controllers"], service.name+"GrpcController", content))
 
                 # Process all inerface in the context
                 for interface in context.interfaces:
                     # interface
-                    content: str = self.beginFile({domain.name, context.name})
+                    content: str = self.beginFile([domain.name, context.name])
                     content += self.interfaceInterfaceText(interface, indent=1)
                     content += self.endFile()
-                    result.append(dotnet_code(path, "I"+interface.name, content))
+                    result.append(dotnet_code(output_path, [domain.name, context.name, "interfaces"], "I"+interface.name, content))
 
                     # proto
-                    content = self.interfaceProtoFile(domain, context, interface, indent=0)
-                    result.append(dotnet_code(path, interface.name, content, ".proto"))
+                    #content = self.interfaceProtoFile(domain, context, interface, indent=0)
+                    #result.append(dotnet_code(output_path, [domain.name, context.name, interface.name, "Service/protos"], interface.name, content, ".proto"))
 
                     # proto service file
-                    content = self.interfaceGrpcControllerFile(domain, context, interface, indent=1)
-                    result.append(dotnet_code(path, interface.name+"GrpcController", content))
+                    #content = self.interfaceGrpcControllerFile(domain, context, interface, indent=1)
+                    #result.append(dotnet_code(output_path, [domain.name, context.name, interface.name, "Service/controllers"], interface.name+"GrpcController", content))
 
 
         return result
@@ -192,6 +192,9 @@ class DotnetEmitter:
             buffer.write(self.documentLines(enum_element, indent+1))
             # Write each enum element value
             buffer.write(f"{self.tab(indent+1)}{enum_element.value},\n")
+            if(len(enum_element.document_lines)>0):
+                buffer.write("\n")
+
         buffer.write(f"{self.tab(indent)}}}\n")
         return buffer.getvalue()
 
@@ -210,7 +213,6 @@ class DotnetEmitter:
                 inherit_names.append(inherit.getText())
 
         buffer = io.StringIO()
-        buffer.write("\n")
         # Add documentation lines for the composite
         buffer.write(self.documentLines(valueobject, indent))
         # Write the value_object declaration with indentation
@@ -260,7 +262,6 @@ class DotnetEmitter:
             inherit_names.insert(0, "Entity")
 
         buffer = io.StringIO()
-        buffer.write("\n")
         # Add documentation lines for the composite
         buffer.write(self.documentLines(_entity, indent))
         # Write the entity declaration with indentation
@@ -376,7 +377,7 @@ class DotnetEmitter:
         """
         Generates the .NET code for interface, just the interface.
         """
-        return self.interfaceClassText( interface, interface.name, interface.operations, indent)
+        return self.interfaceClassText( interface, interface.name+ f"_v{interface.version}", interface.operations, indent)
 
     def interfaceClassText(self, element: hinted_base_element, elementName:str, operations: List[operation], indent: int = 1):
         """
@@ -545,7 +546,7 @@ class DotnetEmitter:
         buffer.write(f"using Google.Protobuf.WellKnownTypes;\n")
         buffer.write(f"using Grpc.Core;\n")
         buffer.write("\n")
-        buffer.write(f"namespace {domain.name}.{context.name};\n")
+        buffer.write(f"namespace {domain.name}.{context.name}\n")
         buffer.write("{\n")
 
         # Add documentation lines for the acl
@@ -567,78 +568,80 @@ class DotnetEmitter:
         # Add functions based on operations
         for operation in operations:
             buffer.write(f"\n")
-            buffer.write(f"{self.tab(indent+2)}public async Task<{operation.name}Response> {operation.name}( {operation.name}Request, ServerCallContext grpcContext)\n")
+            buffer.write(f"{self.tab(indent+1)}public async Task<{operation.name}Response> {operation.name}( {operation.name}Request request, ServerCallContext grpcContext)\n")
+            buffer.write(f"{self.tab(indent+1)}{{\n")
+            buffer.write(f"{self.tab(indent+2)}using(LogContext.PushProperty( \"Scope\", \"{elementName}.{operation.name}\" ))\n")
             buffer.write(f"{self.tab(indent+2)}{{\n")
-            buffer.write(f"{self.tab(indent+3)}using(LogContext.PushProperty( \"Scope\", \"{elementName}.{operation.name}\" ))\n")
+            buffer.write(f"{self.tab(indent+3)}CallingContext ctx = grpcContext.CreateCallingContext( Logger );\n")
+            buffer.write(f"{self.tab(indent+3)}try\n")
             buffer.write(f"{self.tab(indent+3)}{{\n")
-            buffer.write(f"{self.tab(indent+4)}CallingContext ctx = grpcContext.CreateCallingContext( Logger );\n")
-            buffer.write(f"{self.tab(indent+4)}try\n")
-            buffer.write(f"{self.tab(indent+4)}{{\n")
-            buffer.write(f"{self.tab(indent+5)}var response = await _service.{operation.name}( ctx );\n")
-            buffer.write(f"{self.tab(indent+5)}\n")
+            buffer.write(f"{self.tab(indent+4)}var response = await _service.{operation.name}( ctx );\n")
+            buffer.write(f"{self.tab(indent+4)}\n")
             if (len(operation.operation_returns) > 0):
                 index: int = 1
                 for returns in operation.operation_returns:
-                    buffer.write(f"{self.tab(indent+5)}if( response.HasValue{index}() == true )\n")
-                    buffer.write(f"{self.tab(indent+5)}{{\n")
-                    buffer.write(f"{self.tab(indent+6)}return new {operation.name}Response {{\n")
-                    buffer.write(f"{self.tab(indent+7)} Value{index} = response.Value{index}\n")
-                    buffer.write(f"{self.tab(indent+6)}}}\n")
-                    buffer.write(f"{self.tab(indent+5)}}}\n")
-                    buffer.write(f"{self.tab(indent+5)}\n")
+                    buffer.write(f"{self.tab(indent+4)}if( response.HasValue{index}() == true )\n")
+                    buffer.write(f"{self.tab(indent+4)}{{\n")
+                    buffer.write(f"{self.tab(indent+5)}return new {operation.name}Response {{ Value{index} = response.Value{index} }};\n")
+                    buffer.write(f"{self.tab(indent+4)}}}\n")
+                    buffer.write(f"{self.tab(indent+4)}\n")
                     index = index+1
 
-                buffer.write(f"{self.tab(indent+5)}if( response.IsSuccess() == false )\n")
-                buffer.write(f"{self.tab(indent+5)}{{\n")
-                buffer.write(f"{self.tab(indent+6)}return new {operation.name}Response {{\n")
-                buffer.write(f"{self.tab(indent+7)}Error = new () {{\n")
-                buffer.write(f"{self.tab(indent+8)}Status = response.Error.Status,\n")
-                buffer.write(f"{self.tab(indent+8)}MessageText = response.Error.MessageText,\n")
-                buffer.write(f"{self.tab(indent+8)}AdditionalInformation = response.Error.AdditionalInformation\n")
-                buffer.write(f"{self.tab(indent+7)}}}\n")
-                buffer.write(f"{self.tab(indent+6)}}}\n")
-                buffer.write(f"{self.tab(indent+5)}}}\n")
-                buffer.write(f"{self.tab(indent+5)}\n")
-
+                buffer.write(f"{self.tab(indent+4)}if( response.IsSuccess() == false )\n")
+                buffer.write(f"{self.tab(indent+4)}{{\n")
                 buffer.write(f"{self.tab(indent+5)}return new {operation.name}Response {{\n")
                 buffer.write(f"{self.tab(indent+6)}Error = new () {{\n")
-                buffer.write(f"{self.tab(indent+7)}Status = Statuses.NotImplemented,\n")
-                buffer.write(f"{self.tab(indent+7)}MessageText = \"Not handled reponse in GRPC Controller when calling '{element.name}.{operation.name}'\",\n")
+                buffer.write(f"{self.tab(indent+7)}Status = response.Error.Status,\n")
+                buffer.write(f"{self.tab(indent+7)}MessageText = response.Error.MessageText,\n")
+                buffer.write(f"{self.tab(indent+7)}AdditionalInformation = response.Error.AdditionalInformation\n")
                 buffer.write(f"{self.tab(indent+6)}}}\n")
-                buffer.write(f"{self.tab(indent+5)}}}\n")
-            else:
-                buffer.write(f"{self.tab(indent+5)}if( response.IsSuccess() == true )\n")
-                buffer.write(f"{self.tab(indent+5)}{{\n")
-                buffer.write(f"{self.tab(indent+6)}return new {operation.name}Response {{\n")
-                buffer.write(f"{self.tab(indent+7)}Success = new Empty();\n")
-                buffer.write(f"{self.tab(indent+6)}}}\n")
-                buffer.write(f"{self.tab(indent+5)}}}\n")
-                buffer.write(f"{self.tab(indent+5)}else\n")
-                buffer.write(f"{self.tab(indent+5)}{{\n")
-                buffer.write(f"{self.tab(indent+6)}return new {operation.name}Response {{\n")
-                buffer.write(f"{self.tab(indent+7)}Error = new () {{\n")
-                buffer.write(f"{self.tab(indent+8)}Status = response.Error.Status,\n")
-                buffer.write(f"{self.tab(indent+8)}MessageText = response.Error.MessageText,\n")
-                buffer.write(f"{self.tab(indent+8)}AdditionalInformation = response.Error.AdditionalInformation\n")
-                buffer.write(f"{self.tab(indent+7)}}}\n")
-                buffer.write(f"{self.tab(indent+6)}}}\n")
-                buffer.write(f"{self.tab(indent+5)}}}\n")
-                buffer.write(f"{self.tab(indent+5)}\n")
+                buffer.write(f"{self.tab(indent+5)}}};\n")
+                buffer.write(f"{self.tab(indent+4)}}}\n")
+                buffer.write(f"{self.tab(indent+4)}\n")
 
-            buffer.write(f"{self.tab(indent+5)}\n")
-            buffer.write(f"{self.tab(indent+4)}}}\n")
-            buffer.write(f"{self.tab(indent+4)}catch(Exception ex)\n")
-            buffer.write(f"{self.tab(indent+4)}{{\n")
-            buffer.write(f"{self.tab(indent+5)}return new {operation.name}Response {{\n")
-            buffer.write(f"{self.tab(indent+6)}Error = new () {{\n")
-            buffer.write(f"{self.tab(indent+7)}Status = InternalError,\n")
-            buffer.write(f"{self.tab(indent+7)}MessageText = ex.Message,\n")
-            buffer.write(f"{self.tab(indent+7)}AdditionalInformation = ex.ToString()\n")
-            buffer.write(f"{self.tab(indent+6)}}}\n")
+                buffer.write(f"{self.tab(indent+4)}return new {operation.name}Response {{\n")
+                buffer.write(f"{self.tab(indent+5)}Error = new () {{\n")
+                buffer.write(f"{self.tab(indent+6)}Status = Statuses.NotImplemented,\n")
+                buffer.write(f"{self.tab(indent+6)}MessageText = \"Not handled reponse in GRPC Controller when calling '{element.name}.{operation.name}'\",\n")
+                buffer.write(f"{self.tab(indent+5)}}}\n")
+                buffer.write(f"{self.tab(indent+4)}}};\n")
+            else:
+                buffer.write(f"{self.tab(indent+4)}if( response.IsSuccess() == true )\n")
+                buffer.write(f"{self.tab(indent+4)}{{\n")
+                buffer.write(f"{self.tab(indent+5)}return new {operation.name}Response {{\n")
+                buffer.write(f"{self.tab(indent+6)}Success = new Empty();\n")
+                buffer.write(f"{self.tab(indent+5)}}}\n")
+                buffer.write(f"{self.tab(indent+4)}}}\n")
+                buffer.write(f"{self.tab(indent+4)}else\n")
+                buffer.write(f"{self.tab(indent+4)}{{\n")
+                buffer.write(f"{self.tab(indent+5)}return new {operation.name}Response {{\n")
+                buffer.write(f"{self.tab(indent+6)}Error = new () {{\n")
+                buffer.write(f"{self.tab(indent+7)}Status = response.Error.Status,\n")
+                buffer.write(f"{self.tab(indent+7)}MessageText = response.Error.MessageText,\n")
+                buffer.write(f"{self.tab(indent+7)}AdditionalInformation = response.Error.AdditionalInformation\n")
+                buffer.write(f"{self.tab(indent+6)}}}\n")
+                buffer.write(f"{self.tab(indent+5)}}};\n")
+                buffer.write(f"{self.tab(indent+4)}}}\n")
+                buffer.write(f"{self.tab(indent+4)}\n")
+
+            buffer.write(f"{self.tab(indent+4)}\n")
+            buffer.write(f"{self.tab(indent+3)}}}\n")
+            buffer.write(f"{self.tab(indent+3)}catch(Exception ex)\n")
+            buffer.write(f"{self.tab(indent+3)}{{\n")
+            buffer.write(f"{self.tab(indent+4)}return new {operation.name}Response {{\n")
+            buffer.write(f"{self.tab(indent+5)}Error = new () {{\n")
+            buffer.write(f"{self.tab(indent+6)}Status = InternalError,\n")
+            buffer.write(f"{self.tab(indent+6)}MessageText = ex.Message,\n")
+            buffer.write(f"{self.tab(indent+6)}AdditionalInformation = ex.ToString()\n")
             buffer.write(f"{self.tab(indent+5)}}}\n")
-            buffer.write(f"{self.tab(indent+4)}}}\n")
+            buffer.write(f"{self.tab(indent+4)}}};\n")
+            buffer.write(f"{self.tab(indent+3)}}}\n")
+            buffer.write(f"{self.tab(indent+3)}finally\n")
+            buffer.write(f"{self.tab(indent+3)}{{\n")
+            buffer.write(f"{self.tab(indent+4)}ctx.ReturnToPool();\n")
             buffer.write(f"{self.tab(indent+3)}}}\n")
             buffer.write(f"{self.tab(indent+2)}}}\n")
+            buffer.write(f"{self.tab(indent+1)}}}\n")
 
         # end of class and namepace
         buffer.write(f"{self.tab(indent)}}}\n")
@@ -829,10 +832,10 @@ class dotnet_configuration:
 
 
 class dotnet_code:
-    def __init__(self, directory: str, name: str, content: str, extension: str = ".cs"):
+    def __init__(self, directory: str, subdirs: List[str], name: str, content: str, extension: str = ".cs"):
         """
         Initializes a dotnet_code instance with the file path, file name, and content.
         """
         self.fileName: str = name + extension
-        self.fullPath: str = os.path.join(directory, self.fileName)
+        self.fullPath: str = os.path.join(directory + "/".join(subdirs), self.fileName)
         self.content: str = content

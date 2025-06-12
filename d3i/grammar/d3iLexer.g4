@@ -38,6 +38,7 @@ VIEW : 'view' ;
 // qualifier keywords
 ROOT : 'root' ;
 INHERITS : 'inherits' ;
+VERSION : 'version' ;
 
 // built-in types
 INTEGER : 'integer' ;

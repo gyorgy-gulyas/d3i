@@ -439,6 +439,7 @@ class interface(internal_scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
+        self.version: int = None
         self.operations: List[operation] = []
         self.events: List[event] = []
 
@@ -575,11 +576,11 @@ class reference_type(type):
 class list_type(type):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.item_type = None
+        self.item_type: type = None
 
 
 class map_type(type):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.key_type = None
-        self.value_type = None
+        self.key_type: type = None
+        self.value_type: type = None

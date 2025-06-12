@@ -209,7 +209,7 @@ class Engine:
 
             for imported_domain in imported_d3.domains:
                 # Find or create the domein in the main d3
-                domain_already: domain = self.__find_domain_by_name(imported_domain.name, session)
+                domain_already: domain = self.__find_domain_by_name(session, imported_domain.name)
                 if domain_already is None:
                     session.main.domains.append(imported_domain)
                 else:
