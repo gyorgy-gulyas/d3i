@@ -98,6 +98,33 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#dto.
+    def enterDto(self, ctx:d3iGrammar.DtoContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#dto.
+    def exitDto(self, ctx:d3iGrammar.DtoContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#dto_element.
+    def enterDto_element(self, ctx:d3iGrammar.Dto_elementContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#dto_element.
+    def exitDto_element(self, ctx:d3iGrammar.Dto_elementContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#dto_member.
+    def enterDto_member(self, ctx:d3iGrammar.Dto_memberContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#dto_member.
+    def exitDto_member(self, ctx:d3iGrammar.Dto_memberContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#composite.
     def enterComposite(self, ctx:d3iGrammar.CompositeContext):
         pass

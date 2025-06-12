@@ -33,6 +33,7 @@ INTERFACE : 'interface' ;
 REPOSITORY : 'repository' ;
 SERVICE : 'service' ;
 VALUEOBJECT : 'valueobject' ;
+DTO : 'dto' ;
 VIEW : 'view' ;
 
 // qualifier keywords

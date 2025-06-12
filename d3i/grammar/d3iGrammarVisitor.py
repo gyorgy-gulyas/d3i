@@ -59,6 +59,21 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by d3iGrammar#dto.
+    def visitDto(self, ctx:d3iGrammar.DtoContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#dto_element.
+    def visitDto_element(self, ctx:d3iGrammar.Dto_elementContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#dto_member.
+    def visitDto_member(self, ctx:d3iGrammar.Dto_memberContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by d3iGrammar#composite.
     def visitComposite(self, ctx:d3iGrammar.CompositeContext):
         return self.visitChildren(ctx)

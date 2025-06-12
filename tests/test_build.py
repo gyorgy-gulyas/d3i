@@ -673,35 +673,6 @@ domain somedomain {
         self.assertEqual(inner_enum.name, "Kind")
         self.assertEqual(len(inner_enum.enum_elements), 2)
 
-    def test_view_inner_valueobject(self):
-        engine = Engine()
-        session = Session(Source.CreateFromText("""
-domain somedomain {
-    context context_1 {
-        @decorator_view
-        view CustomerView {
-            valueobject Credit {
-                limit:decimal
-                currency:Currency
-            }
-            @required
-            name:string
-            address:Address
-            kind:Kind
-        }
-    }
-}
-"""))
-        root = engine.Build(session)
-        context: context = root.domains[0].contexts[0]
-        view: view = context.views[0]
-        self.assertEqual(len(view.decorators), 1)
-        self.assertEqual(view.name, "CustomerView")
-        self.assertEqual(len(view.members), 3)
-        inner_value_object: value_object = view.value_objects[0]
-        self.assertEqual(inner_value_object.name, "Credit")
-        self.assertEqual(len(inner_value_object.members), 2)
-
     def test_repository(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
@@ -739,10 +710,6 @@ domain somedomain {
         @decorator
         service OrderService{
             event OrderPlaced {
-                valueobject EventData {
-                    data_1:string
-                    data_1:string
-                }
                 enum Importance {
                     High,
                     Normal,
@@ -752,7 +719,7 @@ domain somedomain {
                 orderId:string
                 importance:Importance
                 @decorator_data
-                data:EventData
+                data:string
             }
         }
     }
@@ -765,7 +732,6 @@ domain somedomain {
         self.assertEqual(event.name, "OrderPlaced")
         self.assertEqual(len(event.members), 3)
         self.assertEqual(len(event.enums), 1)
-        self.assertEqual(len(event.value_objects), 1)
         member: event_member = event.members[0]
         self.assertEqual(member.name, "orderId")
         self.assertEqual(member.type.kind, type.Kind.Primitive)

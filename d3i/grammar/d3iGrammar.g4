@@ -54,6 +54,20 @@ value_object
             : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
             ;
 
+dto
+    : DOCUMENT_LINE* decorator* 'dto' IDENTIFIER inherits? '{' dto_element* '}'
+    ;
+
+    dto_element
+        : dto_member
+        | enum
+        | dto
+        ;
+        
+        dto_member
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
+            ;
+
 composite
     : DOCUMENT_LINE* decorator* 'composite' IDENTIFIER inherits? '{' composite_element* '}'
     ;
@@ -75,7 +89,6 @@ event
     event_element
         : event_member
         | enum
-        | value_object
         ;
 
     event_member
@@ -117,7 +130,6 @@ view
     view_element
         : view_member
         | enum
-        | value_object
         ;
 
         view_member
@@ -146,7 +158,7 @@ interface
     interface_element
         : operation
         | enum
-        | value_object
+        | dto
         | event
         ;
    

@@ -37,12 +37,20 @@ class hinted_base_element(base_element):
             decorator.visit(visitor, data)
         return data
 
-
 class internal_scoped_base_element(hinted_base_element,IScope):
-    def __init__(self, fileName, pos):
+    def __init__(self, fileName, pos, withEnum:bool, withValueObject:bool, withDto:bool):
         super().__init__(fileName, pos)
-        self.enums: List[enum] = []
-        self.value_objects: List[value_object] = []
+        self.withEnum = withEnum
+        if(withEnum==True):
+            self.enums: List[enum] = []
+
+        self.withValueObject= withValueObject
+        if(withValueObject==True):
+            self.value_objects: List[value_object] = []
+        
+        self.withDto = withDto
+        if(withDto==True):
+            self.dto: List[dto] = []
 
     def getChildren(self) -> List[base_element]:
         return self.enums + self.value_objects
@@ -150,7 +158,7 @@ class directive(base_element):
 
 class context(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.name: str = None
         self.composites: List[composite] = []
         self.aggregates: List[aggregate] = []
@@ -198,7 +206,6 @@ class enum(hinted_base_element):
         for enum_element in self.enum_elements:
             enum_element.visit(visitor, data)
 
-
 class enum_element(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
@@ -208,10 +215,9 @@ class enum_element(hinted_base_element):
         data = visitor.visitEnumElement(self, parentData)
         super().visit(visitor, data)
 
-
 class value_object(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[value_object_member] = []
@@ -239,10 +245,39 @@ class value_object_member(hinted_base_element):
             self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
 
+class dto(internal_scoped_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=True)
+        self.inherits: List[qualified_name] = []
+        self.name: str = None
+        self.members: List[dto_member] = []
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitDtoObject(self, parentData)
+        super().visit(visitor, data)
+        for member in self.members:
+            member.visit(visitor, data)
+        for internal_enum in self.enums:
+            internal_enum.visit(visitor, data)
+        for internal_dto in self.dtos:
+            internal_dto.visit(visitor, data)
+
+
+class dto_member(hinted_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = None
+        self.type: type = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitDtoObjectMember(self, parentData)
+        if (self.type != None):
+            self.type.visit(visitor, data, "type")
+        super().visit(visitor, data)
 
 class composite(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[composite_member] = []
@@ -272,7 +307,7 @@ class composite_member(hinted_base_element):
 
 class event(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=False)
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[event_member] = []
@@ -303,7 +338,7 @@ class event_member(hinted_base_element):
 
 class entity(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[entity_member] = []
@@ -334,7 +369,7 @@ class entity_member(hinted_base_element):
 
 class aggregate(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.name: str = None
         self.internal_entities: List[aggregate_entity] = []
 
@@ -366,7 +401,7 @@ class aggregate_entity(base_element):
 
 class view(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=False)
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[view_member] = []
@@ -415,7 +450,7 @@ class repository(hinted_base_element):
 
 class service(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.name: str = None
         self.operations: List[operation] = []
         self.events: List[event] = []
@@ -437,7 +472,7 @@ class service(internal_scoped_base_element):
 
 class interface(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=True)
         self.name: str = None
         self.version: int = None
         self.operations: List[operation] = []
@@ -501,7 +536,7 @@ class operation_return(hinted_base_element):
 
 class acl(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.name: str = None
         self.operations: List[operation] = []
 

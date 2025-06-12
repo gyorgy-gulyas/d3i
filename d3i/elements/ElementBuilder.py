@@ -187,6 +187,63 @@ class ElementBuilder(d3iGrammarVisitor):
     def visitContext_element(self, ctx: d3iGrammar.Context_elementContext):
         return self.visitChildren(ctx)
 
+    # Visit a parse tree produced by d3iGrammar#dto.
+    def visitDto(self, ctx:d3iGrammar.DtoContext):
+        result = dto(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+
+        if (ctx.inherits() != None):
+            result.inherits = result.value = self.visit(ctx.inherits())
+
+        counter = 0
+        while True:
+            document_line = ctx.DOCUMENT_LINE((counter))
+            if (document_line == None):
+                break
+            counter = counter + 1
+            result.document_lines.append(document_line.getText()[1:])
+
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if (decorator == None):
+                break
+            counter = counter + 1
+            child = self.visit(decorator)
+            child.parent = result
+            result.decorators.append(child)
+
+        counter = 0
+        while True:
+            value_object_element: d3iGrammar.Value_object_elementContext = ctx.value_object_element(
+                (counter))
+            if (value_object_element == None):
+                break
+            elif (value_object_element.value_object_member() != None):
+                child = self.visit(value_object_element.value_object_member())
+                child.parent = result
+                result.members.append(child)
+            elif (value_object_element.enum()):
+                child = self.visit(value_object_element.enum())
+                child.parent = result
+                result.enums.append(child)
+            elif (value_object_element.value_object()):
+                child = self.visit(value_object_element.value_object())
+                child.parent = result
+                result.value_objects.append(child)
+            counter = counter + 1
+
+        return result
+
+    # Visit a parse tree produced by d3iGrammar#dto_element.
+    def visitDto_element(self, ctx:d3iGrammar.Dto_elementContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by d3iGrammar#dto_member.
+    def visitDto_member(self, ctx:d3iGrammar.Dto_memberContext):
+        return self.visitChildren(ctx)
+
     # Visit a parse tree produced by d3iGrammar#value_object.
     def visitValue_object(self, ctx: d3iGrammar.Value_objectContext):
         result = value_object(self.fileName, ctx.start)
@@ -392,10 +449,6 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(event_element.enum())
                 child.parent = result
                 result.enums.append(child)
-            elif (event_element.value_object()):
-                child = self.visit(event_element.value_object())
-                child.parent = result
-                result.value_objects.append(child)
             counter = counter + 1
 
         return result
@@ -790,10 +843,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(interface_element.enum())
                 child.parent = result
                 result.enums.append(child)
-            elif (interface_element.value_object()):
-                child = self.visit(interface_element.value_object())
+            elif (interface_element.dto()):
+                child = self.visit(interface_element.dto())
                 child.parent = result
-                result.value_objects.append(child)
+                result.dtos.append(child)
             counter = counter + 1
 
         return result
