@@ -321,6 +321,7 @@ class event(internal_scoped_base_element):
         super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=False)
         self.inherits: List[qualified_name] = []
         self.name: str = None
+        self.version: int = None
         self.members: List[event_member] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -330,7 +331,6 @@ class event(internal_scoped_base_element):
             member.visit(visitor, data)
         for internal_enum in self.enums:
             internal_enum.visit(visitor, data)
-
 
 class event_member(hinted_base_element):
     def __init__(self, fileName, pos):
@@ -344,6 +344,29 @@ class event_member(hinted_base_element):
             self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
 
+class eventhandler(hinted_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = None
+        self.handledEvents : List[event_reference] = []
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitEventHandler(self, parentData)
+        if (self.type != None):
+            self.type.visit(visitor, data, "type")
+        super().visit(visitor, data)
+
+class event_reference(hinted_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.eventName: qualified_name = None
+        self.eventVersion : int = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitEventReference(self, parentData)
+        if (self.type != None):
+            self.type.visit(visitor, data, "type")
+        super().visit(visitor, data)
 
 class entity(internal_scoped_base_element):
     def __init__(self, fileName, pos):

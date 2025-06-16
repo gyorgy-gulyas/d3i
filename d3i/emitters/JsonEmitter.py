@@ -95,6 +95,7 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.event",
             "name": event.name,
+            "version": str(event.version),
             "inherits": [],
             "members": []
         }
@@ -108,6 +109,24 @@ class JsonEmitter(ElementVisitor):
             "type": {}
         }
         parentData["members"].append(data)
+        return data
+
+    def visitEventHandler(self, eventhandler: eventhandler, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.eventhandler",
+            "name": eventhandler.name,
+            "handled_events": [],
+        }
+        parentData["eventhandlers"].append(data)
+        return data
+    
+    def visitEventReference(self, event_reference: event_reference, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.event_reference",
+            "event_name": event_reference.eventName.getText(),
+            "event_version": str(event_reference.eventVersion),
+        }
+        parentData["eventhandlers"].append(data)
         return data
 
     def visitEnum(self, enum: enum, parentData: Any) -> Any:
@@ -250,6 +269,7 @@ class JsonEmitter(ElementVisitor):
             "name": service.name,
             "operations": [],
             "events": [],
+            "eventhandlers": [],
         }
         parentData["services"].append(data)
         return data
@@ -258,6 +278,7 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.interface",
             "name": interface.name,
+            "version": str(interface.version),
             "operations": [],
             "events": [],
         }

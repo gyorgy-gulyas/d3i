@@ -709,7 +709,7 @@ domain somedomain {
     context context_1 {
         @decorator
         service OrderService{
-            event OrderPlaced {
+            event OrderPlaced version 1 {
                 enum Importance {
                     High,
                     Normal,
@@ -730,6 +730,7 @@ domain somedomain {
         self.assertEqual(len(context.services[0].events), 1)
         event: event = context.services[0].events[0]
         self.assertEqual(event.name, "OrderPlaced")
+        self.assertEqual(event.version, 1)
         self.assertEqual(len(event.members), 3)
         self.assertEqual(len(event.enums), 1)
         member: event_member = event.members[0]
@@ -754,7 +755,7 @@ domain somedomain {
     context context_1 {
         @decorator
         interface IOrderService version 1{
-            event OrderPlaced {
+            event OrderPlaced version 2 {
                 enum Importance {
                     High,
                     Normal,
@@ -775,6 +776,7 @@ domain somedomain {
         self.assertEqual(len(context.interfaces[0].events), 1)
         event: event = context.interfaces[0].events[0]
         self.assertEqual(event.name, "OrderPlaced")
+        self.assertEqual(event.version, 2 )
         self.assertEqual(len(event.members), 3)
         self.assertEqual(len(event.enums), 1)
         member: event_member = event.members[0]

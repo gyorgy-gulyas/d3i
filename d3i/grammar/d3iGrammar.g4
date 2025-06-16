@@ -1,3 +1,15 @@
+// projection a viewben
+// event logging with destination
+// interface logging with destination
+// validation szabályok
+// gdpr támogatás
+// deprecated támogatása
+// customizaton point like LSD
+// historized entity vagy audited
+// Valamint: mely mezők változása érdekel audit szempontból: @audited status:string
+// locaestring vagy localetext
+// uimodel a dto helyett.
+
 parser grammar d3iGrammar;
 options { 
     tokenVocab=d3iLexer; 
@@ -83,7 +95,7 @@ composite
             ;
 
 event
-    :  DOCUMENT_LINE* decorator* 'event' IDENTIFIER inherits? '{' event_element* '}'
+    :  DOCUMENT_LINE* decorator* 'event' IDENTIFIER 'version' INTEGER_CONSTANS inherits? '{' event_element* '}'
     ;
 
     event_element
@@ -95,6 +107,14 @@ event
         : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
         ;
         
+eventhandler
+    : DOCUMENT_LINE* decorator* 'eventhandler' IDENTIFIER 'for' event_reference (',' event_reference)*
+    ;
+    
+    event_reference
+        : DOCUMENT_LINE* 'event' qualifiedName 'version' INTEGER_CONSTANS
+        ;
+
 entity
     :  DOCUMENT_LINE* decorator* 'entity' IDENTIFIER inherits? '{' entity_element* '}'
     ;
@@ -149,6 +169,7 @@ service
         | enum
         | value_object
         | event
+        | eventhandler
         ;
 
 interface

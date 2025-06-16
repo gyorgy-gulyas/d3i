@@ -28,6 +28,7 @@ DOMAIN : 'domain' ;
 ENTITY : 'entity' ;
 ENUM : 'enum' ;
 EVENT : 'event' ;
+EVENTHANDLER : 'eventhandler' ;
 IMPORT : 'import' ;
 INTERFACE : 'interface' ;
 REPOSITORY : 'repository' ;
@@ -40,6 +41,7 @@ VIEW : 'view' ;
 ROOT : 'root' ;
 INHERITS : 'inherits' ;
 VERSION : 'version' ;
+FOR : 'for' ;
 
 // built-in types
 INTEGER : 'integer' ;

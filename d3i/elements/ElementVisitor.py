@@ -25,6 +25,12 @@ class ElementVisitor:
     def visitEventMember(self, eventMember: event_member, parentData: Any) -> Any:
         pass
 
+    def visitEventHandler(self, eventhandler: eventhandler, parentData: Any) -> Any:
+        pass
+
+    def visitEventReference(self, event_reference: event_reference, parentData: Any) -> Any:
+        pass
+
     def visitEnum(self, enum: enum, parentData: Any) -> Any:
         pass
 
@@ -96,7 +102,6 @@ class ElementVisitor:
 
     def visitMapType(self, map_type: map_type, parentData: Any, memberName: str) -> Any:
         pass
-
 
     def visitDecorator(self, decorator: decorator, parentData: Any) -> Any:
         pass

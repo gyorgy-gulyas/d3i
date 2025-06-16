@@ -436,6 +436,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
+        if( ctx.VERSION() != None):
+            result.version = int(ctx.INTEGER_CONSTANS().getText())
+
         if (ctx.inherits() != None):
             result.inherits = result.value = self.visit(ctx.inherits())
 
@@ -508,6 +511,61 @@ class ElementBuilder(d3iGrammarVisitor):
 
         return result
 
+    # Visit a parse tree produced by d3iGrammar#eventhandler.
+    def visitEventhandler(self, ctx:d3iGrammar.EventhandlerContext):
+        result = eventhandler(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+
+        counter = 0
+        while True:
+            document_line = ctx.DOCUMENT_LINE((counter))
+            if (document_line == None):
+                break
+            counter = counter + 1
+            result.document_lines.append(document_line.getText()[1:])
+
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if (decorator == None):
+                break
+            counter = counter + 1
+            child = self.visit(decorator)
+            child.parent = result
+            result.decorators.append(child)
+
+        counter = 0
+        while True:
+            event_reference: d3iGrammar.Event_referenceContext = ctx.event_reference((counter))
+            if (event_reference == None):
+                break
+            counter = counter + 1
+            child = self.visit(event_reference)
+            child.parent = result
+            result.handledEvents.append(child)
+
+        return result
+
+    # Visit a parse tree produced by d3iGrammar#event_reference.
+    def visitEvent_reference(self, ctx:d3iGrammar.Event_referenceContext):
+        result = event_reference(self.fileName, ctx.start)
+        if (ctx.qualifiedName() != None):
+            result.eventName = self.visit(ctx.qualifiedName())
+            result.eventName.parent = result
+    
+        if( ctx.VERSION() != None):
+            result.eventVersion = int(ctx.INTEGER_CONSTANS().getText())
+
+        counter = 0
+        while True:
+            document_line = ctx.DOCUMENT_LINE((counter))
+            if (document_line == None):
+                break
+            counter = counter + 1
+            result.document_lines.append(document_line.getText()[1:])
+
+
     # Visit a parse tree produced by d3iGrammar#entity.
     def visitEntity(self, ctx: d3iGrammar.EntityContext):
         result = entity(self.fileName, ctx.start)
@@ -537,8 +595,7 @@ class ElementBuilder(d3iGrammarVisitor):
 
         counter = 0
         while True:
-            entity_element: d3iGrammar.Entity_elementContext = ctx.entity_element(
-                (counter))
+            entity_element: d3iGrammar.Entity_elementContext = ctx.entity_element((counter))
             if (entity_element == None):
                 break
             elif (entity_element.entity_member() != None):
