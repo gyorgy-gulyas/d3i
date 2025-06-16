@@ -37,6 +37,12 @@ class ElementVisitor:
     def visitValueObjectMember(self, value_object_member: value_object_member, parentData: Any) -> Any:
         pass
 
+    def visitDto(self, dto: dto, parentData: Any) -> Any:
+        pass
+
+    def visitDtoMember(self, dto_member: dto_member, parentData: Any) -> Any:
+        pass
+
     def visitEntity(self, entity: entity, parentData: Any) -> Any:
         pass
 

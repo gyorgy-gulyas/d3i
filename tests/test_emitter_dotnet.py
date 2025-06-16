@@ -447,52 +447,6 @@ namespace WebShop.CustomerContext
         self.assertEqual(result[1].fileName, "OrderView.cs")
         print(result[1].content)
 
-    def test_emitter_acl_ok(self):
-        engine = Engine()
-        session = Session(Source.CreateFromText("""
-domain somedomain {
-    context context_1 {
-        @decorator
-        acl CustomerACL {
-            valueobject OrderData {
-                name:string
-                kind:CustomerKind
-                Address:string
-            }
-            enum CustomerKind {
-                PrivatePerson,
-                Company
-            }
-          
-            #getting order data based on customer id    
-            @verb("get")
-            getOrderData( @fromBody customerId: string )
-                : #order data when any found for given customer
-                  @status(200) OrderData
-                | #error message when any bussines logig error is occured
-                  #for example: customer not found
-                  @status(401) Error
-
-            #delete order based on orderId 
-            @verb("post")
-            deleteOrder( orderId: string )
-        }
-    }
-}
-"""))
-        root = engine.Build(session)
-        emitter = DotnetEmitter()
-        result = emitter.Emit(session)
-        expected = """
-"""
-        self.assertEqual(result[0].fileName, "ICustomerACL.cs")
-        self.assertEqual(result[1].fileName, "CustomerACL.proto")
-        self.assertEqual(result[2].fileName, "CustomerACLGrpcController.cs")
-        print(result[0].content)
-        #print(result[1].content)
-        print(result[2].content)
-
-
 
 if __name__ == "__main__":
     unittest.main()

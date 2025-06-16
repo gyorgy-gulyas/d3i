@@ -47,7 +47,7 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        interface IOrderInterface {
+        interface IOrderInterface version 1 {
             event TheEvent {
             }
             event TheEvent {
@@ -59,7 +59,7 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
+        session.PrintDiagnostics()
         self.assertFalse(session.HasAnyError())
         checker = SemanticChecker(session)
         data = root.visit(checker, None)

@@ -50,10 +50,21 @@ class internal_scoped_base_element(hinted_base_element,IScope):
         
         self.withDto = withDto
         if(withDto==True):
-            self.dto: List[dto] = []
+            self.dtos: List[dto] = []
 
     def getChildren(self) -> List[base_element]:
-        return self.enums + self.value_objects
+        children : List[base_element] = []
+        
+        if(self.withEnum==True):
+            children = children + self.enums
+        
+        if(self.withValueObject==True):
+            children = children + self.value_objects
+        
+        if(self.withDto==True):
+            children = children + self.dtos
+    
+        return children
 
     def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
         data = visitor.visitInternalScopedBaseElement(self, parentData)
@@ -253,7 +264,7 @@ class dto(internal_scoped_base_element):
         self.members: List[dto_member] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitDtoObject(self, parentData)
+        data = visitor.visitDto(self, parentData)
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
@@ -270,7 +281,7 @@ class dto_member(hinted_base_element):
         self.type: type = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitDtoObjectMember(self, parentData)
+        data = visitor.visitDtoMember(self, parentData)
         if (self.type != None):
             self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
@@ -319,8 +330,6 @@ class event(internal_scoped_base_element):
             member.visit(visitor, data)
         for internal_enum in self.enums:
             internal_enum.visit(visitor, data)
-        for internal_value_object in self.value_objects:
-            internal_value_object.visit(visitor, data)
 
 
 class event_member(hinted_base_element):
@@ -487,8 +496,8 @@ class interface(internal_scoped_base_element):
             event.visit(visitor, data)
         for internal_enum in self.enums:
             internal_enum.visit(visitor, data)
-        for internal_value_object in self.value_objects:
-            internal_value_object.visit(visitor, data)
+        for internal_dto in self.dtos:
+            internal_dto.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
         return super().getChildren() + self.events

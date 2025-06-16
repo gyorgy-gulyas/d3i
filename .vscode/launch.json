@@ -11,7 +11,7 @@
             "justMyCode": false,
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["-i", "c:/2/samplewebshop/src/webshop.d3", "--output-dir", "c:/2/samplewebshop/src/", "--verbose", "--emitter", "dotnet" ],
+            "args": ["-i", "d:/Projects.OWN/samplewebshop/src/webshop.d3", "--output-dir", "d:/Projects.OWN/samplewebshop/src/", "--verbose", "--emitter", "dotnet" ],
             "envFile": "${workspaceRoot}/.env"
         }
     ]

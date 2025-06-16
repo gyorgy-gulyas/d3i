@@ -55,7 +55,7 @@ value_object
             ;
 
 dto
-    : DOCUMENT_LINE* decorator* 'dto' IDENTIFIER inherits? '{' dto_element* '}'
+    : DOCUMENT_LINE* decorator* 'dto' IDENTIFIER '{' dto_element* '}'
     ;
 
     dto_element

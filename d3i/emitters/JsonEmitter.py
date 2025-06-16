@@ -146,6 +146,25 @@ class JsonEmitter(ElementVisitor):
         parentData["members"].append(data)
         return data
 
+    def visitDto(self, dto: dto, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.dto",
+            "name": dto.name,
+            "inherits": [],
+            "members": [],
+        }
+        parentData["dtos"].append(data)
+        return data
+
+    def visitDtoMember(self, dto_member: dto_member, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.dto_member",
+            "name": dto_member.name,
+            "type": {},
+        }
+        parentData["members"].append(data)
+        return data
+
     def visitEntity(self, entity: entity, parentData: Any) -> Any:
         data = {
             "$type": "d3i.entity",
@@ -340,8 +359,13 @@ class JsonEmitter(ElementVisitor):
 
     def visitInternalScopedBaseElement(self, internal_scoped_base_element: internal_scoped_base_element, parentData: Any) -> Any:
         dict: Dict[str, Any] = parentData
-        dict["enums"] = []
-        dict["value_objects"] = []
+
+        if(internal_scoped_base_element.withEnum== True):
+            dict["enums"] = []
+        if(internal_scoped_base_element.withValueObject== True):
+            dict["value_objects"] = []
+        if(internal_scoped_base_element.withDto== True):
+            dict["dtos"] = []
         return dict
 
     def visitHintedBaseElement(self, hinted_base_element: hinted_base_element, parentData: Any) -> Any:

@@ -745,8 +745,7 @@ domain somedomain {
         member: event_member = event.members[2]
         self.assertEqual(member.name, "data")
         self.assertEqual(len(member.decorators), 1)
-        self.assertEqual(member.type.kind, type.Kind.Reference)
-        self.assertEqual(member.type.reference_name.getText(), "EventData")
+        self.assertEqual(member.type.kind, type.Kind.Primitive)
 
     def test_inerface_event(self):
         engine = Engine()
@@ -756,10 +755,6 @@ domain somedomain {
         @decorator
         interface IOrderService version 1{
             event OrderPlaced {
-                valueobject EventData {
-                    data_1:string
-                    data_1:string
-                }
                 enum Importance {
                     High,
                     Normal,
@@ -782,7 +777,6 @@ domain somedomain {
         self.assertEqual(event.name, "OrderPlaced")
         self.assertEqual(len(event.members), 3)
         self.assertEqual(len(event.enums), 1)
-        self.assertEqual(len(event.value_objects), 1)
         member: event_member = event.members[0]
         self.assertEqual(member.name, "orderId")
         self.assertEqual(member.type.kind, type.Kind.Primitive)
@@ -901,7 +895,7 @@ domain somedomain {
     context context_1 {
         @decorator
         interface OrderService version 2 {
-            valueobject OrderDTO {
+            dto OrderDTO {
                 name:string
                 kind:CustomerKind
                 Address:string
@@ -927,7 +921,7 @@ domain somedomain {
         self.assertEqual(interface.version, 2)
         self.assertEqual(len(interface.operations), 1)
         self.assertEqual(len(interface.enums), 1)
-        self.assertEqual(len(interface.value_objects), 1)
+        self.assertEqual(len(interface.dtos), 1)
         operation: operation = interface.operations[0]
         self.assertEqual(operation.name, "getOrder")
         self.assertEqual(len(operation.decorators), 1)

@@ -47,62 +47,82 @@ class DotnetEmitter:
 
                 # Process all enum in the context
                 for enum in context.enums:
-                    content: str = self.beginFile([domain.name, context.name])
-                    content += self.enumText(enum, indent=1)
-                    content += self.endFile()
+                    content: str = self.beginCSFile([domain.name, context.name])
+                    content += self.enumCSText(enum, indent=1)
+                    content += self.endCSFile()
                     result.append(dotnet_code(output_path, [domain.name, context.name, "models"], enum.name, content))
 
                 # Process all value_object in the context
                 for valueobject in context.value_objects:
-                    content: str = self.beginFile([domain.name, context.name])
-                    content += self.valueobjectText(valueobject, indent=1)
-                    content += self.endFile()
+                    content: str = self.beginCSFile([domain.name, context.name])
+                    content += self.valueobjectCSText(valueobject, indent=1)
+                    content += self.endCSFile()
                     result.append(dotnet_code(output_path, [domain.name, context.name, "models"], valueobject.name, content))
 
                 # Process all composite in the context
                 for composite in context.composites:
-                    content: str = self.beginFile([domain.name, context.name])
+                    content: str = self.beginCSFile([domain.name, context.name])
                     content += self.compositeText(composite, indent=1)
-                    content += self.endFile()
+                    content += self.endCSFile()
                     result.append(dotnet_code(output_path, [domain.name, context.name, "models"], "I"+composite.name, content))
 
                 # Process all aggregate in the context
                 for aggregate in context.aggregates:
                     for enum in aggregate.enums:
-                        content: str = self.beginFile([domain.name, context.name, aggregate.name])
-                        content += self.enumText(enum, indent=1)
-                        content += self.endFile()
+                        #CS code
+                        content: str = self.beginCSFile([domain.name, context.name, aggregate.name])
+                        content += self.enumCSText(enum, indent=1)
+                        content += self.endCSFile()
                         result.append(dotnet_code(output_path, [domain.name, context.name, "models"], enum.name, content))
+                        #proto
+                        content: str = self.beginProtoFile([domain.name, context.name], aggregate.name)
+                        content += self.enumProtoText(enum, indent=1)
+                        content += self.endProtoFile()
+                        result.append(dotnet_code(output_path, [domain.name, context.name, "models/protos"], enum.name, content, extension=".proto"))
 
                     for valueobject in aggregate.value_objects:
-                        content: str = self.beginFile([domain.name, context.name, aggregate.name])
-                        content += self.valueobjectText(valueobject, indent=1)
-                        content += self.endFile()
-                        result.append(dotnet_code(output_path, [domain.name, context.name, "models"], valueobject.name, content))
+                        #CS
+                        content: str = self.beginCSFile([domain.name, context.name, aggregate.name])
+                        content += self.valueobjectCSText(valueobject, indent=1)
+                        content += self.endCSFile()
+                        result.append(dotnet_code(output_path, [domain.name, context.name, "models"], valueobject.name, content, extension=".proto"))
+                        #proto
+                        content: str = self.beginProtoFile([domain.name, context.name], aggregate.name)
+                        content += self.valueobjectProtoText(valueobject, indent=1)
+                        content += self.endProtoFile()
+                        result.append(dotnet_code(output_path, [domain.name, context.name, "models/protos"], valueobject.name, content))
 
                     for aggregate_entity in aggregate.internal_entities:
-                        content: str = self.beginFile([domain.name, context.name, aggregate.name])
-                        content += self.entityText(aggregate_entity.entity, indent=1)
-                        content += self.endFile()
+                        #CS
+                        content: str = self.beginCSFile([domain.name, context.name, aggregate.name])
+                        content += self.entityCSText(aggregate_entity.entity, indent=1)
+                        content += self.endCSFile()
                         result.append(dotnet_code(output_path, [domain.name, context.name, "models"], aggregate_entity.entity.name, content))
+                        #proto
+                        content: str = self.beginProtoFile([domain.name, context.name], aggregate.name)
+                        content += self.entityProtoText(valueobject, indent=1)
+                        content += self.endProtoFile()
+                        result.append(dotnet_code(output_path, [domain.name, context.name, "models/protos"], valueobject.name, content))
 
                 # Process all view in the context
                 for view in context.views:
-                    content: str = self.beginFile([domain.name, context.name])
+                    content: str = self.beginCSFile([domain.name, context.name])
                     content += self.viewText(view, indent=1)
-                    content += self.endFile()
+                    content += self.endCSFile()
                     result.append(dotnet_code(output_path, [domain.name, context.name, "models"], view.name, content))
 
                 # Process all acl in the context
                 for acl in context.acls:
                     # interface
-                    content: str = self.beginFile([domain.name, context.name])
+                    content: str = self.beginCSFile([domain.name, context.name])
                     content += self.aclInterfaceText(acl, indent=1)
-                    content += self.endFile()
+                    content += self.endCSFile()
                     result.append(dotnet_code(output_path, [domain.name, context.name, "Service/interfaces"], "I"+acl.name, content))
 
                     # proto
-                    #content = self.aclProtoFile(domain, context, acl, indent=0)
+                    #content = self.beginProtoFile([domain.name, context.name], acl.name )
+                    #content += self.aclProtoText(domain, context, acl, indent=0)
+                    #content += self.endCSFile()
                     #result.append(dotnet_code(output_path, [domain.name, context.name, acl.name, "Service/protos"], acl.name, content, ".proto"))
 
                     # proto service file
@@ -112,14 +132,16 @@ class DotnetEmitter:
                 # Process all service in the context
                 for service in context.services:
                     # interface
-                    content: str = self.beginFile([domain.name, context.name])
+                    content: str = self.beginCSFile([domain.name, context.name])
                     content += self.serviceInterfaceText(service, indent=1)
-                    content += self.endFile()
+                    content += self.endCSFile()
                     result.append(dotnet_code(output_path, [domain.name, context.name, "Service/interfaces"], "I"+service.name, content))
 
                     # proto
-                    #content = self.serviceProtoFile(domain, context, service, indent=0)
-                    #result.append(dotnet_code(output_path, [domain.name, context.name, service.name, "Service/protos"], service.name, content, ".proto"))
+                    content = self.beginProtoFile([domain.name, context.name], service.name )
+                    content += self.serviceProtoText(domain, context, service, indent=0)
+                    content += self.endProtoFile()
+                    result.append(dotnet_code(output_path, [domain.name, context.name, "Service/protos"], service.name, content, ".proto"))
 
                     # proto service file
                     #content = self.serviceGrpcControllerFile(domain, context, service, indent=1)
@@ -128,13 +150,15 @@ class DotnetEmitter:
                 # Process all inerface in the context
                 for interface in context.interfaces:
                     # interface
-                    content: str = self.beginFile([domain.name, context.name])
+                    content: str = self.beginCSFile([domain.name, context.name])
                     content += self.interfaceInterfaceText(interface, indent=1)
-                    content += self.endFile()
-                    result.append(dotnet_code(output_path, [domain.name, context.name, "interfaces"], "I"+interface.name, content))
+                    content += self.endCSFile()
+                    result.append(dotnet_code(output_path, [domain.name, context.name, "Service/interfaces"], "I"+interface.name, content))
 
                     # proto
-                    #content = self.interfaceProtoFile(domain, context, interface, indent=0)
+                    #content = self.beginProtoFile([domain.name, context.name], service.name )
+                    #content += self.interfaceProtoText(domain, context, interface, indent=0)
+                    #content += self.endProtoFile()
                     #result.append(dotnet_code(output_path, [domain.name, context.name, interface.name, "Service/protos"], interface.name, content, ".proto"))
 
                     # proto service file
@@ -161,7 +185,7 @@ class DotnetEmitter:
 
         return "\n".join(using_statements) + "\n"
 
-    def beginFile(self, names: List[str]) -> str:
+    def beginCSFile(self, names: List[str]) -> str:
         buffer = io.StringIO()
         buffer.write(self.fileHeader())
         buffer.write("\n")
@@ -171,12 +195,43 @@ class DotnetEmitter:
         buffer.write("{\n")
         return buffer.getvalue()
 
-    def endFile(self):
+    def endCSFile(self):
         buffer = io.StringIO()
         buffer.write("}\n")
         return buffer.getvalue()
+    
+    def beginProtoFile(self, names: List[str], packageName:str) -> str:
+        buffer = io.StringIO()
 
-    def enumText(self, enum: enum, indent: int = 1):
+        # proto 3 syntax
+        buffer.write(self.fileHeader())
+        buffer.write("\n")
+        buffer.write("syntax = \"proto3\";")
+        buffer.write("\n")
+
+        # namespace
+        buffer.write("\n")
+        buffer.write(f"option csharp_namespace = \"{".".join(names)}\";")
+        buffer.write("\n")    
+
+        # package
+        buffer.write("\n")
+        buffer.write(f"package {packageName}Package;")
+        buffer.write("\n")
+
+        # imports
+        buffer.write("\n")
+        buffer.write("import \"google/protobuf/empty.proto\";\n")
+        buffer.write("import \"servicekit_error.proto\";\n")
+        buffer.write("\n")
+        return buffer.getvalue()
+
+    def endProtoFile(self):
+        buffer = io.StringIO()
+        return buffer.getvalue()
+
+
+    def enumCSText(self, enum: enum, indent: int = 1):
         """
         Generates the .NET code for an enum.
         """
@@ -198,7 +253,31 @@ class DotnetEmitter:
         buffer.write(f"{self.tab(indent)}}}\n")
         return buffer.getvalue()
 
-    def valueobjectText(self, valueobject: value_object, indent: int = 1):
+    def enumProtoText(self, enum: enum, indent: int = 1):
+        """
+        Generates the proto code for an enum.
+        """
+        buffer = io.StringIO()
+        buffer.write("\n")
+        # Add documentation lines for the enum
+        buffer.write(self.documentLines(enum, indent))
+        # Write the enum declaration with indentation
+        buffer.write(f"{self.tab(indent)}enum {enum.name}\n")
+        buffer.write(f"{self.tab(indent)}{{\n")
+        # Loop through each enum element and generate code for each
+        value:int = 0
+        for enum_element in enum.enum_elements:
+            buffer.write(self.documentLines(enum_element, indent+1))
+            # Write each enum element value
+            buffer.write(f"{self.tab(indent+1)}{enum_element.value} = {value};\n")
+            if(len(enum_element.document_lines)>0):
+                buffer.write("\n")
+            value = value + 1
+
+        buffer.write(f"{self.tab(indent)}}}\n")
+        return buffer.getvalue()
+
+    def valueobjectCSText(self, valueobject: value_object, indent: int = 1):
         """
         Generates the .NET code for an value_object
         """
@@ -226,11 +305,42 @@ class DotnetEmitter:
         # Loop through each coposite members and generate code for each
         for base_composite in base_composites:
             buffer.write(f"{self.tab(indent+1)}#region I{base_composite.name}\n")
+
+            # write internal enums if Any
+            if(base_composite.withEnum== True):
+                for enum in base_composite.enums:
+                    buffer.write(self.enumCSText( enum, indent ))
+
+            # write internal value object if Any
+            if(base_composite.withValueObject== True):
+                for value_object in base_composite.value_objects:
+                    buffer.write(self.valueobjectCSText( value_object, indent ))
+
+            # write internal dto if Any
+            if(base_composite.withDto== True):
+                for dto in base_composite.dtos:
+                    buffer.write(self.dtoText( dto, indent ))
+
             for member in base_composite.members:
                 # Write each member
                 buffer.write(self.documentLines(member, indent+1))
                 buffer.write(self.propertyText(member.name, member.type, indent+1))
             buffer.write(f"{self.tab(indent+1)}#endregion I{base_composite.name}\n\n")
+
+        # write internal enums if Any
+        if( valueobject.withEnum==True):
+            for enum in valueobject.enums:
+                buffer.write( self.enumCSText( enum, indent))
+
+        # write internal valueobjects if Any
+        if( valueobject.withValueObject==True):
+            for valueobject in valueobject.value_objects:
+                buffer.write( self.valueobjectCSText( valueobject, indent))
+
+        # write internal valueobjects if Any
+        if( valueobject.withDto==True):
+            for dto in valueobject.dtos:
+                buffer.write( self.dtoText( dto, indent))
 
         # Loop through each valueobject members and generate code for each
         for member in valueobject.members:
@@ -241,8 +351,103 @@ class DotnetEmitter:
         buffer.write(f"{self.tab(indent)}}}\n")
 
         return buffer.getvalue()
+    
+    def valueobjectProtoText(self, _valueobject: value_object, indent: int = 1):
+        """
+        Generates the proto code for an value_object
+        """
+        base_composites: List[composite] = []
+        for inherit in _valueobject.inherits:
+            base = utils.get_referenced_element(_valueobject.parent, inherit)
+            if (isinstance(base, composite) == True):
+                base_composites.append(base)
+                inherit_names.append(utils.join_with_I(inherit.names))
+            if (isinstance(base, value_object) == True):
+                inherit_names.append(inherit.getText())
 
-    def entityText(self, _entity: entity, indent: int = 1):
+        buffer = io.StringIO()
+        # Add documentation lines for the composite
+        buffer.write(self.documentLines(_valueobject, indent))
+        # Write the value_object declaration with indentation
+        buffer.write(f"{self.tab(indent)}public class {_valueobject.name}")
+        # Write inherits if any
+        if (len(inherit_names)):
+            buffer.write(" : ")
+            buffer.write(", ".join(inherit_names))
+        buffer.write(f"\n{self.tab(indent)}{{\n")
+
+        # Loop through each coposite members and generate code for each
+        for base_composite in base_composites:
+            buffer.write(f"{self.tab(indent+1)}#region I{base_composite.name}\n")
+
+            # write internal enums if Any
+            if(base_composite.withEnum== True):
+                for enum in base_composite.enums:
+                    buffer.write(self.enumCSText( enum, indent ))
+
+            # write internal value object if Any
+            if(base_composite.withValueObject== True):
+                for value_object in base_composite.value_objects:
+                    buffer.write(self.valueobjectCSText( value_object, indent ))
+
+            # write internal dto if Any
+            if(base_composite.withDto== True):
+                for dto in base_composite.dtos:
+                    buffer.write(self.dtoText( dto, indent ))
+
+            for member in base_composite.members:
+                # Write each member
+                buffer.write(self.documentLines(member, indent+1))
+                buffer.write(self.propertyText(member.name, member.type, indent+1))
+            buffer.write(f"{self.tab(indent+1)}#endregion I{base_composite.name}\n\n")
+
+        # write internal enums if Any
+        if( _valueobject.withEnum==True):
+            for enum in _valueobject.enums:
+                buffer.write( self.enumCSText( enum, indent))
+
+        # write internal valueobjects if Any
+        if( _valueobject.withValueObject==True):
+            for _valueobject in _valueobject.value_objects:
+                buffer.write( self.valueobjectCSText( _valueobject, indent))
+
+        # write internal valueobjects if Any
+        if( _valueobject.withDto==True):
+            for dto in _valueobject.dtos:
+                buffer.write( self.dtoText( dto, indent))
+
+        # Loop through each valueobject members and generate code for each
+        for member in _valueobject.members:
+            # Write each member
+            buffer.write(self.documentLines(member, indent+1))
+            buffer.write(self.propertyText(member.name, member.type, indent+1))
+
+        buffer.write(f"{self.tab(indent)}}}\n")
+
+        return buffer.getvalue()
+    
+    def dtoText(self, dto: dto, indent: int = 1):
+        """
+        Generates the .NET code for an dto
+        """
+        buffer = io.StringIO()
+        # Add documentation lines for the composite
+        buffer.write(self.documentLines(dto, indent))
+        # Write the value_object declaration with indentation
+        buffer.write(f"{self.tab(indent)}public class {dto.name}")
+        buffer.write(f"\n{self.tab(indent)}{{\n")
+
+        # Loop through each valueobject members and generate code for each
+        for member in dto.members:
+            # Write each member
+            buffer.write(self.documentLines(member, indent+1))
+            buffer.write(self.propertyText(member.name, member.type, indent+1))
+
+        buffer.write(f"{self.tab(indent)}}}\n")
+
+        return buffer.getvalue()
+
+    def entityCSText(self, _entity: entity, indent: int = 1):
         """
         Generates the .NET code for an entity
         """
@@ -258,10 +463,11 @@ class DotnetEmitter:
                 hasBaseEntity = True
                 inherit_names.append(inherit.getText())
 
+        buffer = io.StringIO()
         if (hasBaseEntity == False):
             inherit_names.insert(0, "Entity")
-
-        buffer = io.StringIO()
+            buffer.write(f"{self.tab(indent)}using PolyPersist.Net.Core;\n")
+            buffer.write("\n")
         # Add documentation lines for the composite
         buffer.write(self.documentLines(_entity, indent))
         # Write the entity declaration with indentation
@@ -379,17 +585,34 @@ class DotnetEmitter:
         """
         return self.interfaceClassText( interface, interface.name+ f"_v{interface.version}", interface.operations, indent)
 
-    def interfaceClassText(self, element: hinted_base_element, elementName:str, operations: List[operation], indent: int = 1):
+    def interfaceClassText(self, element: internal_scoped_base_element, elementName:str, operations: List[operation], indent: int = 1):
         """
         Generates the .NET code for element, just the interface.
         """
         buffer = io.StringIO()
+        buffer.write(f"{self.tab(indent)}using ServiceKit.Net;\n")
         buffer.write("\n")
         # Add documentation lines for the element
         buffer.write(self.documentLines(element, indent))
         # Write the interface class declaration with indentation
         buffer.write(f"{self.tab(indent)}public interface I{elementName}\n")
         buffer.write(f"{self.tab(indent)}{{\n")
+
+        # write internal enums if Any
+        if( element.withEnum==True):
+            for enum in element.enums:
+                buffer.write( self.enumCSText( enum, indent+1))
+
+        # write internal valueobjects if Any
+        if( element.withValueObject==True):
+            for valueobject in element.value_objects:
+                buffer.write( self.valueobjectCSText( valueobject, indent+1))
+
+        # write internal valueobjects if Any
+        if( element.withDto==True):
+            for dto in element.dtos:
+                buffer.write( self.dtoText( dto, indent+1))
+
         # Loop through each operations and generate code for each
         for operation in operations:
             # Write each operation
@@ -439,7 +662,7 @@ class DotnetEmitter:
             buffer.write(", ".join(self.typeText(item.type) for item in operation.operation_returns))
             buffer.write(">")
         # Add function name
-        buffer.write(f" {operation.name}( CallingContext ctx")
+        buffer.write(f" {operation.name}(CallingContext ctx")
         # Add parameters
         if (len(operation.operation_params) > 0):
             buffer.write(f", ")
@@ -448,41 +671,20 @@ class DotnetEmitter:
 
         return buffer.getvalue()
 
-    def aclProtoFile(self, domain: domain, context: context, acl: acl, indent: int = 1):
-        return self.protoFile( domain, context, acl, acl.name, acl.operations, indent )
+    def aclProtoText(self, domain: domain, context: context, acl: acl, indent: int = 1):
+        return self.protoServiceText( domain, context, acl, acl.name, acl.operations, indent )
 
-    def serviceProtoFile(self, domain: domain, context: context, service: service, indent: int = 1):
-        return self.protoFile( domain, context, service, service.name, service.operations, indent )
+    def serviceProtoText(self, domain: domain, context: context, service: service, indent: int = 1):
+        return self.protoServiceText( domain, context, service, service.name, service.operations, indent )
 
-    def interfaceProtoFile(self, domain: domain, context: context, interface: interface, indent: int = 1):
-        return self.protoFile( domain, context, interface, interface.name, interface.operations, indent )
+    def interfaceProtoText(self, domain: domain, context: context, interface: interface, indent: int = 1):
+        return self.protoServiceText( domain, context, interface, interface.name, interface.operations, indent )
 
-    def protoFile(self, domain: domain, context: context, element: hinted_base_element, elementName: str, operations: List[operation], indent: int = 1):
+    def protoServiceText(self, domain: domain, context: context, element: hinted_base_element, elementName: str, operations: List[operation], indent: int = 1):
         """
-        Generates the proto file for element        """
+        Generates the proto service file, with rpc functions and request response messages text for element
+        """
         buffer = io.StringIO()
-
-        # proto 3 syntax
-        buffer.write(self.fileHeader())
-        buffer.write("\n")
-        buffer.write("syntax = \"proto3\";")
-        buffer.write("\n")
-
-        # namespace
-        buffer.write("\n")
-        buffer.write(f"option csharp_namespace = \"{domain.name}.{context.name}\";")
-        buffer.write("\n")
-
-        # package
-        buffer.write("\n")
-        buffer.write(f"package {elementName}Package\";")
-        buffer.write("\n")
-
-        # imports
-        buffer.write("\n")
-        buffer.write("import \"google/protobuf/empty.proto\";\n")
-        buffer.write("import \"servicekit/protobuf/error.proto\";\n")
-        buffer.write("\n")
 
         # Add documentation lines for the service
         buffer.write(self.documentLines(element, indent))
@@ -504,7 +706,7 @@ class DotnetEmitter:
             index: int = 1
             for param in operation.operation_params:
                 buffer.write(self.documentLines(param, indent+2))
-                buffer.write(f"{self.tab(indent+2)}{self.typeText(param.type)} {param.name} = {index};\n")
+                buffer.write(f"{self.tab(indent+1)}{self.typeText(param.type)} {param.name} = {index};\n")
             buffer.write(f"}}\n")
             buffer.write(f"\n")
 
@@ -696,10 +898,10 @@ class DotnetEmitter:
         return type.reference_name.getText()
 
     def typeTextList(self, type: list_type):
-        return f"System.Generic.List<{self.typeText(type.item_type)}>"
+        return f"List<{self.typeText(type.item_type)}>"
 
     def typeTextMap(self, type: map_type):
-        return f"System.Generic.Dictionary<{self.typeText(type.key_type)},{self.typeText(type.value_type)}>"
+        return f"Dictionary<{self.typeText(type.key_type)},{self.typeText(type.value_type)}>"
 
     def tab(self, indent=1):
         return '\t'*indent
@@ -811,14 +1013,11 @@ class dotnet_configuration:
                 self.fileHeader = "\n".join(value)
 
     def __read_defaultUsings(self, configuration: Dict[str, str]):
-        self.defaultUsings: List[str] = ["System", "System.Collections.Generic"]
+        self.defaultUsings: List[str] = []
         if "dotnet.default_usings" in configuration:
             value = configuration["dotnet.default_usings"]
             if (isinstance(value, list) and all(isinstance(item, str) for item in value)):
                 self.defaultUsings = value
-        self.defaultUsings.append("PolyPersist.Net")
-        self.defaultUsings.append("PolyPersist.Net.Core")
-        self.defaultUsings.append("ServiceKit.Net")
 
     def __read_createFolderStructure(self, configuration: Dict[str, str]):
         self.createFolderStructure: bool = True
