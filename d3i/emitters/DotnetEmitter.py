@@ -1,4 +1,4 @@
-import os
+#import os
 import io
 from typing import Dict
 from typing import List
@@ -74,23 +74,13 @@ class DotnetEmitter:
                         content += self.enumCSText(enum, indent=1)
                         content += self.endCSFile()
                         result.append(dotnet_code(output_path, [domain.name, context.name, "models"], enum.name, content))
-                        #proto
-                        content: str = self.beginProtoFile([domain.name, context.name], aggregate.name)
-                        content += self.enumProtoText(enum, indent=1)
-                        content += self.endProtoFile()
-                        result.append(dotnet_code(output_path, [domain.name, context.name, "models/protos"], enum.name, content, extension=".proto"))
 
                     for valueobject in aggregate.value_objects:
                         #CS
                         content: str = self.beginCSFile([domain.name, context.name, aggregate.name])
                         content += self.valueobjectCSText(valueobject, indent=1)
                         content += self.endCSFile()
-                        result.append(dotnet_code(output_path, [domain.name, context.name, "models"], valueobject.name, content, extension=".proto"))
-                        #proto
-                        content: str = self.beginProtoFile([domain.name, context.name], aggregate.name)
-                        content += self.valueobjectProtoText(valueobject, indent=1)
-                        content += self.endProtoFile()
-                        result.append(dotnet_code(output_path, [domain.name, context.name, "models/protos"], valueobject.name, content))
+                        result.append(dotnet_code(output_path, [domain.name, context.name, "models"], valueobject.name, content ))
 
                     for aggregate_entity in aggregate.internal_entities:
                         #CS
@@ -98,11 +88,6 @@ class DotnetEmitter:
                         content += self.entityCSText(aggregate_entity.entity, indent=1)
                         content += self.endCSFile()
                         result.append(dotnet_code(output_path, [domain.name, context.name, "models"], aggregate_entity.entity.name, content))
-                        #proto
-                        content: str = self.beginProtoFile([domain.name, context.name], aggregate.name)
-                        content += self.entityProtoText(valueobject, indent=1)
-                        content += self.endProtoFile()
-                        result.append(dotnet_code(output_path, [domain.name, context.name, "models/protos"], valueobject.name, content))
 
                 # Process all view in the context
                 for view in context.views:
@@ -119,13 +104,7 @@ class DotnetEmitter:
                     content += self.endCSFile()
                     result.append(dotnet_code(output_path, [domain.name, context.name, "Service/interfaces"], "I"+acl.name, content))
 
-                    # proto
-                    #content = self.beginProtoFile([domain.name, context.name], acl.name )
-                    #content += self.aclProtoText(domain, context, acl, indent=0)
-                    #content += self.endCSFile()
-                    #result.append(dotnet_code(output_path, [domain.name, context.name, acl.name, "Service/protos"], acl.name, content, ".proto"))
-
-                    # proto service file
+                    # grpc controller file
                     #content = self.aclGrpcControllerFile(domain, context, acl, indent=1)
                     #result.append(dotnet_code(output_path, [domain.name, context.name, acl.name, "Service/controllers"], acl.name+"GrpcController", content))
 
@@ -137,13 +116,7 @@ class DotnetEmitter:
                     content += self.endCSFile()
                     result.append(dotnet_code(output_path, [domain.name, context.name, "Service/interfaces"], "I"+service.name, content))
 
-                    # proto
-                    content = self.beginProtoFile([domain.name, context.name], service.name )
-                    content += self.serviceProtoText(domain, context, service, indent=0)
-                    content += self.endProtoFile()
-                    result.append(dotnet_code(output_path, [domain.name, context.name, "Service/protos"], service.name, content, ".proto"))
-
-                    # proto service file
+                    # grpc controller file
                     #content = self.serviceGrpcControllerFile(domain, context, service, indent=1)
                     #result.append(dotnet_code(output_path, [domain.name, context.name, service.name, "Service/controllers"], service.name+"GrpcController", content))
 
@@ -155,13 +128,7 @@ class DotnetEmitter:
                     content += self.endCSFile()
                     result.append(dotnet_code(output_path, [domain.name, context.name, "Service/interfaces"], "I"+interface.name, content))
 
-                    # proto
-                    #content = self.beginProtoFile([domain.name, context.name], service.name )
-                    #content += self.interfaceProtoText(domain, context, interface, indent=0)
-                    #content += self.endProtoFile()
-                    #result.append(dotnet_code(output_path, [domain.name, context.name, interface.name, "Service/protos"], interface.name, content, ".proto"))
-
-                    # proto service file
+                    # grpc controller file
                     #content = self.interfaceGrpcControllerFile(domain, context, interface, indent=1)
                     #result.append(dotnet_code(output_path, [domain.name, context.name, interface.name, "Service/controllers"], interface.name+"GrpcController", content))
 
@@ -200,43 +167,11 @@ class DotnetEmitter:
         buffer.write("}\n")
         return buffer.getvalue()
     
-    def beginProtoFile(self, names: List[str], packageName:str) -> str:
-        buffer = io.StringIO()
-
-        # proto 3 syntax
-        buffer.write(self.fileHeader())
-        buffer.write("\n")
-        buffer.write("syntax = \"proto3\";")
-        buffer.write("\n")
-
-        # namespace
-        buffer.write("\n")
-        buffer.write(f"option csharp_namespace = \"{".".join(names)}\";")
-        buffer.write("\n")    
-
-        # package
-        buffer.write("\n")
-        buffer.write(f"package {packageName}Package;")
-        buffer.write("\n")
-
-        # imports
-        buffer.write("\n")
-        buffer.write("import \"google/protobuf/empty.proto\";\n")
-        buffer.write("import \"servicekit_error.proto\";\n")
-        buffer.write("\n")
-        return buffer.getvalue()
-
-    def endProtoFile(self):
-        buffer = io.StringIO()
-        return buffer.getvalue()
-
-
     def enumCSText(self, enum: enum, indent: int = 1):
         """
         Generates the .NET code for an enum.
         """
         buffer = io.StringIO()
-        buffer.write("\n")
         # Add documentation lines for the enum
         buffer.write(self.documentLines(enum, indent))
         # Write the enum declaration with indentation
@@ -253,29 +188,21 @@ class DotnetEmitter:
         buffer.write(f"{self.tab(indent)}}}\n")
         return buffer.getvalue()
 
-    def enumProtoText(self, enum: enum, indent: int = 1):
-        """
-        Generates the proto code for an enum.
-        """
-        buffer = io.StringIO()
-        buffer.write("\n")
-        # Add documentation lines for the enum
-        buffer.write(self.documentLines(enum, indent))
-        # Write the enum declaration with indentation
-        buffer.write(f"{self.tab(indent)}enum {enum.name}\n")
-        buffer.write(f"{self.tab(indent)}{{\n")
-        # Loop through each enum element and generate code for each
-        value:int = 0
-        for enum_element in enum.enum_elements:
-            buffer.write(self.documentLines(enum_element, indent+1))
-            # Write each enum element value
-            buffer.write(f"{self.tab(indent+1)}{enum_element.value} = {value};\n")
-            if(len(enum_element.document_lines)>0):
-                buffer.write("\n")
-            value = value + 1
+    def collectBaseRecursive(self, base: composite, bases: List[base_element]):
+        bases.insert(0, base)
 
-        buffer.write(f"{self.tab(indent)}}}\n")
-        return buffer.getvalue()
+        for inherit in base.inherits:
+            base_base = utils.get_referenced_element(base.parent, inherit)
+            if (base_base != None):
+                self.collectBaseRecursive(base_base, bases)
+
+    def collectBaseCompositsRecursive(self, base_composite: composite, base_composites: List[composite]):
+        base_composites.insert(0, base_composite)
+
+        for inherit in base_composite.inherits:
+            base = utils.get_referenced_element(base_composite.parent, inherit)
+            if (isinstance(base, composite) == True):
+                self.collectBaseCompositsRecursive(base, base_composites)
 
     def valueobjectCSText(self, valueobject: value_object, indent: int = 1):
         """
@@ -286,7 +213,7 @@ class DotnetEmitter:
         for inherit in valueobject.inherits:
             base = utils.get_referenced_element(valueobject.parent, inherit)
             if (isinstance(base, composite) == True):
-                base_composites.append(base)
+                self.collectBaseCompositsRecursive(base, base_composites)
                 inherit_names.append(utils.join_with_I(inherit.names))
             if (isinstance(base, value_object) == True):
                 inherit_names.append(inherit.getText())
@@ -308,18 +235,18 @@ class DotnetEmitter:
 
             # write internal enums if Any
             if(base_composite.withEnum== True):
-                for enum in base_composite.enums:
-                    buffer.write(self.enumCSText( enum, indent ))
+                for child_enum in base_composite.enums:
+                    buffer.write(self.enumCSText( child_enum, indent+1))
 
             # write internal value object if Any
             if(base_composite.withValueObject== True):
-                for value_object in base_composite.value_objects:
-                    buffer.write(self.valueobjectCSText( value_object, indent ))
+                for child_value_object in base_composite.value_objects:
+                    buffer.write(self.valueobjectCSText( child_value_object, indent+1))
 
             # write internal dto if Any
             if(base_composite.withDto== True):
-                for dto in base_composite.dtos:
-                    buffer.write(self.dtoText( dto, indent ))
+                for child_dto in base_composite.dtos:
+                    buffer.write(self.dtoText( child_dto, indent+1))
 
             for member in base_composite.members:
                 # Write each member
@@ -344,80 +271,6 @@ class DotnetEmitter:
 
         # Loop through each valueobject members and generate code for each
         for member in valueobject.members:
-            # Write each member
-            buffer.write(self.documentLines(member, indent+1))
-            buffer.write(self.propertyText(member.name, member.type, indent+1))
-
-        buffer.write(f"{self.tab(indent)}}}\n")
-
-        return buffer.getvalue()
-    
-    def valueobjectProtoText(self, _valueobject: value_object, indent: int = 1):
-        """
-        Generates the proto code for an value_object
-        """
-        base_composites: List[composite] = []
-        for inherit in _valueobject.inherits:
-            base = utils.get_referenced_element(_valueobject.parent, inherit)
-            if (isinstance(base, composite) == True):
-                base_composites.append(base)
-                inherit_names.append(utils.join_with_I(inherit.names))
-            if (isinstance(base, value_object) == True):
-                inherit_names.append(inherit.getText())
-
-        buffer = io.StringIO()
-        # Add documentation lines for the composite
-        buffer.write(self.documentLines(_valueobject, indent))
-        # Write the value_object declaration with indentation
-        buffer.write(f"{self.tab(indent)}public class {_valueobject.name}")
-        # Write inherits if any
-        if (len(inherit_names)):
-            buffer.write(" : ")
-            buffer.write(", ".join(inherit_names))
-        buffer.write(f"\n{self.tab(indent)}{{\n")
-
-        # Loop through each coposite members and generate code for each
-        for base_composite in base_composites:
-            buffer.write(f"{self.tab(indent+1)}#region I{base_composite.name}\n")
-
-            # write internal enums if Any
-            if(base_composite.withEnum== True):
-                for enum in base_composite.enums:
-                    buffer.write(self.enumCSText( enum, indent ))
-
-            # write internal value object if Any
-            if(base_composite.withValueObject== True):
-                for value_object in base_composite.value_objects:
-                    buffer.write(self.valueobjectCSText( value_object, indent ))
-
-            # write internal dto if Any
-            if(base_composite.withDto== True):
-                for dto in base_composite.dtos:
-                    buffer.write(self.dtoText( dto, indent ))
-
-            for member in base_composite.members:
-                # Write each member
-                buffer.write(self.documentLines(member, indent+1))
-                buffer.write(self.propertyText(member.name, member.type, indent+1))
-            buffer.write(f"{self.tab(indent+1)}#endregion I{base_composite.name}\n\n")
-
-        # write internal enums if Any
-        if( _valueobject.withEnum==True):
-            for enum in _valueobject.enums:
-                buffer.write( self.enumCSText( enum, indent))
-
-        # write internal valueobjects if Any
-        if( _valueobject.withValueObject==True):
-            for _valueobject in _valueobject.value_objects:
-                buffer.write( self.valueobjectCSText( _valueobject, indent))
-
-        # write internal valueobjects if Any
-        if( _valueobject.withDto==True):
-            for dto in _valueobject.dtos:
-                buffer.write( self.dtoText( dto, indent))
-
-        # Loop through each valueobject members and generate code for each
-        for member in _valueobject.members:
             # Write each member
             buffer.write(self.documentLines(member, indent+1))
             buffer.write(self.propertyText(member.name, member.type, indent+1))
@@ -457,7 +310,7 @@ class DotnetEmitter:
         for inherit in _entity.inherits:
             base = utils.get_referenced_element(_entity.parent, inherit)
             if (isinstance(base, composite) == True):
-                base_composites.append(base)
+                self.collectBaseCompositsRecursive(base, base_composites)
                 inherit_names.append(utils.join_with_I(inherit.names))
             if (isinstance(base, entity) == True):
                 hasBaseEntity = True
@@ -507,7 +360,7 @@ class DotnetEmitter:
         for inherit in _view.inherits:
             base = utils.get_referenced_element(_view.parent, inherit)
             if (isinstance(base, composite) == True):
-                base_composites.append(base)
+                self.collectBaseCompositsRecursive(base, base_composites)
                 inherit_names.append(utils.join_with_I(inherit.names))
             if (isinstance(base, view) == True):
                 hasBaseView = True
@@ -659,72 +512,15 @@ class DotnetEmitter:
         buffer.write(f"{self.tab(indent)}public Response")
         if (len(operation.operation_returns) > 0):
             buffer.write("<")
-            buffer.write(", ".join(self.typeText(item.type) for item in operation.operation_returns))
+            buffer.write(", ".join(self.typeCSText(item.type) for item in operation.operation_returns))
             buffer.write(">")
         # Add function name
         buffer.write(f" {operation.name}(CallingContext ctx")
         # Add parameters
         if (len(operation.operation_params) > 0):
             buffer.write(f", ")
-        buffer.write(", ".join([self.typeText(param.type) + " " + param.name for param in operation.operation_params]))
+        buffer.write(", ".join([self.typeCSText(param.type) + " " + param.name for param in operation.operation_params]))
         buffer.write(");\n")
-
-        return buffer.getvalue()
-
-    def aclProtoText(self, domain: domain, context: context, acl: acl, indent: int = 1):
-        return self.protoServiceText( domain, context, acl, acl.name, acl.operations, indent )
-
-    def serviceProtoText(self, domain: domain, context: context, service: service, indent: int = 1):
-        return self.protoServiceText( domain, context, service, service.name, service.operations, indent )
-
-    def interfaceProtoText(self, domain: domain, context: context, interface: interface, indent: int = 1):
-        return self.protoServiceText( domain, context, interface, interface.name, interface.operations, indent )
-
-    def protoServiceText(self, domain: domain, context: context, element: hinted_base_element, elementName: str, operations: List[operation], indent: int = 1):
-        """
-        Generates the proto service file, with rpc functions and request response messages text for element
-        """
-        buffer = io.StringIO()
-
-        # Add documentation lines for the service
-        buffer.write(self.documentLines(element, indent))
-        buffer.write("\n")
-        buffer.write(f"service {elementName} {{\n")
-        # Loop through each operations and generate code for each
-        for operation in operations:
-            # Write each operation as RPC call
-            buffer.write(self.documentLines(operation, indent+1))
-            buffer.write(f"{self.tab(indent+1)}rpc {operation.name} ({operation.name}Request) returns ({operation.name}Response);\n")
-        buffer.write("\n")
-        buffer.write(f"}}")
-
-        # Add messages based on operations
-        for operation in operations:
-            # Request message
-            buffer.write(f"\n")
-            buffer.write(f"message {operation.name}Request {{\n")
-            index: int = 1
-            for param in operation.operation_params:
-                buffer.write(self.documentLines(param, indent+2))
-                buffer.write(f"{self.tab(indent+1)}{self.typeText(param.type)} {param.name} = {index};\n")
-            buffer.write(f"}}\n")
-            buffer.write(f"\n")
-
-            # Response message
-            buffer.write(f"message {operation.name}Response {{\n")
-            buffer.write(f"{self.tab(indent+1)}oneof result {{\n")
-            if (len(operation.operation_returns) == 0):
-                buffer.write(f"{self.tab(indent+2)}google.protobuf.Empty Success = 1;\n")
-                buffer.write(f"{self.tab(indent+2)}servicekit.protobuf.Error Error = 2;\n")
-            else:
-                index: int = 1
-                for returns in operation.operation_returns:
-                    buffer.write(f"{self.tab(indent+2)}{self.typeText(returns.type)} Value{index} = {index};\n")
-                    index = index+1
-                buffer.write(f"{self.tab(indent+2)}servicekit.protobuf.Error Error = {index};\n")
-
-            buffer.write(f"{self.tab(1)}}}\n")
-            buffer.write(f"}}\n")
 
         return buffer.getvalue()
 
@@ -852,21 +648,21 @@ class DotnetEmitter:
 
     def propertyText(self, member_name: str, type: type, indent: int):
         buffer = io.StringIO()
-        buffer.write(f"{'\t'*indent}public {self.typeText(type)} {member_name} {{ get; set; }}\n")
+        buffer.write(f"{'\t'*indent}public {self.typeCSText(type)} {member_name} {{ get; set; }}\n")
         return buffer.getvalue()
 
-    def typeText(self, type: type):
+    def typeCSText(self, type: type):
         match type.kind:
             case type.Kind.Primitive:
-                return self.typeTextPrimitive(type)
+                return self.typeCSTextPrimitive(type)
             case type.Kind.Reference:
-                return self.typeTextReference(type)
+                return self.typeCSTextReference(type)
             case type.Kind.List:
-                return self.typeTextList(type)
+                return self.typeCSTextList(type)
             case type.Kind.Map:
-                return self.typeTextMap(type)
+                return self.typeCSTextMap(type)
 
-    def typeTextPrimitive(self, type: primitive_type):
+    def typeCSTextPrimitive(self, type: primitive_type):
         """
         Converts a primitive type to its .NET representation.
         """
@@ -896,14 +692,17 @@ class DotnetEmitter:
             case primitive_type.PrimtiveKind.Stream:
                 return "Stream"
 
-    def typeTextReference(self, type: reference_type):
+    def typeCSTextReference(self, type: reference_type):
         return type.reference_name.getText()
 
-    def typeTextList(self, type: list_type):
-        return f"List<{self.typeText(type.item_type)}>"
+    def typeCSTextList(self, type: list_type):
+        return f"List<{self.typeCSText(type.item_type)}>"
 
-    def typeTextMap(self, type: map_type):
-        return f"Dictionary<{self.typeText(type.key_type)},{self.typeText(type.value_type)}>"
+    def typeCSTextMap(self, type: map_type):
+        return f"Dictionary<{self.typeCSText(type.key_type)},{self.typeCSText(type.value_type)}>"
+
+    def typeCSTextMap(self, type: map_type):
+        return f"map<{self.typeCSText(type.key_type)},{self.typeCSText(type.value_type)}>"
 
     def tab(self, indent=1):
         return '\t'*indent

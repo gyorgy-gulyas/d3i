@@ -23,6 +23,9 @@ domain WebShop {
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
@@ -57,6 +60,9 @@ domain WebShop {
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
@@ -93,6 +99,9 @@ domain WebShop {
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
@@ -126,13 +135,24 @@ domain somedomain {
             zipCode:integer
         }
 
-        valueobject PartnerAddress inherits WithAddress {
+        composite WithTypedAddress inherits WithAddress {
+            enum AddressTypes {
+                Headquarter,
+                Site                                   
+            }
+            addressType:AddressTypes
+        }
+
+        valueobject PartnerAddress inherits WithTypedAddress {
             PartnerCode:string
         }
     }
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
@@ -141,7 +161,7 @@ using System.Collections.Generic;
 
 namespace WebShop.CustomerContext
 {
-        public class PartnerAddress : IWithAddress
+        public class PartnerAddress : ITypedWithAddress
         {
             #region IWithAddress
             public string city { get; set; }
@@ -150,11 +170,20 @@ namespace WebShop.CustomerContext
             public int zipCode { get; set; }
             #endregion IWithAddress
 
+            #region ITypedWithAddress
+            enum AddressTypes
+            {
+                Headquarter,
+                Site,                                   
+            } 
+            public AddressTypes addressType { get; set; }
+            #endregion ITypedWithAddress
+
             public string PartnerCode { get; set; }
         }
 }
 """
-        self.assertTrue(1, len(result))
+        self.assertEqual(3, len(result))
         self.assertEqual(result[0].fileName, "PartnerAddress.cs")
         print(result[0].content)
 
@@ -177,6 +206,9 @@ domain somedomain {
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
@@ -212,6 +244,9 @@ domain somedomain {
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
@@ -256,6 +291,9 @@ domain somedomain {
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
@@ -295,6 +333,9 @@ domain somedomain {
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
@@ -335,6 +376,9 @@ domain somedomain {
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
@@ -381,6 +425,9 @@ domain somedomain {
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """
@@ -422,6 +469,9 @@ domain somedomain {
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
         emitter = DotnetEmitter()
         result = emitter.Emit(session)
         expected = """

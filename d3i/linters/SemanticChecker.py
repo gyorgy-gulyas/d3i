@@ -15,6 +15,9 @@ class SemanticChecker(ElementVisitor):
     def visitd3(self, d3: d3, parentData: Any) -> Any:
         pass
 
+    def visitImport(self, _import: import_, parentData: Any) -> Any:
+        pass
+
     def visitDomain(self, domain: domain, parentData: Any) -> Any:
         pass
 
@@ -47,7 +50,25 @@ class SemanticChecker(ElementVisitor):
                 continue
             if (neighbour.name == eventMember.name):
                 self.__error(eventMember, f"An event member '{eventMember.name}' conflicts with same name with element in {neighbour.locationText()}.")
-        pass
+
+    def visitEventHandler(self, the_eventhandler: eventhandler, parentData: Any) -> Any:
+        scope = self.__get_current_scope(eventhandler.parent)
+
+        for neighbour in scope.getChildren():
+            if (neighbour is the_eventhandler):
+                continue
+            if (neighbour.name == the_eventhandler.name):
+                self.__error(the_eventhandler, f"An eventhandler '{the_eventhandler.name}' conflicts with same name with element in {neighbour.locationText()}.")
+
+    def visitEventReference(self, event_reference: event_reference, parentData: Any) -> Any:
+        parent_eventhandler: eventhandler = event_reference.parent
+
+        for event_reference in parent_eventhandler.members:
+            base_class, message = self.__get_referenced_element(parent_eventhandler.parent, event_reference.eventName)
+            if (base_class == None):
+                self.__error(event_reference.eventName, f"The element '{event_reference.eventName.getText()}' is not found. {message}")
+            elif (isinstance(base_class, event) == False):
+                self.__error(event_reference.eventName, f"The element '{event_reference.eventName.getText()}' is not an event.")
 
     def visitEnum(self, enum: enum, parentData: Any) -> Any:
         scope = self.__get_current_scope(enum.parent)
@@ -73,8 +94,8 @@ class SemanticChecker(ElementVisitor):
             base_class, message = self.__get_referenced_element(the_value_object.parent, inherit)
             if (base_class == None):
                 self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
-            elif (isinstance(base_class, value_object) == False):
-                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not a value object.")
+            elif (isinstance(base_class, value_object) == False and isinstance(base_class, composite) == False):
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not a value object or composite.")
 
         for neighbour in scope.getChildren():
             if (neighbour is the_value_object):
@@ -85,6 +106,30 @@ class SemanticChecker(ElementVisitor):
     def visitValueObjectMember(self, member: value_object_member, parentData: Any) -> Any:
         parent_value_object: value_object = member.parent
         for neighbour in parent_value_object.members:
+            if (neighbour is member):
+                continue
+            if (neighbour.name == member.name):
+                self.__error(member, f"An member '{member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+
+    def visitDto(self, the_dto: dto, parentData: Any) -> Any:
+        scope = self.__get_current_scope(the_dto.parent)
+
+        for inherit in the_dto.inherits:
+            base_class, message = self.__get_referenced_element(the_dto.parent, inherit)
+            if (base_class == None):
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
+            elif (isinstance(base_class, dto) == False and isinstance(base_class, composite) == False):
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not a dto or composite.")
+
+        for neighbour in scope.getChildren():
+            if (neighbour is the_dto):
+                continue
+            if (neighbour.name == the_dto.name):
+                self.__error(the_dto, f"A dto '{the_dto.name}' conflicts with same name with element in {neighbour.locationText()}.")
+
+    def visitDtoMember(self, member: dto_member, parentData: Any) -> Any:
+        parent_dto: dto = member.parent
+        for neighbour in parent_dto.members:
             if (neighbour is member):
                 continue
             if (neighbour.name == member.name):
@@ -264,6 +309,9 @@ class SemanticChecker(ElementVisitor):
     def visitDecoratorParam(self, decorator_param: decorator_param, parentData: Any) -> Any:
         pass
 
+    def visitDocumentLine(self, document_line: str, parentData: Any) -> Any:
+        pass
+
     def visitBaseElement(self, base_element: base_element, parentData: Any) -> Any:
         pass
 
@@ -322,3 +370,10 @@ class SemanticChecker(ElementVisitor):
                 return None, f"The referenced name '{scope.name}' does not have an expected child: '{name_part}'."
 
         return element, "ok"
+
+    def visitInternalScopedBaseElement(self, internal_scoped_base_element: internal_scoped_base_element, parentData: Any) -> Any:
+        pass
+
+    def visitHintedBaseElement(self, hinted_base_element: hinted_base_element, parentData: Any) -> Any:
+        pass
+
