@@ -141,6 +141,13 @@ class SemanticChecker(ElementVisitor):
     def visitView(self, the_view: view, parentData: Any) -> Any:
         scope = self.__get_current_scope(the_view.parent)
 
+        for projection in the_view.view_projections:
+            base_class, message = self.__get_referenced_element__(the_view.parent, projection)
+            if (base_class == None):
+                self.__error(projection, f"The element '{projection.getText()}' referred in projection is not found. {message}")
+            elif (isinstance(base_class, entity) == False):
+                self.__error(projection, f"The element '{projection.getText()}' referred in inheritance is not an entity.")
+
         for inherit in the_view.inherits:
             base_class, message = self.__get_referenced_element__(the_view.parent, inherit)
             if (base_class == None):

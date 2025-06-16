@@ -434,6 +434,7 @@ class aggregate_entity(base_element):
 class view(internal_scoped_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=False)
+        self.view_projections: List[qualified_name] = []
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[view_member] = []
@@ -628,9 +629,10 @@ class primitive_type(type):
         Time = 4,
         DateTime = 5,
         String = 6,
-        Boolean = 7,
-        Bytes = 8,
-        Stream = 8,
+        I18NString = 7,
+        Boolean = 8,
+        Bytes = 9,
+        Stream = 10,
 
 
 class reference_type(type):

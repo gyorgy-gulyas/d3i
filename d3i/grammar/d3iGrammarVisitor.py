@@ -159,6 +159,11 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by d3iGrammar#view_projections.
+    def visitView_projections(self, ctx:d3iGrammar.View_projectionsContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by d3iGrammar#repository.
     def visitRepository(self, ctx:d3iGrammar.RepositoryContext):
         return self.visitChildren(ctx)

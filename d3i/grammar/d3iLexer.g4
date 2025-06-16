@@ -42,6 +42,7 @@ ROOT : 'root' ;
 INHERITS : 'inherits' ;
 VERSION : 'version' ;
 FOR : 'for' ;
+PROJECTED: 'projected' ;
 
 // built-in types
 INTEGER : 'integer' ;
@@ -51,6 +52,7 @@ DATE : 'date' ;
 TIME : 'time' ;
 DATETIME : 'dateTime' ;
 STRING : 'string' ;
+I18NSTRING : 'i18nstring' ;
 BOOLEAN : 'boolean' ;
 BYTES : 'bytes' ;
 STREAM: 'stream';

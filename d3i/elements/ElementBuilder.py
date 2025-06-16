@@ -717,6 +717,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
+        if (ctx.view_projections() != None):
+            result.view_projections = result.value = self.visit(ctx.view_projections())
+
         if (ctx.inherits() != None):
             result.inherits = result.value = self.visit(ctx.inherits())
 
@@ -1107,6 +1110,8 @@ class ElementBuilder(d3iGrammarVisitor):
             result.primtiveKind = primitive_type.PrimtiveKind.DateTime
         elif (ctx.STRING() != None):
             result.primtiveKind = primitive_type.PrimtiveKind.String
+        elif (ctx.I18NSTRING() != None):
+            result.primtiveKind = primitive_type.PrimtiveKind.I18NString
         elif (ctx.BOOLEAN() != None):
             result.primtiveKind = primitive_type.PrimtiveKind.Boolean
         elif (ctx.BYTES() != None):
@@ -1268,6 +1273,22 @@ class ElementBuilder(d3iGrammarVisitor):
 
     # Visit a parse tree produced by d3iGrammar#inherits.
     def visitInherits(self, ctx: d3iGrammar.InheritsContext):
+        result: List[qualified_name] = []
+
+        counter = 0
+        while True:
+            base_class = ctx.qualifiedName(counter)
+            if (base_class == None):
+                break
+            counter = counter + 1
+            child: qualified_name = self.visit(base_class)
+            child.parent = result
+            result.append(child)
+
+        return result
+    
+    # Visit a parse tree produced by d3iGrammar#inherits.
+    def visitView_projections(self, ctx:d3iGrammar.View_projectionsContext):
         result: List[qualified_name] = []
 
         counter = 0

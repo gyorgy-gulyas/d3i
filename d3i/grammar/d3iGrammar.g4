@@ -1,13 +1,11 @@
-// projection a viewben
-// event logging with destination
-// interface logging with destination
 // validation szabályok
 // gdpr támogatás
 // deprecated támogatása
 // customizaton point like LSD
+// event logging with destination
+// interface logging with destination
 // historized entity vagy audited
 // Valamint: mely mezők változása érdekel audit szempontból: @audited status:string
-// locaestring vagy localetext
 // uimodel a dto helyett.
 
 parser grammar d3iGrammar;
@@ -144,7 +142,7 @@ aggregate
         ;
 
 view
-    :  DOCUMENT_LINE* decorator* 'view' IDENTIFIER inherits? '{' view_element* '}'
+    :  DOCUMENT_LINE* decorator* 'view' IDENTIFIER view_projections? inherits? '{' view_element* '}'
     ;
 
     view_element
@@ -155,6 +153,10 @@ view
         view_member
             : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
             ;
+    
+    view_projections
+        : 'projected' ':' qualifiedName (',' qualifiedName)*
+        ;
 
 repository
     : DOCUMENT_LINE* decorator* 'repository' IDENTIFIER ':' IDENTIFIER
@@ -221,7 +223,8 @@ type
         | 'time'
         | 'dateTime'
         | 'string'
-        | 'boolean'
+        | 'string'
+        | 'i18nstring'
         | 'bytes'
         | 'stream'
         | 'any'

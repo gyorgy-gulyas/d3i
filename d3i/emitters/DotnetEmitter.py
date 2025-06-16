@@ -887,6 +887,8 @@ class DotnetEmitter:
                 return "DateTime"
             case primitive_type.PrimtiveKind.String:
                 return "string"
+            case primitive_type.PrimtiveKind.I18NString:
+                return "i18nstring"
             case primitive_type.PrimtiveKind.Boolean:
                 return "bool"
             case primitive_type.PrimtiveKind.Bytes:

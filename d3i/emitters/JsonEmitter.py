@@ -378,6 +378,10 @@ class JsonEmitter(ElementVisitor):
         parentData['params'].append(data)
         return data
 
+    def visitDocumentLine(self, document_line: str, parentData: Any) -> Any:
+        parentData["document_lines"].append(document_line)
+        return parentData
+
     def visitInternalScopedBaseElement(self, internal_scoped_base_element: internal_scoped_base_element, parentData: Any) -> Any:
         dict: Dict[str, Any] = parentData
 

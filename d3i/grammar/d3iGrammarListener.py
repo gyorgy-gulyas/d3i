@@ -278,6 +278,15 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#view_projections.
+    def enterView_projections(self, ctx:d3iGrammar.View_projectionsContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#view_projections.
+    def exitView_projections(self, ctx:d3iGrammar.View_projectionsContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#repository.
     def enterRepository(self, ctx:d3iGrammar.RepositoryContext):
         pass
