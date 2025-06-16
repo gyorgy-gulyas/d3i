@@ -750,10 +750,11 @@ class utils:
                 break
 
             # is the scope that has a child with the name we are looking for
-            for child in scope.getChildren():
-                if (child.name == name.names[0]):
-                    element = child
-                    break
+            if (isinstance(scope, IScope) == True):
+                for child in scope.getChildren():
+                    if (child.name == name.names[0]):
+                        element = child
+                        break
 
             if (element != None):
                 break
