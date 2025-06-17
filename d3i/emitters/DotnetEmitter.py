@@ -1,4 +1,5 @@
-#import os
+from __future__ import annotations
+# import os
 import io
 from typing import Dict
 from typing import List
@@ -39,6 +40,7 @@ class DotnetEmitter:
         Emits the .NET code based on d3 file
         """
         result: List[dotnet_code] = []
+        code: dotnet_code = None
 
         # Iterate over all domain in the session
         for domain in session.main.domains:
@@ -47,91 +49,87 @@ class DotnetEmitter:
 
                 # Process all enum in the context
                 for enum in context.enums:
-                    content: str = self.beginCSFile([domain.name, context.name])
-                    content += self.enumCSText(enum, indent=1)
-                    content += self.endCSFile()
-                    result.append(dotnet_code(output_path, [domain.name, context.name, "models"], enum.name, content))
+                    code = self.beginFile(output_path, enum, "models")
+                    code = self.enumText(enum, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                 # Process all value_object in the context
                 for valueobject in context.value_objects:
-                    content: str = self.beginCSFile([domain.name, context.name])
-                    content += self.valueobjectCSText(valueobject, indent=1)
-                    content += self.endCSFile()
-                    result.append(dotnet_code(output_path, [domain.name, context.name, "models"], valueobject.name, content))
+                    code = self.beginFile(output_path, valueobject, "models")
+                    code = self.valueobjectText(valueobject, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                 # Process all composite in the context
                 for composite in context.composites:
-                    content: str = self.beginCSFile([domain.name, context.name])
-                    content += self.compositeText(composite, indent=1)
-                    content += self.endCSFile()
-                    result.append(dotnet_code(output_path, [domain.name, context.name, "models"], "I"+composite.name, content))
+                    code = self.beginFile(output_path, composite, "models")
+                    code = self.compositeText(composite, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                 # Process all aggregate in the context
                 for aggregate in context.aggregates:
                     for enum in aggregate.enums:
-                        #CS code
-                        content: str = self.beginCSFile([domain.name, context.name, aggregate.name])
-                        content += self.enumCSText(enum, indent=1)
-                        content += self.endCSFile()
-                        result.append(dotnet_code(output_path, [domain.name, context.name, "models"], enum.name, content))
+                        code = self.beginFile(output_path, enum, "models")
+                        code = self.enumText(enum, code)
+                        code = self.endFile(code)
+                        result.append(code)
 
                     for valueobject in aggregate.value_objects:
-                        #CS
-                        content: str = self.beginCSFile([domain.name, context.name, aggregate.name])
-                        content += self.valueobjectCSText(valueobject, indent=1)
-                        content += self.endCSFile()
-                        result.append(dotnet_code(output_path, [domain.name, context.name, "models"], valueobject.name, content ))
+                        code = self.beginFile(output_path, valueobject, "models")
+                        code = self.valueobjectText(valueobject, code)
+                        code = self.endFile(code)
+                        result.append(code)
 
                     for aggregate_entity in aggregate.internal_entities:
-                        #CS
-                        content: str = self.beginCSFile([domain.name, context.name, aggregate.name])
-                        content += self.entityCSText(aggregate_entity.entity, indent=1)
-                        content += self.endCSFile()
-                        result.append(dotnet_code(output_path, [domain.name, context.name, "models"], aggregate_entity.entity.name, content))
+                        code = self.beginFile(output_path, aggregate_entity.entity, "models")
+                        code = self.entityText(aggregate_entity.entity, code)
+                        code = self.endFile(code)
+                        result.append(code)
 
                 # Process all view in the context
                 for view in context.views:
-                    content: str = self.beginCSFile([domain.name, context.name])
-                    content += self.viewText(view, indent=1)
-                    content += self.endCSFile()
-                    result.append(dotnet_code(output_path, [domain.name, context.name, "models"], view.name, content))
+                    code = self.beginFile(output_path, view, "models")
+                    code = self.viewText(view, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                 # Process all acl in the context
                 for acl in context.acls:
                     # interface
-                    content: str = self.beginCSFile([domain.name, context.name])
-                    content += self.aclInterfaceText(acl, indent=1)
-                    content += self.endCSFile()
-                    result.append(dotnet_code(output_path, [domain.name, context.name, "Service/interfaces"], "I"+acl.name, content))
+                    code = self.beginFile(output_path, acl, "Service/interfaces")
+                    code = self.aclInterfaceText(acl, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                     # grpc controller file
-                    #content = self.aclGrpcControllerFile(domain, context, acl, indent=1)
-                    #result.append(dotnet_code(output_path, [domain.name, context.name, acl.name, "Service/controllers"], acl.name+"GrpcController", content))
+                    # content = self.aclGrpcControllerFile(domain, context, acl, indent=1)
+                    # result.append(dotnet_code(output_path, [domain.name, context.name, acl.name, "Service/controllers"], acl.name+"GrpcController", content))
 
                 # Process all service in the context
                 for service in context.services:
                     # interface
-                    content: str = self.beginCSFile([domain.name, context.name])
-                    content += self.serviceInterfaceText(service, indent=1)
-                    content += self.endCSFile()
-                    result.append(dotnet_code(output_path, [domain.name, context.name, "Service/interfaces"], "I"+service.name, content))
+                    code = self.beginFile(output_path, service, "Service/interfaces")
+                    code = self.serviceInterfaceText(service, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                     # grpc controller file
-                    #content = self.serviceGrpcControllerFile(domain, context, service, indent=1)
-                    #result.append(dotnet_code(output_path, [domain.name, context.name, service.name, "Service/controllers"], service.name+"GrpcController", content))
+                    # content = self.serviceGrpcControllerFile(domain, context, service, indent=1)
+                    # result.append(dotnet_code(output_path, [domain.name, context.name, service.name, "Service/controllers"], service.name+"GrpcController", content))
 
                 # Process all inerface in the context
                 for interface in context.interfaces:
                     # interface
-                    content: str = self.beginCSFile([domain.name, context.name])
-                    content += self.interfaceInterfaceText(interface, indent=1)
-                    content += self.endCSFile()
-                    result.append(dotnet_code(output_path, [domain.name, context.name, "Service/interfaces"], "I"+interface.name, content))
+                    code = self.beginFile(output_path, interface, "Service/interfaces")
+                    code = self.interfaceInterfaceText(interface, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                     # grpc controller file
-                    #content = self.interfaceGrpcControllerFile(domain, context, interface, indent=1)
-                    #result.append(dotnet_code(output_path, [domain.name, context.name, interface.name, "Service/controllers"], interface.name+"GrpcController", content))
-
+                    # content = self.interfaceGrpcControllerFile(domain, context, interface, indent=1)
+                    # result.append(dotnet_code(output_path, [domain.name, context.name, interface.name, "Service/controllers"], interface.name+"GrpcController", content))
 
         return result
 
@@ -152,22 +150,37 @@ class DotnetEmitter:
 
         return "\n".join(using_statements) + "\n"
 
-    def beginCSFile(self, names: List[str]) -> str:
+    def beginFile(self, output_path: str, element: base_element, subDirectoryName: str) -> dotnet_code:
         buffer = io.StringIO()
+        domain: domain = element.getDomain()
+        context: context = element.getContext()
+
         buffer.write(self.fileHeader())
         buffer.write("\n")
         buffer.write(self.defaultUsings())
+        buffer.write("<ADDITIONAL_USINGS>")
         buffer.write("\n")
-        buffer.write(f"namespace {".".join(names)}\n")
+        buffer.write(f"namespace {domain.name}.{context.name}\n")
         buffer.write("{\n")
-        return buffer.getvalue()
 
-    def endCSFile(self):
+        code: dotnet_code = dotnet_code(output_path, [domain.name, context.name, subDirectoryName], element.name)
+        code.content = buffer.getvalue()
+        return code
+
+    def endFile(self, code: dotnet_code) -> dotnet_code:
         buffer = io.StringIO()
         buffer.write("}\n")
-        return buffer.getvalue()
-    
-    def enumCSText(self, enum: enum, indent: int = 1):
+        code.content += buffer.getvalue()
+
+        buffer = io.StringIO()
+        sorted_usings: list[str] = sorted(code.usings)
+        for using in sorted_usings:
+            buffer.write(f"using {using};\n")
+
+        code.content = code.content.replace("<ADDITIONAL_USINGS>", buffer.getvalue())
+        return code
+
+    def enumText(self, enum: enum, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET code for an enum.
         """
@@ -182,19 +195,13 @@ class DotnetEmitter:
             buffer.write(self.documentLines(enum_element, indent+1))
             # Write each enum element value
             buffer.write(f"{self.tab(indent+1)}{enum_element.value},\n")
-            if(len(enum_element.document_lines)>0):
+            if (len(enum_element.document_lines) > 0):
                 buffer.write("\n")
 
         buffer.write(f"{self.tab(indent)}}}\n")
-        return buffer.getvalue()
 
-    def collectBaseRecursive(self, base: composite, bases: List[base_element]):
-        bases.insert(0, base)
-
-        for inherit in base.inherits:
-            base_base = utils.get_referenced_element(base.parent, inherit)
-            if (base_base != None):
-                self.collectBaseRecursive(base_base, bases)
+        code.content += buffer.getvalue()
+        return code
 
     def collectBaseCompositsRecursive(self, base_composite: composite, base_composites: List[composite]):
         base_composites.insert(0, base_composite)
@@ -204,7 +211,7 @@ class DotnetEmitter:
             if (isinstance(base, composite) == True):
                 self.collectBaseCompositsRecursive(base, base_composites)
 
-    def valueobjectCSText(self, valueobject: value_object, indent: int = 1):
+    def valueobjectText(self, valueobject: value_object, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET code for an value_object
         """
@@ -234,19 +241,19 @@ class DotnetEmitter:
             buffer.write(f"{self.tab(indent+1)}#region I{base_composite.name}\n")
 
             # write internal enums if Any
-            if(base_composite.withEnum== True):
+            if (base_composite.withEnum == True):
                 for child_enum in base_composite.enums:
-                    buffer.write(self.enumCSText( child_enum, indent+1))
+                    buffer.write(self.enumText(child_enum, indent+1))
 
             # write internal value object if Any
-            if(base_composite.withValueObject== True):
+            if (base_composite.withValueObject == True):
                 for child_value_object in base_composite.value_objects:
-                    buffer.write(self.valueobjectCSText( child_value_object, indent+1))
+                    buffer.write(self.valueobjectText(child_value_object, indent+1))
 
             # write internal dto if Any
-            if(base_composite.withDto== True):
+            if (base_composite.withDto == True):
                 for child_dto in base_composite.dtos:
-                    buffer.write(self.dtoText( child_dto, indent+1))
+                    buffer.write(self.dtoText(child_dto, indent+1))
 
             for member in base_composite.members:
                 # Write each member
@@ -255,19 +262,19 @@ class DotnetEmitter:
             buffer.write(f"{self.tab(indent+1)}#endregion I{base_composite.name}\n\n")
 
         # write internal enums if Any
-        if( valueobject.withEnum==True):
+        if (valueobject.withEnum == True):
             for enum in valueobject.enums:
-                buffer.write( self.enumCSText( enum, indent))
+                buffer.write(self.enumText(enum, indent))
 
         # write internal valueobjects if Any
-        if( valueobject.withValueObject==True):
+        if (valueobject.withValueObject == True):
             for valueobject in valueobject.value_objects:
-                buffer.write( self.valueobjectCSText( valueobject, indent))
+                buffer.write(self.valueobjectText(valueobject, indent))
 
         # write internal valueobjects if Any
-        if( valueobject.withDto==True):
+        if (valueobject.withDto == True):
             for dto in valueobject.dtos:
-                buffer.write( self.dtoText( dto, indent))
+                buffer.write(self.dtoText(dto, indent))
 
         # Loop through each valueobject members and generate code for each
         for member in valueobject.members:
@@ -277,9 +284,10 @@ class DotnetEmitter:
 
         buffer.write(f"{self.tab(indent)}}}\n")
 
-        return buffer.getvalue()
-    
-    def dtoText(self, dto: dto, indent: int = 1):
+        code.content += buffer.getvalue()
+        return code
+
+    def dtoText(self, dto: dto, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET code for an dto
         """
@@ -298,9 +306,10 @@ class DotnetEmitter:
 
         buffer.write(f"{self.tab(indent)}}}\n")
 
-        return buffer.getvalue()
+        code.content += buffer.getvalue()
+        return code
 
-    def entityCSText(self, _entity: entity, indent: int = 1):
+    def entityText(self, _entity: entity, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET code for an entity
         """
@@ -319,8 +328,8 @@ class DotnetEmitter:
         buffer = io.StringIO()
         if (hasBaseEntity == False):
             inherit_names.insert(0, "Entity")
-            buffer.write(f"{self.tab(indent)}using PolyPersist.Net.Core;\n")
-            buffer.write("\n")
+            code.usings.add("PolyPersist.Net.Core")
+            
         # Add documentation lines for the composite
         buffer.write(self.documentLines(_entity, indent))
         # Write the entity declaration with indentation
@@ -348,9 +357,10 @@ class DotnetEmitter:
 
         buffer.write(f"{self.tab(indent)}}}\n")
 
-        return buffer.getvalue()
+        code.content += buffer.getvalue()
+        return code
 
-    def viewText(self, _view: view, indent: int = 1):
+    def viewText(self, _view: view, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET code for an view
         """
@@ -368,6 +378,7 @@ class DotnetEmitter:
 
         if (hasBaseView == False):
             inherit_names.insert(0, "Entity")
+            code.usings.add("PolyPersist.Net.Core")
 
         buffer = io.StringIO()
         buffer.write("\n")
@@ -398,9 +409,10 @@ class DotnetEmitter:
 
         buffer.write(f"{self.tab(indent)}}}\n")
 
-        return buffer.getvalue()
+        code.content += buffer.getvalue()
+        return code
 
-    def compositeText(self, composite: composite, indent: int = 1):
+    def compositeText(self, composite: composite, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET code for an composite, just the interface.
         """
@@ -418,53 +430,29 @@ class DotnetEmitter:
             buffer.write(self.propertyText(member.name, member.type, indent+1))
         buffer.write(f"{self.tab(indent)}}}\n")
 
-        return buffer.getvalue()
+        code.content += buffer.getvalue()
+        return code
 
-    def aclInterfaceText(self, acl: acl, indent: int = 1):
-        """
-        Generates the .NET code for acl, just the interface.
-        """
-        return self.interfaceClassText( acl, acl.name, acl.operations, indent)
+    def aclInterfaceText(self, acl: acl, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        return self.interfaceClassText(acl, acl.name, acl.operations, code, indent)
 
-    def serviceInterfaceText(self, service: service, indent: int = 1):
-        """
-        Generates the .NET code for service, just the interface.
-        """
-        return self.interfaceClassText( service, service.name, service.operations, indent)
+    def serviceInterfaceText(self, service: service, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        return self.interfaceClassText(service, service.name, service.operations, code, indent)
 
-    def interfaceInterfaceText(self, interface: interface, indent: int = 1):
-        """
-        Generates the .NET code for interface, just the interface.
-        """
-        return self.interfaceClassText( interface, interface.name+ f"_v{interface.version}", interface.operations, indent)
+    def interfaceInterfaceText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        return self.interfaceClassText(interface, interface.name + f"_v{interface.version}", interface.operations, code, indent)
 
-    def interfaceClassText(self, element: internal_scoped_base_element, elementName:str, operations: List[operation], indent: int = 1):
+    def interfaceClassText(self, element: internal_scoped_base_element, elementName: str, operations: List[operation], code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET code for element, just the interface.
         """
         buffer = io.StringIO()
-        buffer.write(f"{self.tab(indent)}using ServiceKit.Net;\n")
-        buffer.write("\n")
+        code.usings.add("ServiceKit.Net")
         # Add documentation lines for the element
         buffer.write(self.documentLines(element, indent))
         # Write the interface class declaration with indentation
         buffer.write(f"{self.tab(indent)}public interface I{elementName}\n")
         buffer.write(f"{self.tab(indent)}{{\n")
-
-        # write internal enums if Any
-        if( element.withEnum==True):
-            for enum in element.enums:
-                buffer.write( self.enumCSText( enum, indent+1))
-
-        # write internal valueobjects if Any
-        if( element.withValueObject==True):
-            for valueobject in element.value_objects:
-                buffer.write( self.valueobjectCSText( valueobject, indent+1))
-
-        # write internal valueobjects if Any
-        if( element.withDto==True):
-            for dto in element.dtos:
-                buffer.write( self.dtoText( dto, indent+1))
 
         # Loop through each operations and generate code for each
         for operation in operations:
@@ -472,10 +460,32 @@ class DotnetEmitter:
             buffer.write(self.interfaceFunctionText(operation, indent+1))
             buffer.write("\n")
 
-        buffer.write(f"{self.tab(indent)}}}\n")
-        return buffer.getvalue()
+        buffer.write(f"\n")
+        code.content += buffer.getvalue()
+        buffer.seek(0)
+        buffer.truncate(0)
 
-    def interfaceFunctionText(self, operation: operation, indent: int):
+        # write internal enums if Any
+        if (element.withEnum == True):
+            for enum in element.enums:
+                code = self.enumText(enum, code, indent+1)
+
+        # write internal valueobjects if Any
+        if (element.withValueObject == True):
+            for valueobject in element.value_objects:
+                code = self.valueobjectText(valueobject, code, indent+1)
+
+        # write internal valueobjects if Any
+        if (element.withDto == True):
+            for dto in element.dtos:
+                code = self.dtoText(dto, code, indent+1)
+
+        buffer.write(f"{self.tab(indent)}}}\n")
+
+        code.content += buffer.getvalue()
+        return code
+
+    def interfaceFunctionText(self, operation: operation, indent: int) -> str:
         buffer = io.StringIO()
 
         # Add summary for operation
@@ -512,28 +522,28 @@ class DotnetEmitter:
         buffer.write(f"{self.tab(indent)}public Response")
         if (len(operation.operation_returns) > 0):
             buffer.write("<")
-            buffer.write(", ".join(self.typeCSText(item.type) for item in operation.operation_returns))
+            buffer.write(", ".join(self.typeText(item.type) for item in operation.operation_returns))
             buffer.write(">")
         # Add function name
         buffer.write(f" {operation.name}(CallingContext ctx")
         # Add parameters
         if (len(operation.operation_params) > 0):
             buffer.write(f", ")
-        buffer.write(", ".join([self.typeCSText(param.type) + " " + param.name for param in operation.operation_params]))
+        buffer.write(", ".join([self.typeText(param.type) + " " + param.name for param in operation.operation_params]))
         buffer.write(");\n")
 
         return buffer.getvalue()
 
     def aclGrpcControllerFile(self, domain: domain, context: context, acl: acl, indent: int = 1):
-        return self.grpcControllerFile( domain, context, acl, acl.name, acl.operations, indent )
+        return self.grpcControllerFile(domain, context, acl, acl.name, acl.operations, indent)
 
     def serviceGrpcControllerFile(self, domain: domain, context: context, service: service, indent: int = 1):
-        return self.grpcControllerFile( domain, context, service, service.name, service.operations, indent )
+        return self.grpcControllerFile(domain, context, service, service.name, service.operations, indent)
 
     def interfaceGrpcControllerFile(self, domain: domain, context: context, interface: interface, indent: int = 1):
-        return self.grpcControllerFile( domain, context, interface, interface.name, interface.operations, indent )
+        return self.grpcControllerFile(domain, context, interface, interface.name, interface.operations, indent)
 
-    def grpcControllerFile(self, domain: domain, context: context, element: hinted_base_element, elementName:str, operations: List[operation], indent: int = 1):
+    def grpcControllerFile(self, domain: domain, context: context, element: hinted_base_element, elementName: str, operations: List[operation], indent: int = 1):
         """
         Generates the .NET GRPC controller code for acl
         """
@@ -646,23 +656,23 @@ class DotnetEmitter:
         buffer.write("}")
         return buffer.getvalue()
 
-    def propertyText(self, member_name: str, type: type, indent: int):
+    def propertyText(self, member_name: str, type: type, indent: int) -> str:
         buffer = io.StringIO()
-        buffer.write(f"{'\t'*indent}public {self.typeCSText(type)} {member_name} {{ get; set; }}\n")
+        buffer.write(f"{'\t'*indent}public {self.typeText(type)} {member_name} {{ get; set; }}\n")
         return buffer.getvalue()
 
-    def typeCSText(self, type: type):
+    def typeText(self, type: type) -> str:
         match type.kind:
             case type.Kind.Primitive:
-                return self.typeCSTextPrimitive(type)
+                return self.typeTextPrimitive(type)
             case type.Kind.Reference:
-                return self.typeCSTextReference(type)
+                return self.typeTextReference(type)
             case type.Kind.List:
-                return self.typeCSTextList(type)
+                return self.typeTextList(type)
             case type.Kind.Map:
-                return self.typeCSTextMap(type)
+                return self.typeTextMap(type)
 
-    def typeCSTextPrimitive(self, type: primitive_type):
+    def typeTextPrimitive(self, type: primitive_type) -> str:
         """
         Converts a primitive type to its .NET representation.
         """
@@ -692,22 +702,19 @@ class DotnetEmitter:
             case primitive_type.PrimtiveKind.Stream:
                 return "Stream"
 
-    def typeCSTextReference(self, type: reference_type):
+    def typeTextReference(self, type: reference_type) -> str:
         return type.reference_name.getText()
 
-    def typeCSTextList(self, type: list_type):
-        return f"List<{self.typeCSText(type.item_type)}>"
+    def typeTextList(self, type: list_type) -> str:
+        return f"List<{self.typeText(type.item_type)}>"
 
-    def typeCSTextMap(self, type: map_type):
-        return f"Dictionary<{self.typeCSText(type.key_type)},{self.typeCSText(type.value_type)}>"
+    def typeTextMap(self, type: map_type) -> str:
+        return f"Dictionary<{self.typeText(type.key_type)},{self.typeText(type.value_type)}>"
 
-    def typeCSTextMap(self, type: map_type):
-        return f"map<{self.typeCSText(type.key_type)},{self.typeCSText(type.value_type)}>"
-
-    def tab(self, indent=1):
+    def tab(self, indent=1) -> str:
         return '\t'*indent
 
-    def documentLines(self, hinted_element: hinted_base_element, indent: int = 1):
+    def documentLines(self, hinted_element: hinted_base_element, indent: int = 1) -> str:
         """
         Generates documentation lines for the provided element.
         """
@@ -833,10 +840,12 @@ class dotnet_configuration:
 
 
 class dotnet_code:
-    def __init__(self, directory: str, subdirs: List[str], name: str, content: str, extension: str = ".cs"):
+    def __init__(self, output_path: str, subdirs: List[str], name: str):
         """
         Initializes a dotnet_code instance with the file path, file name, and content.
         """
-        self.fileName: str = name + extension
-        self.fullPath: str = os.path.join(directory + "/".join(subdirs), self.fileName)
-        self.content: str = content
+        self.output_path = output_path
+        self.fileName: str = name + ".cs"
+        self.fullPath: str = os.path.join(output_path + "/".join(subdirs), self.fileName)
+        self.usings: set[str] = set()
+        self.content: str = ""

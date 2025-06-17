@@ -1,9 +1,12 @@
-#import os
+from __future__ import annotations
 import io
+import os
 from typing import Dict
 from typing import List
 from d3i.elements.Elements import *
 from d3i.Engine import *
+from pathlib import Path
+
 
 def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
     """
@@ -38,91 +41,80 @@ class ProtoEmitter:
         Emits the protobuf codes based on d3 file
         """
         result: List[proto_code] = []
+        code: proto_code = None
 
         # Iterate over all domain in the session
         for domain in session.main.domains:
             output_path: str = self.configuration.output_dir
             for context in domain.contexts:
-                imports:set[str] = set()
 
                 # Process all enum in the context
                 for enum in context.enums:
-                    content: str = self.beginFile([domain.name, context.name], context.name, imports )
-                    content += self.enumText(enum, imports)
-                    content = self.endFile( content, imports )
-                    result.append(proto_code(output_path, [domain.name, context.name, "models"], enum.name, content))
+                    code = self.beginFile(output_path, enum, "Models")
+                    code = self.enumText(enum, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                 # Process all value_object in the context
                 for valueobject in context.value_objects:
-                    content: str = self.beginFile([domain.name, context.name], context.name, imports)
-                    content += self.valueobjectText(valueobject, imports)
-                    content = self.endFile( content, imports )
-                    result.append(proto_code(output_path, [domain.name, context.name, "models"], valueobject.name, content))
+                    code = self.beginFile(output_path, valueobject, "Models")
+                    code = self.valueobjectText(valueobject, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                 # Process all composite in the context
                 for composite in context.composites:
-                    # composite contetn is directly inculded in the valueobject/dto/entity no separate file is neccessary
+                    # Composite content is embedded directly within the value object / DTO / entity.
+                    # No separate .proto file is required
                     pass
 
                 # Process all aggregate in the context
                 for aggregate in context.aggregates:
                     for enum in aggregate.enums:
-                        content: str = self.beginFile([domain.name, context.name], aggregate.name, imports)
-                        content += self.enumText(enum, imports)
-                        content = self.endFile( content, imports )
-                        result.append(proto_code(output_path, [domain.name, context.name, "models"], enum.name, content ))
+                        code = self.beginFile(output_path, enum, "Models")
+                        code = self.enumText(enum, code)
+                        code = self.endFile(code)
+                        result.append(code)
 
                     for valueobject in aggregate.value_objects:
-                        content: str = self.beginFile([domain.name, context.name], aggregate.name, imports)
-                        content += self.valueobjectText(valueobject, imports)
-                        content = self.endFile( content, imports )
-                        result.append(proto_code(output_path, [domain.name, context.name, "models"], valueobject.name, content ))
+                        code = self.beginFile(output_path, valueobject, "Models")
+                        code = self.valueobjectText(valueobject, code)
+                        code = self.endFile(code)
+                        result.append(code)
 
                     for aggregate_entity in aggregate.internal_entities:
-                        content: str = self.beginFile([domain.name, context.name], aggregate.name, imports)
-                        content += self.entityText(aggregate_entity.entity, imports)
-                        content = self.endFile( content, imports )
-                        result.append(proto_code(output_path, [domain.name, context.name, "models"], aggregate_entity.entity.name, content ))
+                        code = self.beginFile(output_path, aggregate_entity.entity, "Models")
+                        code = self.entityText(aggregate_entity.entity, code)
+                        code = self.endFile(code)
+                        result.append(code)
 
                 # Process all view in the context
                 for view in context.views:
-                    content: str = self.beginFile([domain.name, context.name], imports)
-                    content += self.viewText(view, imports)
-                    content = self.endFile( content, imports)
-                    result.append(proto_code(output_path, [domain.name, context.name, "models"], view.name, content))
+                    code = self.beginFile(output_path, view, "Models")
+                    code = self.viewText(view, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                 # Process all acl in the context
                 for acl in context.acls:
-                    content = self.beginFile([domain.name, context.name], acl.name, imports )
-                    content += self.aclText(domain, context, acl, imports)
-                    content = self.endFile( content, imports )
-                    result.append(proto_code(output_path, [domain.name, context.name, acl.name, "Service"], acl.name, content ))
-
-                    # proto service file
-                    #content = self.aclGrpcControllerFile(domain, context, acl )
-                    #result.append(proto_code(output_path, [domain.name, context.name, acl.name, "Service/controllers"], acl.name+"GrpcController", content))
+                    code = self.beginFile(output_path, acl, "Service/protos")
+                    code = self.aclText(acl, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                 # Process all service in the context
                 for service in context.services:
-                    content = self.beginFile([domain.name, context.name], service.name, imports )
-                    content += self.serviceText(domain, context, service, imports)
-                    content = self.endFile( content, imports )
-                    result.append(proto_code(output_path, [domain.name, context.name, "Service"], service.name, content, ".proto"))
-
-                    # proto service file
-                    #content = self.serviceGrpcControllerFile(domain, context, service)
-                    #result.append(proto_code(output_path, [domain.name, context.name, service.name, "Service/controllers"], service.name+"GrpcController", content))
+                    code = self.beginFile(output_path, service, "Service/protos")
+                    code = self.serviceText(service, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
                 # Process all inerface in the context
                 for interface in context.interfaces:
-                    content = self.beginFile([domain.name, context.name], service.name, imports )
-                    content += self.interfaceText(domain, context, interface, imports)
-                    content = self.endFile( content, imports )
-                    result.append(proto_code(output_path, [domain.name, context.name, interface.name, "Service"], interface.name, content))
-
-                    # proto service file
-                    #content = self.interfaceGrpcControllerFile(domain, context, interface, indent=1)
-                    #result.append(proto_code(output_path, [domain.name, context.name, interface.name, "Service/controllers"], interface.name+"GrpcController", content))
+                    code = self.beginFile(output_path, interface, "Service/protos")
+                    code = self.interfaceText(interface, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
         return result
 
@@ -143,8 +135,10 @@ class ProtoEmitter:
 
         return "\n".join(import_statements) + "\n"
 
-    def beginFile(self, names: List[str], packageName:str, imports:set[str]) -> str:
+    def beginFile(self, output_path: str, element: base_element, subDirectoryName: str) -> proto_code:
         buffer = io.StringIO()
+        domain: domain = element.getDomain()
+        context: context = element.getContext()
 
         # proto 3 syntax
         buffer.write(self.fileHeader())
@@ -154,33 +148,35 @@ class ProtoEmitter:
 
         # namespaces
         buffer.write("\n")
-        buffer.write(f"option csharp_namespace = \"{".".join(names)}\";")
-        buffer.write("\n")    
-        buffer.write(f"option java_outer_classname = \"{names[-1]}\";\n")
-        buffer.write(f"option java_package = \"com.{packageName}\";\n" )
-        buffer.write(f"option java_multiple_files = true;\n" )
-                     
+        buffer.write(f"option csharp_namespace = \"{domain.name}.{context.name}\";")
+        buffer.write("\n")
+        buffer.write(f"option java_outer_classname = \"{element.name}\";\n")
+        buffer.write(f"option java_package = \"com.{context.name}\";\n")
+        buffer.write(f"option java_multiple_files = true;\n")
+
         # package
         buffer.write("\n")
-        buffer.write(f"package {packageName}Package;")
+        buffer.write(f"package {context.name}Package;")
         buffer.write("\n")
 
         # make a placeholders for additional imports
-        imports.clear()
         buffer.write("<ADDITIONAL_IMPORTS>")
         buffer.write("\n")
-        return buffer.getvalue()
 
-    def endFile(self, content:str, imports:set[str] ):
+        code: proto_code = proto_code(output_path, [domain.name, context.name, subDirectoryName], element.name)
+        code.content = buffer.getvalue()
+        return code
+
+    def endFile(self, code: proto_code) -> proto_code:
         buffer = io.StringIO()
-        sorted_imports: list[str] = sorted(imports)
+        sorted_imports: list[str] = sorted(code.imports)
         for _import in sorted_imports:
-            buffer.write(f"import \"{_import}\";\n")
-        
-        content = content.replace( "<ADDITIONAL_IMPORTS>", buffer.getvalue() )
-        return content
+            buffer.write(f"import \"{_import}\";\n".replace("\\","/"))
 
-    def enumText(self, enum: enum, imports:set[str], indent: int = 0):
+        code.content = code.content.replace("<ADDITIONAL_IMPORTS>", buffer.getvalue())
+        return code
+
+    def enumText(self, enum: enum, code: proto_code, indent: int = 0) -> proto_code:
         """
         Generates the proto code for an enum.
         """
@@ -192,17 +188,19 @@ class ProtoEmitter:
         buffer.write(f"{self.tab(indent)}enum {enum.name}\n")
         buffer.write(f"{self.tab(indent)}{{\n")
         # Loop through each enum element and generate code for each
-        value:int = 0
+        value: int = 0
         for enum_element in enum.enum_elements:
             buffer.write(self.documentLines(enum_element, indent+1))
             # Write each enum element value
             buffer.write(f"{self.tab(indent+1)}{enum_element.value} = {value};\n")
-            if(len(enum_element.document_lines)>0):
+            if (len(enum_element.document_lines) > 0):
                 buffer.write("\n")
             value = value + 1
 
         buffer.write(f"{self.tab(indent)}}}\n")
-        return buffer.getvalue()
+
+        code.content += buffer.getvalue()
+        return code
 
     def collectBaseRecursive(self, base: composite, bases: List[base_element]):
         bases.insert(0, base)
@@ -212,45 +210,51 @@ class ProtoEmitter:
             if (base_base != None):
                 self.collectBaseRecursive(base_base, bases)
 
-    def collectBaseCompositsRecursive(self, base_composite: composite, base_composites: List[composite]):
-        base_composites.insert(0, base_composite)
+    def valueobjectText(self, valueobject: value_object, code: proto_code, indent: int = 0) -> proto_code:
+        return self.protoMessageText(valueobject, code, indent )
 
-        for inherit in base_composite.inherits:
-            base = utils.get_referenced_element(base_composite.parent, inherit)
-            if (isinstance(base, composite) == True):
-                self.collectBaseCompositsRecursive(base, base_composites)
+    def entityText(self, entity: entity, code: proto_code, indent: int = 0) -> proto_code:
+        return self.protoMessageText(entity, code, indent )
 
-    def valueobjectText(self, _valueobject: value_object, imports:set[str], indent: int = 0):
+    def dtoText(self, dto: dto, code: proto_code, indent: int = 0) -> proto_code:
+        return self.protoMessageText(dto, code, indent )
+
+    def protoMessageText(self, element: internal_scoped_base_element, code: proto_code, indent: int = 0) -> proto_code:
         """
         Generates the proto code for an value_object
         """
         bases: List[internal_scoped_base_element] = []
-        for inherit in _valueobject.inherits:
-            base = utils.get_referenced_element(_valueobject.parent, inherit)
+        for inherit in element.inherits:
+            base = utils.get_referenced_element(element.parent, inherit)
             if (isinstance(base, base) == True):
                 self.collectBaseRecursive(base, bases)
 
         buffer = io.StringIO()
         # Add documentation lines for the composite
-        buffer.write(self.documentLines(_valueobject, indent))
+        buffer.write(self.documentLines(element, indent))
         # Write the value_object declaration with indentation
-        buffer.write(f"{self.tab(indent)}message {_valueobject.name} {{\n")
+        buffer.write(f"{self.tab(indent)}message {element.name} {{\n")
 
         # Loop through each coposite members and generate code for each
         for base in bases:
             buffer.write(f"{self.tab(indent+1)} // unfold begin: {base.name}\n")
 
             # write internal enums if Any
-            if(base.withEnum== True):
+            if (base.withEnum == True):
                 for enum in base.enums:
-                    buffer.write(self.enumText( enum, imports, indent+1))
+                    code = self.enumText(enum, code, indent+1)
 
             # write internal value object if Any
-            if(base.withValueObject== True):
+            if (base.withValueObject == True):
                 for value_object in base.value_objects:
-                    buffer.write(self.valueobjectText( value_object, imports, indent+1))
+                    code = self.valueobjectText(value_object, code, indent+1)
 
-            index:int = 1
+            # write internal dto if Any
+            if (base.withDto == True):
+                for dto in base.dtos:
+                    code = self.dtoText(dto, code, indent+1)
+
+            index: int = 1
             for member in base.members:
                 # Write each member
                 buffer.write(self.documentLines(member, indent+1))
@@ -259,130 +263,75 @@ class ProtoEmitter:
             buffer.write(f"{self.tab(indent+1)}// unfold end {base.name}\n\n")
 
         # write internal enums if Any
-        if( _valueobject.withEnum==True):
-            for enum in _valueobject.enums:
-                buffer.write( self.enumText( enum, imports, indent))
+        if (element.withEnum == True):
+            for enum in element.enums:
+                code = self.enumText(enum, code, indent)
 
         # write internal valueobjects if Any
-        if( _valueobject.withValueObject==True):
-            for _valueobject in _valueobject.value_objects:
-                buffer.write( self.valueobjectText( _valueobject, imports, indent))
-
-        # Loop through each valueobject members and generate code for each
-        index:int = 1
-        for member in _valueobject.members:
-            # Write each member
-            buffer.write(self.documentLines(member, indent+1))
-            buffer.write(self.protoMemberText(member.name, member.type, imports, index, indent+1))
-            index = index + 1
-
-        buffer.write(f"{self.tab(indent)}}}\n")
-
-        return buffer.getvalue()
-    
-    def entityText(self, _entity: entity, imports:set[str], indent: int = 0):
-        """
-        Generates the proto code for an entity
-        """
-        bases: List[internal_scoped_base_element] = []
-        for inherit in _entity.inherits:
-            base = utils.get_referenced_element(_entity.parent, inherit)
-            if (isinstance(base, base) == True):
-                self.collectBaseRecursive(base, bases)
-
-        buffer = io.StringIO()
-        # Add documentation lines for the composite
-        buffer.write(self.documentLines(_entity, indent))
-        # Write the entity declaration with indentation
-        buffer.write(f"{self.tab(indent)}message {_entity.name} {{\n")
-
-        # Loop through each members and generate code for each
-        for base in bases:
-            buffer.write(f"{self.tab(indent+1)} // unfold begin: {base.name}\n")
-
-            # write internal enums if Any
-            if(base.withEnum== True):
-                for enum in base.enums:
-                    buffer.write(self.enumText( enum, imports, indent+1))
-
-            # write internal value object if Any
-            if(base.withValueObject== True):
-                for value_object in base.value_objects:
-                    buffer.write(self.valueobjectText( value_object, imports, indent+1))
-
-            index:int = 1
-            for member in base.members:
-                # Write each member
-                buffer.write(self.documentLines(member, indent+1))
-                buffer.write(self.protoMemberText(member.name, member.type, imports, index, indent+1))
-                index = index + 1
-            buffer.write(f"{self.tab(indent+1)}// unfold end {base.name}\n\n")
-
-        # write internal enums if Any
-        if( _entity.withEnum==True):
-            for enum in _entity.enums:
-                buffer.write( self.enumText( enum, imports, indent))
+        if (element.withValueObject == True):
+            for valueobject in element.value_objects:
+                code = self.valueobjectText(valueobject, code, indent)
 
         # write internal valueobjects if Any
-        if( _entity.withValueObject==True):
-            for _entity in _entity.value_objects:
-                buffer.write( self.valueobjectText( _entity, imports, indent ))
+        if (element.withDto == True):
+            for dto in element.dtos:
+                code = self.dtoText(element, code, indent)
 
         # Loop through each valueobject members and generate code for each
-        index:int = 1
-        for member in _entity.members:
+        index: int = 1
+        for member in element.members:
             # Write each member
             buffer.write(self.documentLines(member, indent+1))
-            buffer.write(self.protoMemberText(member.name, member.type, imports, index, indent+1))
+            buffer.write(self.protoMemberText(member.name, member.type, code, index, indent+1))
             index = index + 1
 
-        buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write(f"{self.tab(indent)}}}\n\n")
 
-        return buffer.getvalue()
+        code.content += buffer.getvalue()
+        return code
 
-    def aclText(self, domain: domain, context: context, acl: acl, imports:set[str], indent: int = 1):
-        return self.protoServiceText( domain, context, acl, acl.name, acl.operations, imports, indent )
+    def aclText(self, acl: acl, code: proto_code, indent: int = 0) -> proto_code:
+        return self.protoServiceText(acl.getDomain(), acl.getContext(), acl.name, acl.operations, code, indent)
 
-    def serviceText(self, domain: domain, context: context, service: service, imports:set[str], indent: int = 1):
-        return self.protoServiceText( domain, context, service, service.name, service.operations, imports, indent )
+    def serviceText(self, service: service, code: proto_code, indent: int = 0) -> proto_code:
+        return self.protoServiceText(service.getDomain(), service.getContext(), service, service.name, service.operations, code, indent)
 
-    def interfaceText(self, domain: domain, context: context, interface: interface, imports:set[str], indent: int = 1):
-        return self.protoServiceText( domain, context, interface, interface.name, interface.operations, imports, indent )
+    def interfaceText(self, interface: interface, code: proto_code, indent: int = 0) -> proto_code:
+        return self.protoServiceText(interface.getDomain(), interface.getContext(), interface, interface.name, interface.operations, code, indent)
 
-    def protoServiceText(self, domain: domain, context: context, element: hinted_base_element, elementName: str, operations: List[operation], imports:set[str], indent: int = 1):
+    def protoServiceText(self, domain: domain, context: context, element: internal_scoped_base_element, elementName: str, operations: List[operation], code: proto_code, indent: int = 0) -> proto_code:
         """
         Generates the proto service file, with rpc functions and request response messages text for element
         """
-        imports.add("google/protobuf/empty.proto")
-        imports.add("servicekit_error.proto")
+        code.imports.add("google/protobuf/empty.proto")
+        code.imports.add("servicekit_error.proto")
 
         buffer = io.StringIO()
         # Add documentation lines for the service
         buffer.write(self.documentLines(element, indent))
-        buffer.write("\n")
-        buffer.write(f"service {elementName} {{\n")
+        buffer.write(f"{self.tab(indent)}service {elementName} {{\n")
         # Loop through each operations and generate code for each
         for operation in operations:
             # Write each operation as RPC call
             buffer.write(self.documentLines(operation, indent+1))
-            buffer.write(f"{self.tab(indent+1)}rpc {operation.name} ({operation.name}Request) returns ({operation.name}Response);\n")
+            buffer.write(f"{self.tab(indent+1)}rpc {operation.name}({operation.name}Request) returns ({operation.name}Response);\n")
+        buffer.write(f"{self.tab(indent)}}}")
         buffer.write("\n")
-        buffer.write(f"}}")
 
         # Add messages based on operations
         for operation in operations:
             # Request message
             buffer.write(f"\n")
-            buffer.write(f"message {operation.name}Request {{\n")
+            buffer.write(f"{self.tab(indent)}message {operation.name}Request {{\n")
             index: int = 1
             for param in operation.operation_params:
                 buffer.write(self.documentLines(param, indent+2))
-                buffer.write(f"{self.tab(indent+1)}{self.typeText(param.type, imports)} {param.name} = {index};\n")
-            buffer.write(f"}}\n")
+                buffer.write(f"{self.tab(indent+1)}{self.typeText(param.type, code)} {param.name} = {index};\n")
+            buffer.write(f"{self.tab(indent)}}}\n")
             buffer.write(f"\n")
 
             # Response message
-            buffer.write(f"message {operation.name}Response {{\n")
+            buffer.write(f"{self.tab(indent)}message {operation.name}Response {{\n")
             buffer.write(f"{self.tab(indent+1)}oneof result {{\n")
             if (len(operation.operation_returns) == 0):
                 buffer.write(f"{self.tab(indent+2)}google.protobuf.Empty Success = 1;\n")
@@ -390,32 +339,52 @@ class ProtoEmitter:
             else:
                 index: int = 1
                 for returns in operation.operation_returns:
-                    buffer.write(f"{self.tab(indent+2)}{self.typeText(returns.type, imports)} Value{index} = {index};\n")
+                    buffer.write(f"{self.tab(indent+2)}{self.typeText(returns.type, code)} Value{index} = {index};\n")
                     index = index+1
                 buffer.write(f"{self.tab(indent+2)}servicekit.protobuf.Error Error = {index};\n")
 
-            buffer.write(f"{self.tab(1)}}}\n")
-            buffer.write(f"}}\n")
+            buffer.write(f"{self.tab(indent+1)}}}\n")
+            buffer.write(f"{self.tab(indent)}}}\n")
 
-        return buffer.getvalue()
+        buffer.write(f"\n")
+        code.content += buffer.getvalue()
+        buffer.seek(0)
+        buffer.truncate(0)
 
-    def protoMemberText(self, member_name: str, type: type, imports:set[str], index:int, indent: int):
+        # write internal enums if Any
+        if (element.withEnum == True):
+            for enum in element.enums:
+                code = self.enumText(enum, code, indent)
+
+        # write internal value object if Any
+        if (element.withValueObject == True):
+            for value_object in element.value_objects:
+                code = self.valueobjectText(value_object, code, indent)
+        
+        # write internal dto if Any
+        if (element.withDto  == True):
+            for dto in element.dtos:
+                code = self.dtoText(dto, code, indent)
+
+        return code
+
+    def protoMemberText(self, member_name: str, type: type, code: proto_code, index: int, indent: int) -> str:
         buffer = io.StringIO()
-        buffer.write(f"{'\t'*indent}{self.typeText(type, imports)} {member_name} = {index};\n")
+        buffer.write(f"{self.tab(indent)}{self.typeText(type, code)} {member_name} = {index};\n")
         return buffer.getvalue()
 
-    def typeText(self, type: type, imports:set[str]):
+    def typeText(self, type: type, code: proto_code) -> str:
         match type.kind:
             case type.Kind.Primitive:
                 return self.typeTextPrimitive(type)
             case type.Kind.Reference:
-                return self.typeTextReference(type,imports)
+                return self.typeTextReference(type, code)
             case type.Kind.List:
-                return self.typeTextList(type,imports)
+                return self.typeTextList(type, code)
             case type.Kind.Map:
-                return self.typeTextMap(type,imports)
+                return self.typeTextMap(type, code)
 
-    def typeTextPrimitive(self, type: primitive_type):
+    def typeTextPrimitive(self, type: primitive_type) -> str:
         """
         Converts a primitive type to its protobuf representation.
         """
@@ -445,22 +414,27 @@ class ProtoEmitter:
             case primitive_type.PrimtiveKind.Stream:
                 return "Stream"
 
-    def typeTextReference(self, type: reference_type, imports:set[str]):
-        referenced_element = utils.get_referenced_element(type.parent, type.reference_name)
-        if(referenced_element != None):
-            pass
+    def typeTextReference(self, type: reference_type, code: proto_code) -> str:
+        referenced_element: base_element = utils.get_referenced_element(type.parent, type.reference_name)
+        if (referenced_element != None):
+            refrerenced_code: proto_code = self.beginFile(code.output_path, referenced_element, "Models")
+            current_file = Path(code.fullPath).resolve()
+            target_file = Path(refrerenced_code.fullPath).resolve()
+            relative_path = os.path.relpath(refrerenced_code.fullPath, start=os.path.dirname(code.fullPath))
+            code.imports.add(relative_path)
+
         return type.reference_name.getText()
 
-    def typeTextList(self, type: list_type, imports:set[str]):
-        return f"repeated {self.typeText(type.item_type, imports)}"
+    def typeTextList(self, type: list_type, code: proto_code) -> str:
+        return f"repeated {self.typeText(type.item_type, code)}"
 
-    def typeTextMap(self, type: map_type, imports:set[str]):
-        return f"map<{self.typeText(type.key_type, imports)},{self.typeText(type.value_type, imports)}>"
+    def typeTextMap(self, type: map_type, code: proto_code) -> str:
+        return f"map<{self.typeText(type.key_type, code)},{self.typeText(type.value_type, code)}>"
 
-    def tab(self, indent=1):
+    def tab(self, indent=1) -> str:
         return '\t'*indent
 
-    def documentLines(self, hinted_element: hinted_base_element, indent: int = 1):
+    def documentLines(self, hinted_element: hinted_base_element, indent: int = 1) -> str:
         """
         Generates documentation lines for the provided element.
         """
@@ -554,11 +528,14 @@ class protobuf_configuration:
             if (isinstance(value, list) and all(isinstance(item, str) for item in value)):
                 self.defaultImports = value
 
+
 class proto_code:
-    def __init__(self, directory: str, subdirs: List[str], name: str, content: str, extension: str = ".proto"):
+    def __init__(self, output_path: str, subdirs: List[str], name: str):
         """
-        Initializes a proto_code instance with the file path, file name, and content.
+        Initializes a proto_code instance with the file path, file name.
         """
-        self.fileName: str = name + extension
-        self.fullPath: str = os.path.join(directory + "/".join(subdirs), self.fileName)
-        self.content: str = content
+        self.output_path = output_path
+        self.fileName: str = name + ".proto"
+        self.fullPath: str = os.path.join(output_path + "/".join(subdirs), self.fileName)
+        self.imports: set[str] = set()
+        self.content: str = ""

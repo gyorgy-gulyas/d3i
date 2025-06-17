@@ -28,7 +28,7 @@ def __add_known_arguments(arg_parser: argparse.ArgumentParser):
                             default=[])
     arg_parser.add_argument("-e",
                             "--emitter",
-                            help="used emmitter file, if you specify multiple files, all emitter will be called. The emmiter can a built-in emitter (json,dotnet,java,rust) or can a emitter pyton file",
+                            help="used emmitter file, if you specify multiple files, all emitter will be called. The emitter can a built-in emitter (json,dotnet,java,rust) or can a emitter pyton file",
                             nargs='+',
                             default=[])
     arg_parser.add_argument("-o",

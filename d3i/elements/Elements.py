@@ -21,6 +21,23 @@ class base_element:
     def locationText(self):
         return f"'{self.fileName}({self.line},{self.column})'"
 
+    def getContext(self) -> context:
+        if( isinstance(self, context)):
+            return self
+        
+        if( self.parent != None ):
+            return self.parent.getContext()
+        
+        return None
+
+    def getDomain(self) -> domain:
+        if( isinstance(self, domain)):
+            return self
+        
+        if( self.parent != None ):
+            return self.parent.getDomain()
+        
+        return None
 
 class hinted_base_element(base_element):
     def __init__(self, fileName, pos):
