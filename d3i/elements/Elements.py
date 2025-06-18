@@ -21,6 +21,15 @@ class base_element:
     def locationText(self):
         return f"'{self.fileName}({self.line},{self.column})'"
 
+    def getDomain(self) -> domain:
+        if( isinstance(self, domain)):
+            return self
+        
+        if( self.parent != None ):
+            return self.parent.getDomain()
+        
+        return None
+
     def getContext(self) -> context:
         if( isinstance(self, context)):
             return self
@@ -30,12 +39,12 @@ class base_element:
         
         return None
 
-    def getDomain(self) -> domain:
-        if( isinstance(self, domain)):
+    def getAggregate(self) -> aggregate:
+        if( isinstance(self, aggregate)):
             return self
         
         if( self.parent != None ):
-            return self.parent.getDomain()
+            return self.parent.getAggregate()
         
         return None
 

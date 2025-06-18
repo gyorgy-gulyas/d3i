@@ -50,14 +50,14 @@ class ProtoEmitter:
 
                 # Process all enum in the context
                 for enum in context.enums:
-                    code = self.beginFile(output_path, enum, "Models")
+                    code = self.beginFile(output_path, enum, "Models/Protos")
                     code = self.enumText(enum, code)
                     code = self.endFile(code)
                     result.append(code)
 
                 # Process all value_object in the context
                 for valueobject in context.value_objects:
-                    code = self.beginFile(output_path, valueobject, "Models")
+                    code = self.beginFile(output_path, valueobject, "Models/Protos")
                     code = self.valueobjectText(valueobject, code)
                     code = self.endFile(code)
                     result.append(code)
@@ -71,47 +71,47 @@ class ProtoEmitter:
                 # Process all aggregate in the context
                 for aggregate in context.aggregates:
                     for enum in aggregate.enums:
-                        code = self.beginFile(output_path, enum, "Models")
+                        code = self.beginFile(output_path, enum, "Models/Protos")
                         code = self.enumText(enum, code)
                         code = self.endFile(code)
                         result.append(code)
 
                     for valueobject in aggregate.value_objects:
-                        code = self.beginFile(output_path, valueobject, "Models")
+                        code = self.beginFile(output_path, valueobject, "Models/Protos")
                         code = self.valueobjectText(valueobject, code)
                         code = self.endFile(code)
                         result.append(code)
 
                     for aggregate_entity in aggregate.internal_entities:
-                        code = self.beginFile(output_path, aggregate_entity.entity, "Models")
+                        code = self.beginFile(output_path, aggregate_entity.entity, "Models/Protos")
                         code = self.entityText(aggregate_entity.entity, code)
                         code = self.endFile(code)
                         result.append(code)
 
                 # Process all view in the context
                 for view in context.views:
-                    code = self.beginFile(output_path, view, "Models")
+                    code = self.beginFile(output_path, view, "Models/Protos")
                     code = self.viewText(view, code)
                     code = self.endFile(code)
                     result.append(code)
 
                 # Process all acl in the context
                 for acl in context.acls:
-                    code = self.beginFile(output_path, acl, "Service/protos")
+                    code = self.beginFile(output_path, acl, "Service/Protos")
                     code = self.aclText(acl, code)
                     code = self.endFile(code)
                     result.append(code)
 
                 # Process all service in the context
                 for service in context.services:
-                    code = self.beginFile(output_path, service, "Service/protos")
+                    code = self.beginFile(output_path, service, "Service/Protos")
                     code = self.serviceText(service, code)
                     code = self.endFile(code)
                     result.append(code)
 
                 # Process all inerface in the context
                 for interface in context.interfaces:
-                    code = self.beginFile(output_path, interface, "Service/protos")
+                    code = self.beginFile(output_path, interface, "Service/Protos")
                     code = self.interfaceText(interface, code)
                     code = self.endFile(code)
                     result.append(code)
@@ -139,6 +139,7 @@ class ProtoEmitter:
         buffer = io.StringIO()
         domain: domain = element.getDomain()
         context: context = element.getContext()
+        aggregate: aggregate = element.getAggregate()
 
         # proto 3 syntax
         buffer.write(self.fileHeader())
@@ -148,7 +149,7 @@ class ProtoEmitter:
 
         # namespaces
         buffer.write("\n")
-        buffer.write(f"option csharp_namespace = \"{domain.name}.{context.name}\";")
+        buffer.write(f"option csharp_namespace = \"{domain.name}.{context.name}.Protos\";")
         buffer.write("\n")
         buffer.write(f"option java_outer_classname = \"{element.name}\";\n")
         buffer.write(f"option java_package = \"com.{context.name}\";\n")
@@ -156,7 +157,10 @@ class ProtoEmitter:
 
         # package
         buffer.write("\n")
-        buffer.write(f"package {context.name}Package;")
+        if(aggregate == None):
+            buffer.write(f"package {domain.name}.{context.name};\n")
+        else:
+            buffer.write(f"package {domain.name}.{context.name}.{aggregate.name};\n")
         buffer.write("\n")
 
         # make a placeholders for additional imports
@@ -335,13 +339,13 @@ class ProtoEmitter:
             buffer.write(f"{self.tab(indent+1)}oneof result {{\n")
             if (len(operation.operation_returns) == 0):
                 buffer.write(f"{self.tab(indent+2)}google.protobuf.Empty Success = 1;\n")
-                buffer.write(f"{self.tab(indent+2)}servicekit.protobuf.Error Error = 2;\n")
+                buffer.write(f"{self.tab(indent+2)}ServiceKit.Protos.Error Error = 2;\n")
             else:
                 index: int = 1
                 for returns in operation.operation_returns:
                     buffer.write(f"{self.tab(indent+2)}{self.typeText(returns.type, code)} Value{index} = {index};\n")
                     index = index+1
-                buffer.write(f"{self.tab(indent+2)}servicekit.protobuf.Error Error = {index};\n")
+                buffer.write(f"{self.tab(indent+2)}ServiceKit.Protos.Error Error = {index};\n")
 
             buffer.write(f"{self.tab(indent+1)}}}\n")
             buffer.write(f"{self.tab(indent)}}}\n")
@@ -417,10 +421,9 @@ class ProtoEmitter:
     def typeTextReference(self, type: reference_type, code: proto_code) -> str:
         referenced_element: base_element = utils.get_referenced_element(type.parent, type.reference_name)
         if (referenced_element != None):
-            refrerenced_code: proto_code = self.beginFile(code.output_path, referenced_element, "Models")
-            current_file = Path(code.fullPath).resolve()
-            target_file = Path(refrerenced_code.fullPath).resolve()
+            refrerenced_code: proto_code = self.beginFile(code.output_path, referenced_element, "Models/Protos")
             relative_path = os.path.relpath(refrerenced_code.fullPath, start=os.path.dirname(code.fullPath))
+            relative_path = f"{referenced_element.getDomain().name}/{referenced_element.getContext().name}/Models/Protos/{refrerenced_code.fileName}"
             code.imports.add(relative_path)
 
         return type.reference_name.getText()
