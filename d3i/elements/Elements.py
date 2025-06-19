@@ -650,15 +650,15 @@ class primitive_type(type):
         Any = 0
         Integer = 1
         Number = 2
-        Float = 2
-        Date = 3,
-        Time = 4,
-        DateTime = 5,
-        String = 6,
-        I18NString = 7,
-        Boolean = 8,
-        Bytes = 9,
-        Stream = 10,
+        Float = 3
+        Date = 4,
+        Time = 5,
+        DateTime = 6,
+        String = 7,
+        I18NString = 8,
+        Boolean = 9,
+        Bytes = 10,
+        Stream = 11,
 
 
 class reference_type(type):

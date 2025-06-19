@@ -1,11 +1,11 @@
 from __future__ import annotations
-# import os
 import io
 from typing import Dict
 from typing import List
 from typing import NamedTuple
 from d3i.elements.Elements import *
 from d3i.Engine import *
+from d3i.emitters.utils import *
 
 
 def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
@@ -54,10 +54,9 @@ class DotnetEmitter:
                     code = self.enumText(enum, code)
                     code = self.endFile(code)
                     result.append(code)
-
                     if (self.configuration.withGrpc == True):
-                        code = self.beginFile(output_path, enum, "Models/Mapping")
-                        code = self.enumText(enum, code)
+                        code = self.beginFile(output_path, enum, "Models/Mapping", additionalName=".GrpcMapping")
+                        code = self.enumGrpcMappingText(enum, code)
                         code = self.endFile(code)
                         result.append(code)
 
@@ -67,6 +66,11 @@ class DotnetEmitter:
                     code = self.valueobjectText(valueobject, code)
                     code = self.endFile(code)
                     result.append(code)
+                    if (self.configuration.withGrpc == True):
+                        code = self.beginFile(output_path, valueobject, "Models/Mapping", additionalName=".GrpcMapping")
+                        code = self.valueobjectGrpcMappingText(valueobject, code)
+                        code = self.endFile(code)
+                        result.append(code)
 
                 # Process all composite in the context
                 for composite in context.composites:
@@ -83,7 +87,7 @@ class DotnetEmitter:
                         code = self.endFile(code)
                         result.append(code)
                         if (self.configuration.withGrpc == True):
-                            code = self.beginFile(output_path, enum, "Models/Mapping", additionalName=".Mapping")
+                            code = self.beginFile(output_path, enum, "Models/Mapping", additionalName=".GrpcMapping")
                             code = self.enumGrpcMappingText(enum, code)
                             code = self.endFile(code)
                             result.append(code)
@@ -93,12 +97,22 @@ class DotnetEmitter:
                         code = self.valueobjectText(valueobject, code)
                         code = self.endFile(code)
                         result.append(code)
+                        if (self.configuration.withGrpc == True):
+                            code = self.beginFile(output_path, valueobject, "Models/Mapping", additionalName=".GrpcMapping")
+                            code = self.valueobjectGrpcMappingText(valueobject, code)
+                            code = self.endFile(code)
+                            result.append(code)
 
                     for aggregate_entity in aggregate.internal_entities:
                         code = self.beginFile(output_path, aggregate_entity.entity, "Models")
                         code = self.entityText(aggregate_entity.entity, code)
                         code = self.endFile(code)
                         result.append(code)
+                        if (self.configuration.withGrpc == True):
+                            code = self.beginFile(output_path, aggregate_entity.entity, "Models/Mapping", additionalName=".GrpcMapping")
+                            code = self.entityGrpcMappingText(aggregate_entity.entity, code)
+                            code = self.endFile(code)
+                            result.append(code)
 
                 # Process all view in the context
                 for view in context.views:
@@ -106,6 +120,11 @@ class DotnetEmitter:
                     code = self.viewText(view, code)
                     code = self.endFile(code)
                     result.append(code)
+                    if (self.configuration.withGrpc == True):
+                        code = self.beginFile(output_path, view, "Models/Mapping", additionalName=".GrpcMapping")
+                        code = self.viewGrpcMappingText(view, code)
+                        code = self.endFile(code)
+                        result.append(code)
 
                 # Process all acl in the context
                 for acl in context.acls:
@@ -114,10 +133,9 @@ class DotnetEmitter:
                     code = self.aclInterfaceText(acl, code)
                     code = self.endFile(code)
                     result.append(code)
-
                     # grpc controller file
                     if (self.configuration.withGrpc == True):
-                        code = self.beginFile(output_path, acl, "Service/Interfaces")
+                        code = self.beginFile(output_path, acl, "Service/Interfaces", additionalName=".GrpcController")
                         code = self.aclGrpcControllerText(acl, code)
                         result.append(code)
 
@@ -128,10 +146,9 @@ class DotnetEmitter:
                     code = self.serviceInterfaceText(service, code)
                     code = self.endFile(code)
                     result.append(code)
-
                     # grpc controller file
                     if (self.configuration.withGrpc == True):
-                        code = self.beginFile(output_path, service, "Service/Controllers")
+                        code = self.beginFile(output_path, service, "Service/Controllers", additionalName=".GrpcController")
                         code = self.serviceGrpcControllerText(service, code)
                         code = self.endFile(code)
                         result.append(code)
@@ -143,11 +160,11 @@ class DotnetEmitter:
                     code = self.interfaceInterfaceText(interface, code)
                     code = self.endFile(code)
                     result.append(code)
-
                     # grpc controller file
                     if (self.configuration.withGrpc == True):
-                        code = self.beginFile(output_path, interface, "Service/Controllers")
+                        code = self.beginFile(output_path, interface, "Service/Controllers", additionalName=".GrpcController")
                         code = self.interfaceGrpcControllerText(interface, code)
+                        code = self.endFile(code)
                         result.append(code)
 
         return result
@@ -276,14 +293,26 @@ class DotnetEmitter:
     def valueobjectText(self, valueobject: value_object, code: dotnet_code, indent: int = 1) -> dotnet_code:
         return self.dataClassText(valueobject, valueobject.inherits, valueobject.name, valueobject.members, code)
 
+    def valueobjectGrpcMappingText(self, valueobject: value_object, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        return self.dataClassGrpcMappingText(valueobject, valueobject.inherits, valueobject.name, valueobject.members, code)
+
     def dtoText(self, dto: dto, code: dotnet_code, indent: int = 1) -> dotnet_code:
         return self.dataClassText(dto, dto.inherits, dto.name, dto.members, code)
+
+    def dtoGrpcMappingText(self, dto: dto, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        return self.dataClassGrpcMappingText(dto, dto.inherits, dto.name, dto.members, code)
 
     def entityText(self, entity: entity, code: dotnet_code, indent: int = 1) -> dotnet_code:
         return self.dataClassText(entity, entity.inherits, entity.name, entity.members, code)
 
+    def entityGrpcMappingText(self, entity: entity, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        return self.dataClassGrpcMappingText(entity, entity.inherits, entity.name, entity.members, code)
+
     def viewText(self, view: view, code: dotnet_code, indent: int = 1) -> dotnet_code:
         return self.dataClassText(view, view.inherits, view.name, view.members, code)
+
+    def viewGrpcMappingText(self, view: view, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        return self.dataClassGrpcMappingText(view, view.inherits, view.name, view.members, code)
 
     def dataClassText(self, element: internal_scoped_base_element, inherits: List[qualified_name], name: str, members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
@@ -302,8 +331,8 @@ class DotnetEmitter:
         buffer = io.StringIO()
         # Add documentation lines for the composite
         buffer.write(self.documentLines(element, indent))
-        # Write the value_object declaration with indentation
-        buffer.write(f"{self.tab(indent)}public class {element.name}")
+        # Write the data class declaration with indentation
+        buffer.write(f"{self.tab(indent)}public partial class {element.name}")
         # Write inherits if any
         if (len(inherit_names)):
             buffer.write(" : ")
@@ -360,6 +389,202 @@ class DotnetEmitter:
 
         code.content += buffer.getvalue()
         return code
+
+    def dataClassGrpcMappingText(self, element: internal_scoped_base_element, inherits: List[qualified_name], name: str, members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        Generates the .NET code for an data object
+        """
+        base_composites: List[composite] = []
+        inherit_names: List[str] = []
+        for inherit in inherits:
+            base = utils.get_referenced_element(element.parent, inherit)
+            if (isinstance(base, composite) == True):
+                self.collectBaseCompositsRecursive(base, base_composites)
+                inherit_names.append(utils.join_with_I(inherit.names))
+            else:
+                inherit_names.append(inherit.getText())
+
+        buffer = io.StringIO()
+
+        # Write the data class declaration with indentation
+        buffer.write(f"{self.tab(indent)}public partial class {element.name}")
+        buffer.write(f"\n{self.tab(indent)}{{\n")
+
+        # ToGrpc
+        buffer.write(f"{self.tab(indent+1)}public Protos.{element.name} ToGrpc()\n")
+        buffer.write(f"{self.tab(indent+1)}{{\n")
+        buffer.write(f"{self.tab(indent+2)}Protos.{element.name} result = new();\n")
+        buffer.write(f"\n")
+        for member in members:
+            # Write each member
+            buffer.write( self.dataClassMemberToGrpcMappingText(member.name, member.type, code, indent+2 ))
+            pass
+        buffer.write(f"\n")
+        buffer.write(f"{self.tab(indent+2)}return result;\n")
+        buffer.write(f"{self.tab(indent+1)}}}\n")
+
+        # ToDotnet
+        buffer.write(f"{self.tab(indent+1)}public static {element.name} FromGrpc( Protos.{element.name} @from )\n")
+        buffer.write(f"{self.tab(indent+1)}{{\n")
+        buffer.write(f"{self.tab(indent+2)}{element.name} result = new();\n")
+        buffer.write(f"\n")
+        for member in members:
+            # Write each member
+            buffer.write( self.dataClassMemberFromGrpcMappingText(member.name, member.type, code, indent+2 ))
+            pass
+        buffer.write(f"\n")
+        buffer.write(f"{self.tab(indent+2)}return result;\n")
+        buffer.write(f"{self.tab(indent+1)}}}\n")
+
+
+        buffer.write(f"{self.tab(indent)}}}\n")
+
+        code.content += buffer.getvalue()
+        return code
+    
+    def dataClassMemberToGrpcMappingText( self, memberName: str, memberType:type, code:dotnet_code, indent:int ):
+        match memberType.kind:
+            case type.Kind.Primitive:
+                return self.dataClassMemberToGrpcMappingText_Primitive( memberName, memberType, code, indent )
+            case type.Kind.Reference:
+                return self.dataClassMemberToGrpcMappingText_Reference( memberName, memberType, code, indent )
+            case type.Kind.List:
+                return self.dataClassMemberToGrpcMappingText_List( memberName, memberType, code, indent )
+            case type.Kind.Map:
+                return self.dataClassMemberToGrpcMappingText_Map( memberName, memberType, code, indent )
+            
+    def dataClassMemberFromGrpcMappingText( self, memberName: str, memberType:type, code:dotnet_code, indent:int ):
+        match memberType.kind:
+            case type.Kind.Primitive:
+                return self.dataClassMemberFromGrpcMappingText_Primitive( memberName, memberType, code, indent )
+            case type.Kind.Reference:
+                return self.dataClassMemberFromGrpcMappingText_Reference( memberName, memberType, code, indent )
+            case type.Kind.List:
+                return self.dataClassMemberFromGrpcMappingText_List( memberName, memberType, code, indent )
+            case type.Kind.Map:
+                return self.dataClassMemberFromGrpcMappingText_Map( memberName, memberType, code, indent )
+
+    def dataClassMemberToGrpcMappingText_Primitive( self, memberName: str, memberType:type, code:dotnet_code, indent:int ):
+        return f"{self.tab(indent)}result.{utils.camel_to_pascal(memberName)} = {self.convertExpressionToGrpcRepresentation(memberName,memberType,code)};\n"
+    
+    def dataClassMemberFromGrpcMappingText_Primitive( self, memberName: str, memberType:type, code:dotnet_code, indent:int ):
+        return f"{self.tab(indent)}result.{memberName} = {self.convertExpressionFromGrpcRepresentation( f"@from.{utils.camel_to_pascal(memberName)}" ,memberType,code)};\n"
+
+    def convertExpressionToGrpcRepresentation( self, memberName: str, memberType:type, code:dotnet_code ):
+         match memberType.primtiveKind:
+            case primitive_type.PrimtiveKind.Any:
+                pass
+            case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Float:
+                return f"{memberName};\n"
+            case primitive_type.PrimtiveKind.Number:
+                 code.usings.add("System.Globalization")
+                 return f"{memberName}.ToString(CultureInfo.InvariantCulture)"
+            case primitive_type.PrimtiveKind.Date:
+                return f"{memberName}.ToString(CultureInfo.InvariantCulture)"
+            case primitive_type.PrimtiveKind.Time:
+                return f"{memberName}.ToString(\"HH:mm\")"
+            case primitive_type.PrimtiveKind.DateTime:
+                code.usings.add("Google.Protobuf.WellKnownTypes")
+                return f"Timestamp.FromDateTime({memberName})"
+            case primitive_type.PrimtiveKind.String:
+                return f"{memberName}"
+            case primitive_type.PrimtiveKind.I18NString:
+                code.usings.add("System.Text.Json")
+                return f"JsonSerializer.Serialize({memberName})"
+            case primitive_type.PrimtiveKind.Boolean:
+                return f"{memberName}"
+            case primitive_type.PrimtiveKind.Bytes:
+                return f"Google.Protobuf.ByteString.CopyFrom({memberName})"
+            case primitive_type.PrimtiveKind.Stream:
+                return f"Google.Protobuf.ByteString.FromStream({memberName})"
+    
+    def convertExpressionFromGrpcRepresentation( self, memberName: str, memberType:type, code:dotnet_code ):
+         match memberType.primtiveKind:
+            case primitive_type.PrimtiveKind.Any:
+                pass
+            case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Float:
+                return f"{memberName};\n"
+            case primitive_type.PrimtiveKind.Number:
+                 code.usings.add("System.Globalization")
+                 return f"decimal.Parse({memberName}, CultureInfo.InvariantCulture)"
+            case primitive_type.PrimtiveKind.Date:
+                code.usings.add("System.Globalization")
+                return f"DateOnly.Parse({memberName}, CultureInfo.InvariantCulture)"
+            case primitive_type.PrimtiveKind.Time:
+                return f"{memberName}.ToString(\"HH:mm\")"
+            case primitive_type.PrimtiveKind.DateTime:
+                code.usings.add("Google.Protobuf.WellKnownTypes")
+                return f"{memberName}).ToDateTime()"
+            case primitive_type.PrimtiveKind.String:
+                return f"{memberName}"
+            case primitive_type.PrimtiveKind.I18NString:
+                code.usings.add("System.Text.Json")
+                return f"JsonSerializer.Serialize({memberName})"
+            case primitive_type.PrimtiveKind.Boolean:
+                return f"{memberName}"
+            case primitive_type.PrimtiveKind.Bytes:
+                return f"Google.Protobuf.ByteString.CopyFrom({memberName})"
+            case primitive_type.PrimtiveKind.Stream:
+                return f"Google.Protobuf.ByteString.FromStream({memberName})"
+
+    def dataClassMemberToGrpcMappingText_Reference( self, memberName: str, memberType:type, code:dotnet_code, indent:int ):
+        referenced_element: base_element = utils.get_referenced_element(memberType.parent, memberType.reference_name)
+
+        buffer = io.StringIO()
+        buffer.write(f"{self.tab(indent)}result.{utils.camel_to_pascal(memberName)} = ")
+        if( referenced_element != None and isinstance(referenced_element, enum ) == True ):
+            buffer.write(f"{memberName}.ToGrpc();\n")
+        else:
+            buffer.write(f"{memberName}?.ToGrpc();\n")
+        return buffer.getvalue()
+
+    def dataClassMemberFromGrpcMappingText_Reference( self, memberName: str, memberType:type, code:dotnet_code, indent:int ):
+        referenced_element: base_element = utils.get_referenced_element(memberType.parent, memberType.reference_name)
+
+        buffer = io.StringIO()
+        buffer.write(f"{self.tab(indent)}result.{memberName} = ")
+        if( referenced_element != None and isinstance(referenced_element, enum ) == True ):
+            buffer.write(f"@from.{utils.camel_to_pascal(memberName)}.ToDotnet();\n")
+        else:
+            buffer.write(f"{grpc_utils.d3iTypeToGrpcRepresentation(memberType)}?.FromGrpc( {utils.camel_to_pascal(memberName)});\n")
+        return buffer.getvalue()
+
+    def dataClassMemberToGrpcMappingText_List( self, memberName: str, memberType:list_type, code:dotnet_code, indent:int ):
+        code.usings.add("Google.Protobuf.Collections")
+        
+        buffer = io.StringIO()
+
+        match memberType.item_type.kind:
+            case type.Kind.Primitive:
+                buffer.write(f"{self.tab(indent)}result.{utils.camel_to_pascal(memberName)}.AddRange( {memberName}.Select( v => {self.convertExpressionToGrpcRepresentation( "v", memberType.item_type, code)} ));\n")
+            case type.Kind.Reference:
+                buffer.write(f"{self.tab(indent)}result.{utils.camel_to_pascal(memberName)}.AddRange( {memberName}.Select( v => v.ToGrpc() ));\n")
+            case type.Kind.List:
+                pass
+            case type.Kind.Map:
+                pass
+
+        return buffer.getvalue()
+
+    def dataClassMemberFromGrpcMappingText_List( self, memberName: str, memberType:list_type, code:dotnet_code, indent:int ):
+        code.usings.add("Google.Protobuf.Collections")
+        
+        buffer = io.StringIO()
+
+        match memberType.item_type.kind:
+            case type.Kind.Primitive:
+                buffer.write(f"{self.tab(indent)}result.{memberName}.AddRange( @from.{utils.camel_to_pascal(memberName)}.Select( v => {self.convertExpressionFromGrpcRepresentation( "v", memberType.item_type, code)} ));\n")
+            case type.Kind.Reference:
+                buffer.write(f"{self.tab(indent)}result.{memberName}.AddRange( @from.{utils.camel_to_pascal(memberName)}.Select( v => {self.typeText(memberType.item_type,code)}.FromGrpc(v) ));\n")
+            case type.Kind.List:
+                pass
+            case type.Kind.Map:
+                pass
+
+        return buffer.getvalue()
+
+    def dataClassMemberToGrpcMappingText_Map( self, memberName: str, memberType:type, code:dotnet_code, indent:int ):
+        return ""
 
     def compositeText(self, composite: composite, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
@@ -485,13 +710,13 @@ class DotnetEmitter:
         return buffer.getvalue()
 
     def aclGrpcControllerText(self, acl: acl, code: dotnet_code) -> dotnet_code:
-        return self.grpcControllerText(acl, acl.name, acl.operations, code, indent=0)
+        return self.grpcControllerText(acl, acl.name, acl.operations, code, indent=1)
 
     def serviceGrpcControllerText(self, service: service, code: dotnet_code) -> dotnet_code:
-        return self.grpcControllerText(service, service.name, service.operations, code, indent=0)
+        return self.grpcControllerText(service, service.name, service.operations, code, indent=1)
 
     def interfaceGrpcControllerText(self, interface: interface, code: dotnet_code) -> dotnet_code:
-        return self.grpcControllerText(interface, interface.name, interface.operations, code, indent=0)
+        return self.grpcControllerText(interface, interface.name, interface.operations, code, indent=1)
 
     def grpcControllerText(self, element: hinted_base_element, elementName: str, operations: List[operation], code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
@@ -613,7 +838,7 @@ class DotnetEmitter:
 
     def propertyText(self, member_name: str, type: type, code: dotnet_code, indent: int) -> str:
         buffer = io.StringIO()
-        buffer.write(f"{'\t'*indent}public {self.typeText(type, code)} {member_name} {{ get; set; }}\n")
+        buffer.write(f"{self.tab(indent)}public {self.typeText(type, code)} {member_name} {{ get; set; }}\n")
         return buffer.getvalue()
 
     def typeText(self, type: type, code: dotnet_code) -> str:
@@ -669,7 +894,7 @@ class DotnetEmitter:
 
     def typeTextMap(self, type: map_type, code) -> str:
         return f"Dictionary<{self.typeText(type.key_type, code)},{self.typeText(type.value_type, code)}>"
-
+   
     def tab(self, indent=1) -> str:
         return '\t'*indent
 
@@ -684,83 +909,6 @@ class DotnetEmitter:
             buffer.write(f"{self.tab(indent)}///{document_line}")
             buffer.write("\n")
         return buffer.getvalue()
-
-
-class utils:
-    @staticmethod
-    def create_folder(output_dir: str, folder_name: str):
-        folder_path = os.path.join(output_dir, folder_name)
-        os.makedirs(folder_path, exist_ok=True)
-
-    @staticmethod
-    def create_cs_file(output_dir: str, file_name: str, content: str):
-        file_path = os.path.join(output_dir, file_name + ".cs")
-        with open(file_path, "w") as file:
-            file.write(content)
-
-    def join_with_I(words: List[str]):
-        if not words:
-            return ""
-        if len(words) == 1:
-            return "I" + words[0]
-        return ".".join(words[:-1]) + ".I" + words[-1]
-
-    @staticmethod
-    def get_referenced_element(parent: base_element, name: qualified_name) -> IScope:
-
-        scope = utils.__get_current_scope(parent)
-        element = None
-        # go up until we find the element for the first part of the name
-        while True:
-            if (scope == None):
-                break
-
-            # is the scope that has a child with the name we are looking for
-            if (isinstance(scope, IScope) == True):
-                for child in scope.getChildren():
-                    if (child.name == name.names[0]):
-                        element = child
-                        break
-
-            if (element != None):
-                break
-
-            scope = scope.parent
-
-        if (element == None):
-            return None
-
-        # processing the rest of the name part if exist
-        for name_part in name.names[1:]:
-            if (isinstance(element, IScope) == False):
-                return None
-
-            scope: IScope = element
-            element = None
-            for child in scope.getChildren():
-                if (child.name == name_part):
-                    element = child
-
-            if (element == None):
-                return None
-
-        return element
-
-    def camel_to_pascal(name: str) -> str:
-        if not name:
-            return name
-        return name[0].upper() + name[1:]
-
-    def __get_current_scope(element: base_element) -> IScope:
-        current_scope = element
-        while True:
-            if isinstance(current_scope, IScope):
-                break
-            elif (current_scope == None):
-                break
-            current_scope = current_scope.parent
-
-        return current_scope
 
 
 class dotnet_configuration:

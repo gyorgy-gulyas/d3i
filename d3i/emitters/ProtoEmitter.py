@@ -1,11 +1,12 @@
 from __future__ import annotations
 import io
 import os
+from pathlib import Path
 from typing import Dict
 from typing import List
 from d3i.elements.Elements import *
 from d3i.Engine import *
-from pathlib import Path
+from d3i.emitters.utils import *
 
 
 def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
@@ -389,34 +390,7 @@ class ProtoEmitter:
                 return self.typeTextMap(type, code)
 
     def typeTextPrimitive(self, type: primitive_type) -> str:
-        """
-        Converts a primitive type to its protobuf representation.
-        """
-        match type.primtiveKind:
-            case primitive_type.PrimtiveKind.Any:
-                return "object"
-            case primitive_type.PrimtiveKind.Integer:
-                return "int"
-            case primitive_type.PrimtiveKind.Number:
-                return "string"  # must be converted
-            case primitive_type.PrimtiveKind.Float:
-                return "double"
-            case primitive_type.PrimtiveKind.Date:
-                return "DateOnly"
-            case primitive_type.PrimtiveKind.Time:
-                return "TimeOnly"
-            case primitive_type.PrimtiveKind.DateTime:
-                return "DateTime"
-            case primitive_type.PrimtiveKind.String:
-                return "string"
-            case primitive_type.PrimtiveKind.I18NString:
-                return "i18nstring"
-            case primitive_type.PrimtiveKind.Boolean:
-                return "bool"
-            case primitive_type.PrimtiveKind.Bytes:
-                return "byte[]"
-            case primitive_type.PrimtiveKind.Stream:
-                return "Stream"
+        return grpc_utils.d3iTypeToGrpcRepresentation( type )
 
     def typeTextReference(self, type: reference_type, code: proto_code) -> str:
         referenced_element: base_element = utils.get_referenced_element(type.parent, type.reference_name)
@@ -448,60 +422,6 @@ class ProtoEmitter:
             buffer.write(f"{self.tab(indent)}///{document_line}")
             buffer.write("\n")
         return buffer.getvalue()
-
-
-class utils:
-    @staticmethod
-    def get_referenced_element(parent: base_element, name: qualified_name) -> IScope:
-
-        scope = utils.__get_current_scope(parent)
-        element = None
-        # go up until we find the element for the first part of the name
-        while True:
-            if (scope == None):
-                break
-
-            if (isinstance(scope, IScope) == True):
-                # is the scope that has a child with the name we are looking for
-                for child in scope.getChildren():
-                    if (child.name == name.names[0]):
-                        element = child
-                        break
-
-            if (element != None):
-                break
-
-            scope = scope.parent
-
-        if (element == None):
-            return None
-
-        # processing the rest of the name part if exist
-        for name_part in name.names[1:]:
-            if (isinstance(element, IScope) == False):
-                return None
-
-            scope: IScope = element
-            element = None
-            for child in scope.getChildren():
-                if (child.name == name_part):
-                    element = child
-
-            if (element == None):
-                return None
-
-        return element
-
-    def __get_current_scope(element: base_element) -> IScope:
-        current_scope = element
-        while True:
-            if isinstance(current_scope, IScope):
-                break
-            elif (current_scope == None):
-                break
-            current_scope = current_scope.parent
-
-        return current_scope
 
 
 class protobuf_configuration:
