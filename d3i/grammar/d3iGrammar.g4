@@ -223,7 +223,6 @@ type
         | 'time'
         | 'dateTime'
         | 'string'
-        | 'string'
         | 'i18nstring'
         | 'bytes'
         | 'stream'

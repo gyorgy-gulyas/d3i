@@ -48,6 +48,15 @@ class base_element:
         
         return None
 
+    def getInterface(self) -> interface:
+        if( isinstance(self, interface)):
+            return self
+        
+        if( self.parent != None ):
+            return self.parent.getInterface()
+        
+        return None
+
 class hinted_base_element(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
@@ -320,7 +329,7 @@ class composite(internal_scoped_base_element):
         self.members: List[composite_member] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitComposit(self, parentData)
+        data = visitor.visitComposite(self, parentData)
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
@@ -337,7 +346,7 @@ class composite_member(hinted_base_element):
         self.type: type = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitCompositMember(self, parentData)
+        data = visitor.visitCompositeMember(self, parentData)
         if (self.type != None):
             self.type.visit(visitor, data, "type")
         super().visit(visitor, data)

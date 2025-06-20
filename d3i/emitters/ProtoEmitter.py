@@ -207,14 +207,6 @@ class ProtoEmitter:
         code.content += buffer.getvalue()
         return code
 
-    def collectBaseRecursive(self, base: composite, bases: List[base_element]):
-        bases.insert(0, base)
-
-        for inherit in base.inherits:
-            base_base = utils.get_referenced_element(base.parent, inherit)
-            if (base_base != None):
-                self.collectBaseRecursive(base_base, bases)
-
     def valueobjectText(self, valueobject: value_object, code: proto_code, indent: int = 0) -> proto_code:
         return self.protoMessageText(valueobject, code, indent )
 
@@ -231,8 +223,8 @@ class ProtoEmitter:
         bases: List[internal_scoped_base_element] = []
         for inherit in element.inherits:
             base = utils.get_referenced_element(element.parent, inherit)
-            if (isinstance(base, base) == True):
-                self.collectBaseRecursive(base, bases)
+            if (base != None ):
+                utils.collectBaseRecursive(base, bases)
 
         buffer = io.StringIO()
         # Add documentation lines for the composite
@@ -240,9 +232,10 @@ class ProtoEmitter:
         # Write the value_object declaration with indentation
         buffer.write(f"{self.tab(indent)}message {element.name} {{\n")
 
-        # Loop through each coposite members and generate code for each
+        index: int = 1
+        # Loop through each base members and generate code for each
         for base in bases:
-            buffer.write(f"{self.tab(indent+1)} // unfold begin: {base.name}\n")
+            buffer.write(f"{self.tab(indent+1)}// unfold begin: {base.name}\n")
 
             # write internal enums if Any
             if (base.withEnum == True):
@@ -259,11 +252,10 @@ class ProtoEmitter:
                 for dto in base.dtos:
                     code = self.dtoText(dto, code, indent+1)
 
-            index: int = 1
             for member in base.members:
                 # Write each member
                 buffer.write(self.documentLines(member, indent+1))
-                buffer.write(self.protoMemberText(member.name, member.type, index, indent+1))
+                buffer.write(self.protoMemberText(member.name, member.type, code, index, indent+1))
                 index = index + 1
             buffer.write(f"{self.tab(indent+1)}// unfold end {base.name}\n\n")
 
@@ -283,7 +275,6 @@ class ProtoEmitter:
                 code = self.dtoText(element, code, indent)
 
         # Loop through each valueobject members and generate code for each
-        index: int = 1
         for member in element.members:
             # Write each member
             buffer.write(self.documentLines(member, indent+1))
@@ -302,13 +293,12 @@ class ProtoEmitter:
         return self.protoServiceText(service.getDomain(), service.getContext(), service, service.name, service.operations, code, indent)
 
     def interfaceText(self, interface: interface, code: proto_code, indent: int = 0) -> proto_code:
-        return self.protoServiceText(interface.getDomain(), interface.getContext(), interface, interface.name, interface.operations, code, indent)
+        return self.protoServiceText(interface.getDomain(), interface.getContext(), interface, interface.name+ f"_v{interface.version}", interface.operations, code, indent)
 
     def protoServiceText(self, domain: domain, context: context, element: internal_scoped_base_element, elementName: str, operations: List[operation], code: proto_code, indent: int = 0) -> proto_code:
         """
         Generates the proto service file, with rpc functions and request response messages text for element
         """
-        code.imports.add("google/protobuf/empty.proto")
         code.imports.add("servicekit_error.proto")
 
         buffer = io.StringIO()
@@ -319,7 +309,7 @@ class ProtoEmitter:
         for operation in operations:
             # Write each operation as RPC call
             buffer.write(self.documentLines(operation, indent+1))
-            buffer.write(f"{self.tab(indent+1)}rpc {operation.name}({operation.name}Request) returns ({operation.name}Response);\n")
+            buffer.write(f"{self.tab(indent+1)}rpc {operation.name}({elementName}_{operation.name}Request) returns ({elementName}_{operation.name}Response);\n")
         buffer.write(f"{self.tab(indent)}}}")
         buffer.write("\n")
 
@@ -327,7 +317,7 @@ class ProtoEmitter:
         for operation in operations:
             # Request message
             buffer.write(f"\n")
-            buffer.write(f"{self.tab(indent)}message {operation.name}Request {{\n")
+            buffer.write(f"{self.tab(indent)}message {elementName}_{operation.name}Request {{\n")
             index: int = 1
             for param in operation.operation_params:
                 buffer.write(self.documentLines(param, indent+2))
@@ -336,9 +326,10 @@ class ProtoEmitter:
             buffer.write(f"\n")
 
             # Response message
-            buffer.write(f"{self.tab(indent)}message {operation.name}Response {{\n")
+            buffer.write(f"{self.tab(indent)}message {elementName}_{operation.name}Response {{\n")
             buffer.write(f"{self.tab(indent+1)}oneof result {{\n")
             if (len(operation.operation_returns) == 0):
+                code.imports.add("google/protobuf/empty.proto")
                 buffer.write(f"{self.tab(indent+2)}google.protobuf.Empty Success = 1;\n")
                 buffer.write(f"{self.tab(indent+2)}ServiceKit.Protos.Error Error = 2;\n")
             else:
@@ -394,7 +385,7 @@ class ProtoEmitter:
 
     def typeTextReference(self, type: reference_type, code: proto_code) -> str:
         referenced_element: base_element = utils.get_referenced_element(type.parent, type.reference_name)
-        if (referenced_element != None):
+        if (referenced_element != None and isinstance(referenced_element,dto) == False ):
             refrerenced_code: proto_code = self.beginFile(code.output_path, referenced_element, "Models/Protos")
             relative_path = os.path.relpath(refrerenced_code.fullPath, start=os.path.dirname(code.fullPath))
             relative_path = f"{referenced_element.getDomain().name}/{referenced_element.getContext().name}/Models/Protos/{refrerenced_code.fileName}"

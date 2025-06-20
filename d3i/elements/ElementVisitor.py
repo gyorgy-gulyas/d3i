@@ -58,6 +58,14 @@ class ElementVisitor(ABC):
         pass
 
     @abstractmethod
+    def visitComposite(self, composite: composite, parentData: Any) -> Any:
+        pass
+
+    @abstractmethod
+    def visitCompositeMember(self, composite_member: composite_member, parentData: Any) -> Any:
+        pass
+
+    @abstractmethod
     def visitDto(self, dto: dto, parentData: Any) -> Any:
         pass
 

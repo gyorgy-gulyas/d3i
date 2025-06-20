@@ -61,11 +61,6 @@ class utils:
 
         return element
 
-    def camel_to_pascal(name: str) -> str:
-        if not name:
-            return name
-        return name[0].upper() + name[1:]
-
     def __get_current_scope(element: base_element) -> IScope:
         current_scope = element
         while True:
@@ -76,6 +71,30 @@ class utils:
             current_scope = current_scope.parent
 
         return current_scope
+
+    @staticmethod
+    def camel_to_pascal(name: str) -> str:
+        if not name:
+            return name
+        return name[0].upper() + name[1:]
+
+    @staticmethod
+    def collectBaseRecursive(base: composite, bases: List[base_element]):
+        bases.insert(0, base)
+
+        for inherit in base.inherits:
+            base_base = utils.get_referenced_element(base.parent, inherit)
+            if (base_base != None):
+                utils.collectBaseRecursive(base_base, bases)
+
+    @staticmethod
+    def collectBaseCompositsRecursive(base_composite: composite, base_composites: List[composite]):
+        base_composites.insert(0, base_composite)
+
+        for inherit in base_composite.inherits:
+            base = utils.get_referenced_element(base_composite.parent, inherit)
+            if (isinstance(base, composite) == True):
+                utils.collectBaseCompositsRecursive(base, base_composites)
 
 class grpc_utils:
     @staticmethod
@@ -100,7 +119,7 @@ class grpc_utils:
             case primitive_type.PrimtiveKind.Any:
                 return "string" # json serialize/desialize
             case primitive_type.PrimtiveKind.Integer:
-                return "int"
+                return "int32"
             case primitive_type.PrimtiveKind.Number:
                 return "string"  # must be converted to string
             case primitive_type.PrimtiveKind.Float:

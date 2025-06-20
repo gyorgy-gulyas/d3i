@@ -135,6 +135,31 @@ class SemanticChecker(ElementVisitor):
             if (neighbour.name == member.name):
                 self.__error(member, f"An member '{member.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
+    def visitComposite(self, the_composite: composite, parentData: Any) -> Any:
+        scope = self.__get_current_scope(the_composite.parent)
+
+        for inherit in the_composite.inherits:
+            base_class, message = self.__get_referenced_element(the_composite.parent, inherit)
+            if (base_class == None):
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
+            elif (isinstance(base_class, composite) == False):
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not a composite.")
+
+        for neighbour in scope.getChildren():
+            if (neighbour is the_composite):
+                continue
+            if (neighbour.name == the_composite.name):
+                self.__error(the_composite, f"A composite '{the_composite.name}' conflicts with same name with element in {neighbour.locationText()}.")
+
+    def visitCompositeMember(self, member: composite_member, parentData: Any) -> Any:
+        parent_composite: composite = member.parent
+        for neighbour in parent_composite.members:
+            if (neighbour is member):
+                continue
+            if (neighbour.name == member.name):
+                self.__error(member, f"An member '{member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+
+
     def visitEntity(self, the_entity: entity, parentData: Any) -> Any:
         parent_aggregate: aggregate = the_entity.parent.parent
         parent_context: context = parent_aggregate.parent
@@ -143,8 +168,8 @@ class SemanticChecker(ElementVisitor):
             base_class, message = self.__get_referenced_element(the_entity.parent, inherit)
             if (base_class == None):
                 self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not found. {message}")
-            elif (isinstance(base_class, entity) == False):
-                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an entity.")
+            elif (isinstance(base_class, entity) == False and isinstance(base_class, composite) == False):
+                self.__error(inherit, f"The element '{inherit.getText()}' referred in inheritance is not an entity or composite.")
 
         for aggr in parent_context.aggregates:
             for aggr_entity in aggr.internal_entities:
@@ -285,7 +310,7 @@ class SemanticChecker(ElementVisitor):
 
     def visitReferenceType(self, reference_type: reference_type, parentData: Any, memberName: str) -> Any:
         if (len(reference_type.reference_name.names) == 0):
-            self.__error(reference_type, f"Empty referenced name.")
+            self.__error(reference_type, f"Empty reference name.")
 
         if (reference_type.isExternal == True):
             return
@@ -295,9 +320,18 @@ class SemanticChecker(ElementVisitor):
             self.__error(reference_type, message)
 
     def visitListType(self, list_type: list_type, parentData: Any, memberName: str) -> Any:
+        
+        if(list_type.item_type.kind == type.Kind.List or list_type.item_type.kind == type.Kind.Map):
+            self.__error(list_type, f"Invalid item type definition: list can only contain primitive or reference types. Nested list or map types are not supported as list elements")
+
         pass
 
     def visitMapType(self, map_type: map_type, parentData: Any, memberName: str) -> Any:
+        if(map_type.key_type.kind != type.Kind.Primitive or map_type.key_type.primtiveKind != primitive_type.PrimtiveKind.String  ):
+            self.__error(list_type, f" Invalid map key type: A map type must have string keys. Other key types are not supported")
+
+        if(map_type.value_type.kind == type.Kind.List or map_type.value_type.kind == type.Kind.Map ):
+            self.__error(list_type, f"Invalid value type definition: Value of map can only contain primitive or reference types. Nested list or map types are not supported as map value elements")
         pass
 
     def visitDecoratedElement(self, decorated_element: hinted_base_element, parentData: Any) -> Any:
