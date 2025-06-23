@@ -228,7 +228,7 @@ class ElementBuilder(d3iGrammarVisitor):
             elif (dto_element.dto()):
                 child = self.visit(dto_element.dto())
                 child.parent = result
-                result.value_objects.append(child)
+                result.dtos.append(child)
             counter = counter + 1
 
         return result

@@ -119,12 +119,6 @@ class DotnetEmitter:
                     code = self.interfaceInterfaceText(interface, code)
                     code = self.endFile(code)
                     result.append(code)
-                    # grpc controller file
-                    if (self.configuration.withGrpc == True):
-                        code = self.beginFile(output_path, interface, "Service/Controllers", additionalName=".GrpcController")
-                        code = self.interfaceGrpcControllerText(interface, code)
-                        code = self.endFile(code)
-                        result.append(code)
 
         return result
 
@@ -280,6 +274,11 @@ class DotnetEmitter:
             buffer.write(", ".join(inherit_names))
         buffer.write(f"\n{self.tab(indent)}{{\n")
 
+        #flush current text
+        code.content += buffer.getvalue()
+        buffer.seek(0)
+        buffer.truncate(0)
+
         # Loop through each coposite members and generate code for each
         for base_composite in base_composites:
             buffer.write(f"{self.tab(indent+1)}#region I{base_composite.name}\n")
@@ -287,17 +286,17 @@ class DotnetEmitter:
             # write internal enums if Any
             if (base_composite.withEnum == True):
                 for child_enum in base_composite.enums:
-                    buffer.write(self.enumText(child_enum, indent+1))
+                    code = self.enumText(child_enum, indent+1)
 
             # write internal value object if Any
             if (base_composite.withValueObject == True):
                 for child_value_object in base_composite.value_objects:
-                    buffer.write(self.valueobjectText(child_value_object, indent+1))
+                    code = self.valueobjectText(child_value_object, code, indent+1)
 
             # write internal dto if Any
             if (base_composite.withDto == True):
                 for child_dto in base_composite.dtos:
-                    buffer.write(self.dtoText(child_dto, indent+1))
+                    code = self.dtoText(child_dto, code, indent+1)
 
             for member in base_composite.members:
                 # Write each member
@@ -308,17 +307,17 @@ class DotnetEmitter:
         # write internal enums if Any
         if (element.withEnum == True):
             for enum in element.enums:
-                buffer.write(self.enumText(enum, indent))
+                code = self.enumText(enum, code, indent+1)
 
         # write internal valueobjects if Any
         if (element.withValueObject == True):
             for valueobject in element.value_objects:
-                buffer.write(self.valueobjectText(valueobject, indent))
+                code = self.valueobjectText(valueobject, code, indent+1)
 
         # write internal valueobjects if Any
         if (element.withDto == True):
             for dto in element.dtos:
-                buffer.write(self.dtoText(dto, indent))
+                code = self.dtoText(dto, code, indent+1)
 
         # Loop through each valueobject members and generate code for each
         for member in members:
