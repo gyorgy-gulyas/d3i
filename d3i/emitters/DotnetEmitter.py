@@ -99,7 +99,7 @@ class DotnetEmitter:
                 # Process all acl in the context
                 for acl in context.acls:
                     # interface
-                    code = self.beginFile(output_path, acl, "Service/Interfaces")
+                    code = self.beginFile(output_path, acl, "Service/Interfaces", prefix="I")
                     code = self.aclInterfaceText(acl, code)
                     code = self.endFile(code)
                     result.append(code)
@@ -107,7 +107,7 @@ class DotnetEmitter:
                 # Process all service in the context
                 for service in context.services:
                     # interface
-                    code = self.beginFile(output_path, service, "Service/Interfaces")
+                    code = self.beginFile(output_path, service, "Service/Interfaces", prefix="I")
                     code = self.serviceInterfaceText(service, code)
                     code = self.endFile(code)
                     result.append(code)
@@ -115,10 +115,15 @@ class DotnetEmitter:
                 # Process all inerface in the context
                 for interface in context.interfaces:
                     # interface
-                    code = self.beginFile(output_path, interface, "Service/Interfaces", additionalName=f"_v{interface.version}")
+                    code = self.beginFile(output_path, interface, "Service/Interfaces", prefix="I", postfix=f"_v{interface.version}")
                     code = self.interfaceInterfaceText(interface, code)
                     code = self.endFile(code)
                     result.append(code)
+                    if (self.configuration.withGrpc == True):
+                        code = self.beginFile(output_path, interface, "Service/Controllers", postfix=f"_v{interface.version}.GrpcGontroller")
+                        code = self.interfaceGrpcControllerText(interface, code)
+                        code = self.endFile(code)
+                        result.append(code)
 
         return result
 
@@ -139,7 +144,7 @@ class DotnetEmitter:
 
         return "\n".join(using_statements) + "\n"
 
-    def beginFile(self, output_path: str, element: base_element, subDirectoryName: str, additionalName: str = "") -> dotnet_code:
+    def beginFile(self, output_path: str, element: base_element, subDirectoryName: str, prefix: str = "", postfix: str = "") -> dotnet_code:
         buffer = io.StringIO()
         domain: domain = element.getDomain()
         context: context = element.getContext()
@@ -157,7 +162,7 @@ class DotnetEmitter:
 
         buffer.write("{\n")
 
-        code: dotnet_code = dotnet_code(output_path, [domain.name, context.name, subDirectoryName], element.name + additionalName)
+        code: dotnet_code = dotnet_code(output_path, [domain.name, context.name, subDirectoryName], prefix + element.name + postfix)
         code.content = buffer.getvalue()
         return code
 
@@ -193,61 +198,68 @@ class DotnetEmitter:
                 buffer.write("\n")
 
         buffer.write(f"{self.tab(indent)}}}\n")
-        code.content += buffer.getvalue()
-        buffer.seek(0)
-        buffer.truncate(0)
 
+        # if the enum is defined under the interface and the grpc mapping is enable, then generate the mapping code
+        if(enum.getInterface() != None ):
+            buffer.write(self.enumGrpcMappingText( enum, indent ))
+
+        code.content += buffer.getvalue()
         return code
 
-    def enumGrpcMappingText(self, enum: enum, code: dotnet_code, indent: int = 1) -> dotnet_code:
+    def enumGrpcMappingText(self, enum: enum, indent:int) -> str:
         """
         Generates the .NET code for an enum mapping for GRPC.
         """
+        dotnetFullName:str = grpc_utils.getDotnetFullName(enum)
+        protosFullName:str= grpc_utils.getProtoFullName(enum)
+
         buffer = io.StringIO()
-        buffer.write(f"{self.tab(indent)}public static class {enum.name}Extensions\n")
+        buffer.write(f"{self.tab(indent)}#region GrpcMapping\n")
+        buffer.write(f"{self.tab(indent)}public static class {enum.name}Mappings\n")
         buffer.write(f"{self.tab(indent)}{{\n")
 
         # ToGrpc
-        buffer.write(f"{self.tab(indent+1)}public static Protos.{enum.name} ToGrpc( this {enum.name} @this )\n")
+        buffer.write(f"{self.tab(indent+1)}public static Protos.{protosFullName} ToGrpc( {dotnetFullName} @this )\n")
         buffer.write(f"{self.tab(indent+1)}{{\n")
         buffer.write(f"{self.tab(indent+2)}return @this switch\n")
         buffer.write(f"{self.tab(indent+2)}{{\n")
         # Loop through each enum element and generate code for each mapping
         for enum_element in enum.enum_elements:
-            buffer.write(f"{self.tab(indent+3)}{enum.name}.{enum_element.value} => Protos.{enum.name}.{enum_element.value},\n")
+            buffer.write(f"{self.tab(indent+3)}{dotnetFullName}.{enum_element.value} => Protos.{protosFullName}.{enum_element.value},\n")
         buffer.write(f"{self.tab(indent+3)}_ => throw new NotImplementedException(), \n")
         buffer.write(f"{self.tab(indent+2)}}};\n")
         buffer.write(f"{self.tab(indent+1)}}}\n")
         buffer.write(f"\n")
 
         # FromGrpc
-        buffer.write(f"{self.tab(indent+1)}public static {enum.name} FromGrpc( this Protos.{enum.name} @this )\n")
+        buffer.write(f"{self.tab(indent+1)}public static {dotnetFullName} FromGrpc( Protos.{protosFullName} @this )\n")
         buffer.write(f"{self.tab(indent+1)}{{\n")
         buffer.write(f"{self.tab(indent+2)}return @this switch\n")
         buffer.write(f"{self.tab(indent+2)}{{\n")
         # Loop through each enum element and generate code for each mapping
         for enum_element in enum.enum_elements:
-            buffer.write(f"{self.tab(indent+3)}Protos.{enum.name}.{enum_element.value} => {enum.name}.{enum_element.value},\n")
+            buffer.write(f"{self.tab(indent+3)}Protos.{protosFullName}.{enum_element.value} => {dotnetFullName}.{enum_element.value},\n")
         buffer.write(f"{self.tab(indent+3)}_ => throw new NotImplementedException(), \n")
         buffer.write(f"{self.tab(indent+2)}}};\n")
         buffer.write(f"{self.tab(indent+1)}}}\n")
         buffer.write(f"\n")
 
         buffer.write(f"{self.tab(indent)}}}\n")
-        code.content += buffer.getvalue()
-        return code
+        buffer.write(f"{self.tab(indent)}#endregion GrpcMapping\n")
+
+        return buffer.getvalue()
 
     def valueobjectText(self, valueobject: value_object, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.dataClassText(valueobject, valueobject.inherits, valueobject.name, valueobject.members, code, indent)
-
-    def dtoText(self, dto: dto, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.dataClassText(dto, dto.inherits, dto.name, dto.members, code, indent)
+        return self.dataClassText(valueobject, valueobject.inherits, valueobject.name, valueobject.members, code, indent=indent)
 
     def entityText(self, entity: entity, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.dataClassText(entity, entity.inherits, entity.name, entity.members, code, indent)
+        return self.dataClassText(entity, entity.inherits, entity.name, entity.members, code, indent=indent)
 
     def viewText(self, view: view, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.dataClassText(view, view.inherits, view.name, view.members, code, indent)
+        return self.dataClassText(view, view.inherits, view.name, view.members, code, indent=indent)
+
+    def dtoText(self, dto: dto, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        return self.dataClassText(dto, dto.inherits, dto.name, dto.members, code, indent=indent)
 
     def dataClassText(self, element: internal_scoped_base_element, inherits: List[qualified_name], name: str, members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
@@ -274,7 +286,7 @@ class DotnetEmitter:
             buffer.write(", ".join(inherit_names))
         buffer.write(f"\n{self.tab(indent)}{{\n")
 
-        #flush current text
+        # flush current text
         code.content += buffer.getvalue()
         buffer.seek(0)
         buffer.truncate(0)
@@ -286,7 +298,7 @@ class DotnetEmitter:
             # write internal enums if Any
             if (base_composite.withEnum == True):
                 for child_enum in base_composite.enums:
-                    code = self.enumText(child_enum, indent+1)
+                    code = self.enumText(child_enum, code, indent+1)
 
             # write internal value object if Any
             if (base_composite.withValueObject == True):
@@ -306,18 +318,18 @@ class DotnetEmitter:
 
         # write internal enums if Any
         if (element.withEnum == True):
-            for enum in element.enums:
-                code = self.enumText(enum, code, indent+1)
+            for child_enum in element.enums:
+                code = self.enumText(child_enum, code, indent+1)
 
         # write internal valueobjects if Any
         if (element.withValueObject == True):
-            for valueobject in element.value_objects:
-                code = self.valueobjectText(valueobject, code, indent+1)
+            for child_valueobject in element.value_objects:
+                code = self.valueobjectText(child_valueobject, code, indent+1)
 
         # write internal valueobjects if Any
         if (element.withDto == True):
-            for dto in element.dtos:
-                code = self.dtoText(dto, code, indent+1)
+            for child_dto in element.dtos:
+                code = self.dtoText(child_dto, code, indent+1)
 
         # Loop through each valueobject members and generate code for each
         for member in members:
@@ -325,7 +337,11 @@ class DotnetEmitter:
             buffer.write(self.documentLines(member, indent+1))
             buffer.write(self.propertyText(member.name, member.type, code, indent+1))
 
+        if( isinstance(element, dto) and self.configuration.withGrpc==True):
+            buffer.write(self.dtoGrpcMappingText(element, code, indent+1))
+
         buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write(f"\n")
 
         code.content += buffer.getvalue()
         return code
@@ -340,52 +356,58 @@ class DotnetEmitter:
             if (base != None):
                 utils.collectBaseRecursive(base, bases)
 
+        dotnetFullName:str = grpc_utils.getDotnetFullName(dto)
+        protosFullName:str= grpc_utils.getProtoFullName(dto)
+
         buffer = io.StringIO()
 
         # ToGrpc
         buffer.write(f"\n")
-        buffer.write(f"{self.tab(indent+1)}public static Protos.{dto.name} ToGrpc( {dto.name} @this )\n")
-        buffer.write(f"{self.tab(indent+1)}{{\n")
-        buffer.write(f"{self.tab(indent+2)}Protos.{dto.name} result = new();\n")
+        buffer.write(f"{self.tab(indent)}#region GrpcMapping\n")
+        buffer.write(f"{self.tab(indent)}public static Protos.{protosFullName} ToGrpc( {dotnetFullName} @this )\n")
+        buffer.write(f"{self.tab(indent)}{{\n")
+        buffer.write(f"{self.tab(indent+1)}Protos.{protosFullName} result = new();\n")
         buffer.write(f"\n")
 
         # Loop through each base members and generate code for each
         for base in bases:
-            buffer.write(f"{self.tab(indent+2)}// unfold begin: {base.name}\n")
+            buffer.write(f"{self.tab(indent+1)}// unfold begin: {base.name}\n")
             # Write each own member
             for member in base.members:
-                buffer.write(self.dataClassMemberToGrpcMappingText(member.name, member.type, code, dst="result.", src="@this.", indent=indent+2))
+                buffer.write(self.dataClassMemberToGrpcMappingText(member.name, member.type, code, dst="result.", src="@this.", indent=indent+1))
                 pass
-            buffer.write(f"{self.tab(indent+2)}// unfold end {base.name}\n\n")
+            buffer.write(f"{self.tab(indent+1)}// unfold end {base.name}\n\n")
         # Write each own member
         for member in dto.members:
-            buffer.write(self.dataClassMemberToGrpcMappingText(member.name, member.type, code, dst="result.", src="@this.", indent=indent+2))
+            buffer.write(self.dataClassMemberToGrpcMappingText(member.name, member.type, code, dst="result.", src="@this.", indent=indent+1))
             pass
         buffer.write(f"\n")
-        buffer.write(f"{self.tab(indent+2)}return result;\n")
-        buffer.write(f"{self.tab(indent+1)}}}\n")
+        buffer.write(f"{self.tab(indent+1)}return result;\n")
+        buffer.write(f"{self.tab(indent)}}}\n")
 
         # FromGrpc
-        buffer.write(f"{self.tab(indent+1)}public static {dto.name} FromGrpc( Protos.{dto.name} @from )\n")
-        buffer.write(f"{self.tab(indent+1)}{{\n")
-        buffer.write(f"{self.tab(indent+2)}{dto.name} result = new();\n")
+        buffer.write(f"{self.tab(indent)}public static {dotnetFullName} FromGrpc( Protos.{protosFullName} @from )\n")
+        buffer.write(f"{self.tab(indent)}{{\n")
+        buffer.write(f"{self.tab(indent+1)}{dotnetFullName} result = new();\n")
         buffer.write(f"\n")
         # Loop through each base members and generate code for each
         for base in bases:
-            buffer.write(f"{self.tab(indent+2)}// unfold begin: {base.name}\n")
+            buffer.write(f"{self.tab(indent+1)}// unfold begin: {base.name}\n")
             # Write each own member
             for member in base.members:
-                buffer.write(self.dataClassMemberFromGrpcMappingText(member.name, member.type, code, dst="result.", src="@from.", indent=indent+2))
+                buffer.write(self.dataClassMemberFromGrpcMappingText(member.name, member.type, code, dst="result.", src="@from.", indent=indent+1))
                 pass
-            buffer.write(f"{self.tab(indent+2)}// unfold end {base.name}\n\n")
+            buffer.write(f"{self.tab(indent+1)}// unfold end {base.name}\n\n")
 
         for member in dto.members:
             # Write each member
-            buffer.write(self.dataClassMemberFromGrpcMappingText(member.name, member.type, code, dst="result.", src="@from.", indent=indent+2))
+            buffer.write(self.dataClassMemberFromGrpcMappingText(member.name, member.type, code, dst="result.", src="@from.", indent=indent+1))
             pass
         buffer.write(f"\n")
-        buffer.write(f"{self.tab(indent+2)}return result;\n")
-        buffer.write(f"{self.tab(indent+1)}}}\n")
+        buffer.write(f"{self.tab(indent+1)}return result;\n")
+        buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write(f"{self.tab(indent)}#endregion GrpcMapping\n")
+
         return buffer.getvalue()
 
     def dataClassMemberToGrpcMappingText(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int):
@@ -478,10 +500,10 @@ class DotnetEmitter:
 
         buffer = io.StringIO()
         buffer.write(f"{self.tab(indent)}{dst}{utils.camel_to_pascal(memberName)} = ")
-        if (referenced_element != None and isinstance(referenced_element, enum) == True):
-            buffer.write(f"{src}{memberName}.ToGrpc();\n")
+        if (isinstance(referenced_element, enum) == True):
+            buffer.write(f"{grpc_utils.getDotnetFullName(referenced_element)}Mappings.ToGrpc( {src}{memberName});\n")
         else:
-            buffer.write(f"{src}{memberName} != null ? {memberType.reference_name.getText()}.ToGrpc( {src}{memberName}) : null;\n")
+            buffer.write(f"{src}{memberName} != null ? {grpc_utils.getDotnetFullName(referenced_element)}.ToGrpc( {src}{memberName}) : null;\n")
         return buffer.getvalue()
 
     def dataClassMemberFromGrpcMappingText_Reference(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int):
@@ -489,11 +511,10 @@ class DotnetEmitter:
 
         buffer = io.StringIO()
         buffer.write(f"{self.tab(indent)}{dst}{memberName} = ")
-        if (referenced_element != None and isinstance(referenced_element, enum) == True):
-            buffer.write(f"{src}{utils.camel_to_pascal(memberName)}.FromGrpc();\n")
+        if (isinstance(referenced_element, enum) == True):
+            buffer.write( f"{grpc_utils.getDotnetFullName(referenced_element)}Mappings.FromGrpc( {src}{utils.camel_to_pascal(memberName)});\n")
         else:
-            buffer.write(
-                f"{src}{utils.camel_to_pascal(memberName)} != null ? {memberType.reference_name.getText()}.FromGrpc( {src}{utils.camel_to_pascal(memberName)}) : null;\n")
+            buffer.write( f"{src}{utils.camel_to_pascal(memberName)} != null ? {grpc_utils.getDotnetFullName(referenced_element)}.FromGrpc( {src}{utils.camel_to_pascal(memberName)}) : null;\n")
         return buffer.getvalue()
 
     def dataClassMemberToGrpcMappingText_List(self, memberName: str, memberType: list_type, code: dotnet_code, dst: str, src: str, indent: int):
@@ -709,51 +730,43 @@ class DotnetEmitter:
 
         return buffer.getvalue()
 
-    def aclGrpcControllerText(self, acl: acl, code: dotnet_code) -> dotnet_code:
-        return self.grpcControllerText(acl, acl.name, acl.operations, code, indent=1)
-
-    def serviceGrpcControllerText(self, service: service, code: dotnet_code) -> dotnet_code:
-        return self.grpcControllerText(service, service.name, service.operations, code, indent=1)
-
-    def interfaceGrpcControllerText(self, interface: interface, code: dotnet_code) -> dotnet_code:
-        return self.grpcControllerText(interface, interface.name+f"_v{interface.version}", interface.operations, code, indent=1)
-
-    def grpcControllerText(self, element: hinted_base_element, elementName: str, operations: List[operation], code: dotnet_code, indent: int = 1) -> dotnet_code:
+    def interfaceGrpcControllerText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
-        Generates the .NET GRPC controller code for acl
+        Generates the .NET GRPC controller code for interface
         """
         buffer = io.StringIO()
-        domain: domain = element.getDomain()
-        context: context = element.getContext()
+        domain: domain = interface.getDomain()
+        context: context = interface.getContext()
+        versionedName: str = f"{interface.name}_v{interface.version}"
 
         code.usings.add("Google.Protobuf.WellKnownTypes")
         code.usings.add("Grpc.Core")
         code.usings.add("ServiceKit.Net")
         code.usings.add("Serilog.Context")
-        code.usings.add(f"{domain.name}.{context.name}.Protos")
+        code.usings.add(f"{domain.name}.{context.name}.Protos.{versionedName}")
 
         # Add documentation lines for the acl
-        buffer.write(self.documentLines(element, indent))
+        buffer.write(self.documentLines(interface, indent))
         # class declaration
-        buffer.write(f"{self.tab(indent)}public class {elementName}GrpcController : {domain.name}.{context.name}.Protos.{elementName}.{elementName}Base \n")
+        buffer.write(f"{self.tab(indent)}public class {versionedName}_GrpcController : {domain.name}.{context.name}.Protos.{versionedName}.{versionedName}.{versionedName}Base \n")
         buffer.write(f"{self.tab(indent)}{{\n")
         # class members
-        buffer.write(f"{self.tab(indent+1)}private readonly ILogger<{elementName}GrpcController> _logger;\n")
-        buffer.write(f"{self.tab(indent+1)}private readonly I{elementName} _service;\n")
+        buffer.write(f"{self.tab(indent+1)}private readonly ILogger<{versionedName}_GrpcController> _logger;\n")
+        buffer.write(f"{self.tab(indent+1)}private readonly I{versionedName} _service;\n")
         buffer.write(f"\n")
         # class constructor
-        buffer.write(f"{self.tab(indent+1)}public {elementName}GrpcController( ILogger<{elementName}GrpcController> logger, I{elementName} service )\n")
+        buffer.write(f"{self.tab(indent+1)}public {versionedName}_GrpcController( ILogger<{versionedName}_GrpcController> logger, I{versionedName} service )\n")
         buffer.write(f"{self.tab(indent+1)}{{\n")
         buffer.write(f"{self.tab(indent+2)}_logger = logger; \n")
         buffer.write(f"{self.tab(indent+2)}_service = service; \n")
         buffer.write(f"{self.tab(indent+1)}}}\n")
 
         # Add functions based on operations
-        for operation in operations:
+        for operation in interface.operations:
             buffer.write(f"\n")
-            buffer.write(f"{self.tab(indent+1)}public override async Task<{elementName}_{operation.name}Response> {operation.name}( {elementName}_{operation.name}Request request, ServerCallContext grpcContext)\n")
+            buffer.write(f"{self.tab(indent+1)}public override async Task<{versionedName}_{operation.name}Response> {operation.name}( {versionedName}_{operation.name}Request request, ServerCallContext grpcContext)\n")
             buffer.write(f"{self.tab(indent+1)}{{\n")
-            buffer.write(f"{self.tab(indent+2)}using(LogContext.PushProperty( \"Scope\", \"{elementName}.{operation.name}\" ))\n")
+            buffer.write(f"{self.tab(indent+2)}using(LogContext.PushProperty( \"Scope\", \"{versionedName}.{operation.name}\" ))\n")
             buffer.write(f"{self.tab(indent+2)}{{\n")
             buffer.write(f"{self.tab(indent+3)}CallingContext ctx = CallingContext.PoolFromGrpcContext( grpcContext, _logger );\n")
             buffer.write(f"{self.tab(indent+3)}try\n")
@@ -761,7 +774,7 @@ class DotnetEmitter:
             index: int = 1
             params: List[str] = []
             for param in operation.operation_params:
-                buffer.write(f"{self.tab(indent+4)}{self.typeText(param.type,code)} {param.name};\n")
+                buffer.write(f"{self.tab(indent+4)}{self.typeText(param.type, code,fullName=True)} {param.name};\n")
                 buffer.write(f"{self.tab(indent+4)}{self.dataClassMemberFromGrpcMappingText(param.name, param.type, code, dst="", src="request.", indent=0)}")
                 params.append(param.name)
                 index = index + 1
@@ -774,7 +787,7 @@ class DotnetEmitter:
                 for returns in operation.operation_returns:
                     buffer.write(f"{self.tab(indent+4)}if( response.HasValue{index}() == true )\n")
                     buffer.write(f"{self.tab(indent+4)}{{\n")
-                    buffer.write(f"{self.tab(indent+5)}var result = new {elementName}_{operation.name}Response();\n")
+                    buffer.write(f"{self.tab(indent+5)}var result = new {versionedName}_{operation.name}Response();\n")
                     buffer.write(f"{self.tab(indent+5)}{self.dataClassMemberToGrpcMappingText(f"Value{index}", returns.type, code, dst="result.", src="response.", indent=0)}")
                     buffer.write(f"{self.tab(indent+5)}return result;\n")
                     buffer.write(f"{self.tab(indent+4)}}}\n")
@@ -783,7 +796,7 @@ class DotnetEmitter:
 
                 buffer.write(f"{self.tab(indent+4)}if( response.IsSuccess() == false )\n")
                 buffer.write(f"{self.tab(indent+4)}{{\n")
-                buffer.write(f"{self.tab(indent+5)}return new {elementName}_{operation.name}Response {{\n")
+                buffer.write(f"{self.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
                 buffer.write(f"{self.tab(indent+6)}Error = new () {{\n")
                 buffer.write(f"{self.tab(indent+7)}Status = response.Error.Status.ToGrpc(),\n")
                 buffer.write(f"{self.tab(indent+7)}MessageText = response.Error.MessageText,\n")
@@ -793,22 +806,22 @@ class DotnetEmitter:
                 buffer.write(f"{self.tab(indent+4)}}}\n")
                 buffer.write(f"{self.tab(indent+4)}\n")
 
-                buffer.write(f"{self.tab(indent+4)}return new {elementName}_{operation.name}Response {{\n")
+                buffer.write(f"{self.tab(indent+4)}return new {versionedName}_{operation.name}Response {{\n")
                 buffer.write(f"{self.tab(indent+5)}Error = new () {{\n")
                 buffer.write(f"{self.tab(indent+6)}Status = ServiceKit.Protos.Statuses.NotImplemented,\n")
-                buffer.write(f"{self.tab(indent+6)}MessageText = \"Not handled reponse in GRPC Controller when calling '{element.name}.{operation.name}'\",\n")
+                buffer.write(f"{self.tab(indent+6)}MessageText = \"Not handled reponse in GRPC Controller when calling '{versionedName}.{operation.name}'\",\n")
                 buffer.write(f"{self.tab(indent+5)}}}\n")
                 buffer.write(f"{self.tab(indent+4)}}};\n")
             else:
                 buffer.write(f"{self.tab(indent+4)}if( response.IsSuccess() == true )\n")
                 buffer.write(f"{self.tab(indent+4)}{{\n")
-                buffer.write(f"{self.tab(indent+5)}return new {elementName}_{operation.name}Response {{\n")
+                buffer.write(f"{self.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
                 buffer.write(f"{self.tab(indent+6)}Success = new Empty();\n")
                 buffer.write(f"{self.tab(indent+5)}}}\n")
                 buffer.write(f"{self.tab(indent+4)}}}\n")
                 buffer.write(f"{self.tab(indent+4)}else\n")
                 buffer.write(f"{self.tab(indent+4)}{{\n")
-                buffer.write(f"{self.tab(indent+5)}return new {elementName}_{operation.name}Response {{\n")
+                buffer.write(f"{self.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
                 buffer.write(f"{self.tab(indent+6)}Error = new () {{\n")
                 buffer.write(f"{self.tab(indent+7)}Status = response.Error.Status,\n")
                 buffer.write(f"{self.tab(indent+7)}MessageText = response.Error.MessageText,\n")
@@ -822,7 +835,7 @@ class DotnetEmitter:
             buffer.write(f"{self.tab(indent+3)}}}\n")
             buffer.write(f"{self.tab(indent+3)}catch(Exception ex)\n")
             buffer.write(f"{self.tab(indent+3)}{{\n")
-            buffer.write(f"{self.tab(indent+4)}return new {elementName}_{operation.name}Response {{\n")
+            buffer.write(f"{self.tab(indent+4)}return new {versionedName}_{operation.name}Response {{\n")
             buffer.write(f"{self.tab(indent+5)}Error = new () {{\n")
             buffer.write(f"{self.tab(indent+6)}Status = ServiceKit.Protos.Statuses.InternalError,\n")
             buffer.write(f"{self.tab(indent+6)}MessageText = ex.Message,\n")
@@ -843,48 +856,21 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
 
-    def interfaceInterfaceGrpcMappingText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.interfaceGrpcMappingText(interface, interface.name + f"_v{interface.version}", code, indent)
-
-    def interfaceGrpcMappingText(self, element: internal_scoped_base_element, elementName: str, code, indent):
-        """
-        Generates the .NET code for element, just the interface.
-        """
-        buffer = io.StringIO()
-        # Write the interface class declaration with indentation
-        buffer.write(f"{self.tab(indent)}public partial interface I{elementName}\n")
-        buffer.write(f"{self.tab(indent)}{{\n")
-
-        # write internal enums if Any
-        if (element.withEnum == True):
-            for enum in element.enums:
-                buffer.write(self.enumGrpcMappingText(enum, code, indent+1))
-
-        # write internal valueobjects if Any
-        if (element.withDto == True):
-            for dto in element.dtos:
-                buffer.write(self.dtoGrpcMappingText(dto, code, indent+1))
-
-        buffer.write(f"{self.tab(indent)}}}\n")
-
-        code.content += buffer.getvalue()
-        return code
-
     def propertyText(self, member_name: str, type: type, code: dotnet_code, indent: int) -> str:
         buffer = io.StringIO()
         buffer.write(f"{self.tab(indent)}public {self.typeText(type, code)} {member_name} {{ get; set; }}\n")
         return buffer.getvalue()
 
-    def typeText(self, type: type, code: dotnet_code) -> str:
+    def typeText(self, type: type, code: dotnet_code, fullName:bool=False) -> str:
         match type.kind:
             case type.Kind.Primitive:
                 return self.typeTextPrimitive(type)
             case type.Kind.Reference:
-                return self.typeTextReference(type, code)
+                return self.typeTextReference(type, code,fullName)
             case type.Kind.List:
-                return self.typeTextList(type, code)
+                return self.typeTextList(type, code,fullName)
             case type.Kind.Map:
-                return self.typeTextMap(type, code)
+                return self.typeTextMap(type, code,fullName)
 
     def typeTextPrimitive(self, type: primitive_type) -> str:
         """
@@ -916,18 +902,21 @@ class DotnetEmitter:
             case primitive_type.PrimtiveKind.Stream:
                 return "Stream"
 
-    def typeTextReference(self, type: reference_type, code: dotnet_code) -> str:
+    def typeTextReference(self, type: reference_type, code: dotnet_code, fullName:bool=False) -> str:
         referenced_element: base_element = utils.get_referenced_element(type.parent, type.reference_name)
         if (referenced_element != None):
             code.usings.add(f"{referenced_element.getDomain().name}.{referenced_element.getContext().name}")
 
-        return type.reference_name.getText()
+        if(fullName==True):
+            return grpc_utils.getDotnetFullName( referenced_element )
+        else:
+            return type.reference_name.getText()
 
-    def typeTextList(self, type: list_type, code: dotnet_code) -> str:
-        return f"List<{self.typeText(type.item_type, code)}>"
+    def typeTextList(self, type: list_type, code: dotnet_code, fullName:bool=False) -> str:
+        return f"List<{self.typeText(type.item_type, code,fullName)}>"
 
-    def typeTextMap(self, type: map_type, code) -> str:
-        return f"Dictionary<{self.typeText(type.key_type, code)},{self.typeText(type.value_type, code)}>"
+    def typeTextMap(self, type: map_type, code, fullName:bool=False) -> str:
+        return f"Dictionary<{self.typeText(type.key_type, code,fullName)},{self.typeText(type.value_type, code,fullName)}>"
 
     def tab(self, indent=1) -> str:
         return '\t'*indent

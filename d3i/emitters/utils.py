@@ -146,3 +146,38 @@ class grpc_utils:
     @staticmethod
     def d3iTypeToGrpcRepresentation_List(type: map_type) -> str:
         return f"MapField<{grpc_utils.d3iTypeToGrpcRepresentation(type.key_type)},{grpc_utils.d3iTypeToGrpcRepresentation(type.value_type)}>"
+    
+    @staticmethod
+    def getProtoFullName( element: base_element ) -> str:
+        protoNames:List[str] = []
+        parent = element.parent
+        while True:
+            if (parent == None):
+                break
+            if( isinstance( parent, interface )):
+                protoNames.insert(0, f"{parent.name}_v{parent.version}" )
+                break
+            else:
+                protoNames.insert(0, "Types" )
+                protoNames.insert(0, parent.name )
+                
+            parent = parent.parent
+
+        return ".".join( protoNames) + f".{element.name}"
+
+    @staticmethod
+    def getDotnetFullName( element: base_element ) -> str:
+        dotnetNames:List[str] = []
+        parent = element.parent
+        while True:
+            if (parent == None):
+                break
+            if( isinstance( parent, interface )):
+                dotnetNames.insert(0, f"I{parent.name}_v{parent.version}" )
+                break
+            else:
+                dotnetNames.insert(0, parent.name )
+                
+            parent = parent.parent
+
+        return ".".join( dotnetNames) + f".{element.name}"

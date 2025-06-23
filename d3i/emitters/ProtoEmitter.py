@@ -75,11 +75,11 @@ class ProtoEmitter:
 
         return "\n".join(import_statements) + "\n"
 
-    def beginFile(self, output_path: str, element: base_element, subDirectoryName: str) -> proto_code:
+    def beginFile(self, output_path: str, interface: interface, subDirectoryName: str) -> proto_code:
         buffer = io.StringIO()
-        domain: domain = element.getDomain()
-        context: context = element.getContext()
-        aggregate: aggregate = element.getAggregate()
+        domain: domain = interface.getDomain()
+        context: context = interface.getContext()
+        aggregate: aggregate = interface.getAggregate()
 
         # proto 3 syntax
         buffer.write(self.fileHeader())
@@ -89,9 +89,9 @@ class ProtoEmitter:
 
         # namespaces
         buffer.write("\n")
-        buffer.write(f"option csharp_namespace = \"{domain.name}.{context.name}.Protos\";")
+        buffer.write(f"option csharp_namespace = \"{domain.name}.{context.name}.Protos.{interface.name}_v{interface.version}\";")
         buffer.write("\n")
-        buffer.write(f"option java_outer_classname = \"{element.name}\";\n")
+        buffer.write(f"option java_outer_classname = \"{interface.name}_v{interface.version}\";\n")
         buffer.write(f"option java_package = \"com.{context.name}\";\n")
         buffer.write(f"option java_multiple_files = true;\n")
 
@@ -107,7 +107,7 @@ class ProtoEmitter:
         buffer.write("<ADDITIONAL_IMPORTS>")
         buffer.write("\n")
 
-        code: proto_code = proto_code(output_path, [domain.name, context.name, subDirectoryName], element.name)
+        code: proto_code = proto_code(output_path, [domain.name, context.name, subDirectoryName], interface.name)
         code.content = buffer.getvalue()
         return code
 
@@ -120,7 +120,7 @@ class ProtoEmitter:
         code.content = code.content.replace("<ADDITIONAL_IMPORTS>", buffer.getvalue())
         return code
 
-    def enumText(self, parentName: str, enum: enum, code: proto_code, indent: int = 0) -> str:
+    def enumText(self, enum: enum, code: proto_code, indent: int = 0) -> str:
         """
         Generates the proto code for an enum.
         """
@@ -129,8 +129,7 @@ class ProtoEmitter:
         # Add documentation lines for the enum
         buffer.write(self.documentLines(enum, indent))
         # Write the enum declaration with indentation
-        buffer.write(f"{self.tab(indent)}enum {parentName}_{enum.name}\n")
-        buffer.write(f"{self.tab(indent)}{{\n")
+        buffer.write(f"{self.tab(indent)}enum {enum.name} {{\n")
         # Loop through each enum element and generate code for each
         value: int = 0
         for enum_element in enum.enum_elements:
@@ -142,10 +141,11 @@ class ProtoEmitter:
             value = value + 1
 
         buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write("\n")
 
         return buffer.getvalue()
 
-    def dtoText(self, parentName: str, dto: dto, code: proto_code, indent: int = 0) -> str:
+    def dtoText(self, dto: dto, code: proto_code, indent: int = 0) -> str:
         """
         Generates the proto message code for an DTO
         """
@@ -159,7 +159,7 @@ class ProtoEmitter:
         # Add documentation lines for the composite
         buffer.write(self.documentLines(dto, indent))
         # Write the value_object declaration with indentation
-        buffer.write(f"{self.tab(indent)}message {parentName}_{dto.name} {{\n")
+        buffer.write(f"{self.tab(indent)}message {dto.name} {{\n")
 
         index: int = 1
         # Loop through each base members and generate code for each
@@ -169,11 +169,11 @@ class ProtoEmitter:
             # write internal enums if Any
             if (base.withEnum == True):
                 for child_enum in base.enums:
-                    buffer.write(self.enumText( parentName + f"_{dto.name}", child_enum, code, indent+1))
+                    buffer.write(self.enumText(child_enum, code, indent+1))
 
             if (base.withDto == True):
                 for child_dto in dto.dtos:
-                    buffer.write(self.dtoText(parentName + f"_{dto.name}", child_dto, code, indent))
+                    buffer.write(self.dtoText(child_dto, code, indent))
 
             for member in base.members:
                 # Write each member
@@ -184,11 +184,11 @@ class ProtoEmitter:
 
         # write internal enums if Any
         for child_enum in dto.enums:
-            buffer.write(self.enumText(parentName + f"_{dto.name}", child_enum, code, indent))
+            buffer.write(self.enumText(child_enum, code, indent+1))
 
         # write internal dtos if Any
         for child_dto in dto.dtos:
-            buffer.write(self.dtoText(parentName + f"_{dto.name}", child_dto, code, indent))
+            buffer.write(self.dtoText(child_dto, code, indent+1))
 
         # Loop through each valueobject members and generate code for each
         for member in dto.members:
@@ -207,15 +207,17 @@ class ProtoEmitter:
         """
         code.imports.add("servicekit_error.proto")
 
+        fullname:str = f"{interface.name}_v{interface.version}"
+
         buffer = io.StringIO()
         # Add documentation lines for the service
         buffer.write(self.documentLines(interface, indent))
-        buffer.write(f"{self.tab(indent)}service {interface.name} {{\n")
+        buffer.write(f"{self.tab(indent)}service {fullname} {{\n")
         # Loop through each operations and generate code for each
         for operation in interface.operations:
             # Write each operation as RPC call
             buffer.write(self.documentLines(operation, indent+1))
-            buffer.write(f"{self.tab(indent+1)}rpc {operation.name}({interface.name}_{operation.name}Request) returns ({interface.name}_{operation.name}Response);\n")
+            buffer.write(f"{self.tab(indent+1)}rpc {operation.name}({fullname}_{operation.name}Request) returns ({fullname}_{operation.name}Response);\n")
         buffer.write(f"{self.tab(indent)}}}")
         buffer.write("\n")
 
@@ -223,7 +225,7 @@ class ProtoEmitter:
         for operation in interface.operations:
             # Request message
             buffer.write(f"\n")
-            buffer.write(f"{self.tab(indent)}message {interface.name}_{operation.name}Request {{\n")
+            buffer.write(f"{self.tab(indent)}message {fullname}_{operation.name}Request {{\n")
             index: int = 1
             for param in operation.operation_params:
                 buffer.write(self.documentLines(param, indent+2))
@@ -232,7 +234,7 @@ class ProtoEmitter:
             buffer.write(f"\n")
 
             # Response message
-            buffer.write(f"{self.tab(indent)}message {interface.name}_{operation.name}Response {{\n")
+            buffer.write(f"{self.tab(indent)}message {fullname}_{operation.name}Response {{\n")
             buffer.write(f"{self.tab(indent+1)}oneof result {{\n")
             if (len(operation.operation_returns) == 0):
                 code.imports.add("google/protobuf/empty.proto")
@@ -248,19 +250,15 @@ class ProtoEmitter:
             buffer.write(f"{self.tab(indent+1)}}}\n")
             buffer.write(f"{self.tab(indent)}}}\n")
 
-        buffer.write(f"\n")
-        code.content += buffer.getvalue()
-        buffer.seek(0)
-        buffer.truncate(0)
-
         # write internal enums if Any
         for enum in interface.enums:
-            buffer.write(self.enumText( interface.name, enum, code, indent))
+            buffer.write(self.enumText(enum, code, indent))
 
         # write internal dto if Any
         for dto in interface.dtos:
-            buffer.write(self.dtoText( interface.name, dto, code, indent))
+            buffer.write(self.dtoText(dto, code, indent))
 
+        code.content += buffer.getvalue()
         return code
 
     def protoMemberText(self, member_name: str, type: type, code: proto_code, index: int, indent: int) -> str:
@@ -283,13 +281,6 @@ class ProtoEmitter:
         return grpc_utils.d3iTypeToGrpcRepresentation(type)
 
     def typeTextReference(self, type: reference_type, code: proto_code) -> str:
-        referenced_element: base_element = utils.get_referenced_element(type.parent, type.reference_name)
-        if (referenced_element != None and isinstance(referenced_element, dto) == False):
-            refrerenced_code: proto_code = self.beginFile(code.output_path, referenced_element, "Models/Protos")
-            relative_path = os.path.relpath(refrerenced_code.fullPath, start=os.path.dirname(code.fullPath))
-            relative_path = f"{referenced_element.getDomain().name}/{referenced_element.getContext().name}/Models/Protos/{refrerenced_code.fileName}"
-            code.imports.add(relative_path)
-
         return type.reference_name.getText()
 
     def typeTextList(self, type: list_type, code: proto_code) -> str:
