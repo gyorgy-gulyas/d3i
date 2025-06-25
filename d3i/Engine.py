@@ -95,6 +95,7 @@ class Session:
         """
         Prints all recorded diagnostics.
         """
+        print("\n")
         for msg in self.diagnostics:
             print(f"{msg.toText()}")
 

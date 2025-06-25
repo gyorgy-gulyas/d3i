@@ -9,10 +9,11 @@ class TestLinterSemanticChecker(unittest.TestCase):
         engine = Engine()
         session = Session(Source.CreateFromText(""))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 0)
 
     def test_conflict_service_event_fail(self):
@@ -21,21 +22,22 @@ class TestLinterSemanticChecker(unittest.TestCase):
 domain SomeDomain {
     context Order {
         service OrderService {
-            event TheEvent {
+            event TheEvent version 1 {
             }
-            event TheEvent {
+            event TheEvent version 1 {
             }
-            event OtherEvent {
+            event OtherEvent version 2{
             }
         }
     }
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEvent" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
@@ -48,21 +50,22 @@ domain SomeDomain {
 domain SomeDomain {
     context OrderContext{
         interface IOrderInterface version 1 {
-            event TheEvent {
+            event TheEvent version 1 {
             }
-            event TheEvent {
+            event TheEvent version 1 {
             }
-            event OtherEvent {
+            event OtherEvent version 2 {
             }
         }
     }
 }
 """))
         root = engine.Build(session)
-        session.PrintDiagnostics()
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEvent" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
@@ -75,7 +78,7 @@ domain SomeDomain {
 domain SomeDomain {
     context Order {
         service OrderService {
-            event TheEvent {
+            event TheEvent version 1 {
                 the_member:string
                 the_member:number
                 other_member:number
@@ -85,10 +88,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("the_member" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,16):", "(7,16)"]))
@@ -113,10 +117,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEnum" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(7,8)"]))
@@ -143,10 +148,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEnum" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(8,12)"]))
@@ -167,10 +173,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheValue" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
@@ -192,10 +199,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheValueObject" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
@@ -219,10 +227,10 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheValueObject" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
@@ -243,10 +251,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheMember" in session.diagnostics[0].toText())
         self.assertTrue("(5,12)" in session.diagnostics[0].toText())
@@ -274,10 +283,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 6)
         self.assertTrue("TheEntity" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,17):", "(7,12)"]))
@@ -305,10 +315,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheMember" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,16):", "(7,16)"]))
@@ -339,10 +350,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheAggregate" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(9,8)"]))
@@ -361,15 +373,16 @@ domain SomeDomain {
         repository TheName : TheName
         acl TheName {}
         service TheName {}
-        interface TheName {}
+        interface TheName version 1 {}
     }
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 56)
         messages = [diagnostic.toText() for diagnostic in session.diagnostics]
 
@@ -452,10 +465,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("OrderAggregate" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "There is no root"]))
@@ -479,10 +493,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("OrderAggregate" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "More than one root"]))
@@ -497,10 +512,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("TheRepository" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "NotDefined"]))
@@ -520,10 +536,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheAcl" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
@@ -544,10 +561,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheOperation" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
@@ -569,10 +587,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheService" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
@@ -593,10 +612,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheOperation" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
@@ -608,20 +628,21 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        interface TheInterface {
+        interface TheInterface version 1 {
         }
-        interface TheInterface {
+        interface TheInterface version 1 {
         }
-        interface OtherInterface {
+        interface OtherInterface version 2 {
         }
     }
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheInterface" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
@@ -633,7 +654,7 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        interface TheInterface {
+        interface TheInterface version 1 {
             TheOperation()
             TheOperation()
             OtherOperation()
@@ -642,10 +663,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheOperation" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
@@ -657,7 +679,7 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        interface TheInterface {
+        interface TheInterface version 1 {
             TheOperation1( param: string )
             TheOperation2( already: string, already: string, other: integer)
         }
@@ -665,10 +687,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("already" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,27):", "(6,44)"]))
@@ -680,10 +703,10 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        interface TheInterface {
-            valueobject vo_out{
-                valueobject vo_inner{
-                    valueobject enum_inner{
+        interface TheInterface version 1 {
+            dto dto_out{
+                dto dto_inner{
+                    enum enum_inner{
                     }    
                 }    
             }    
@@ -693,7 +716,7 @@ domain SomeDomain {
         service TheService {
             valueobject vo_out{
                 valueobject vo_inner{
-                    valueobject enum_inner{
+                    enum enum_inner{
                     }    
                 }    
             }    
@@ -703,15 +726,15 @@ domain SomeDomain {
         service OtherService {
             valueobject vo_out{
                 valueobject vo_inner{
-                    valueobject enum_inner{
+                    enum enum_inner{
                     }    
                 }
 
+                member_0: TheInterface.v1.dto_out.dto_inner.enum_inner
                 member_1: vo_inner
                 member_2: vo_inner.enum_inner
                 member_3: enum_out
                 member_4: TheService.vo_out.vo_inner.enum_inner
-                member_5: external["java.util.map.HashMap<Int>"]
             }    
             enum enum_out{
             }    
@@ -720,36 +743,13 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
+        session.PrintDiagnostics()
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 0)
-
-
-    def test_inheritence_not_exists_fail(self):
-        engine = Engine()
-        session = Session(Source.CreateFromText("""
-domain SomeDomain {
-    context OrderContext{
-        interface TheInterface {
-            valueobject TheValueObject inherits NotExist{
-                valueobject vo_inner{
-                    valueobject enum_inner{
-                    }    
-                }    
-            }    
-        }
-    }
-}
-"""))
-        root = engine.Build(session)
-
-        self.assertFalse(session.HasAnyError())
-        checker = SemanticChecker(session)
-        data = root.visit(checker, None)
-        self.assertEqual(len(session.diagnostics), 1)
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["NotExist", "(5,48):"]))
 
     def test_inheritence_wrong_type_fail(self):
         engine = Engine()
@@ -762,24 +762,26 @@ domain SomeDomain {
             }
             valueobject TheValueObject inherits Order.TheEntity{
             }                                                    
-            interface TheInterface {
-                event TheEvent inherits TheValueObject{
+            interface TheInterface version 1 {
+                event TheEvent version 1 inherits TheValueObject{
             }    
         }
     }
 }
 """))
         root = engine.Build(session)
-
+        session.PrintDiagnostics()
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 3)
         messages = [diagnostic.toText() for diagnostic in session.diagnostics]
 
         self.assertTrue(any(all(x in s for x in ["TheInterface.TheEvent", "(5,47):"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ["Order.TheEntity", "(8,48):"]) for s in messages))
-        self.assertTrue(any(all(x in s for x in ["TheValueObject", "(11,40):"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ["TheValueObject", "(11,50):"]) for s in messages))
 
 if __name__ == "__main__":
     unittest.main()

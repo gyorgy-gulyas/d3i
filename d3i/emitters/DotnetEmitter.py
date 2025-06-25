@@ -261,6 +261,9 @@ class DotnetEmitter:
     def dtoText(self, dto: dto, code: dotnet_code, indent: int = 1) -> dotnet_code:
         return self.dataClassText(dto, dto.inherits, dto.name, dto.members, code, indent=indent)
 
+    def eventText(self, event: event, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        return self.dataClassText(event, event.inherits, event.name+f"_v{event.version}", event.members, code, indent=indent)
+
     def dataClassText(self, element: internal_scoped_base_element, inherits: List[qualified_name], name: str, members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET code for an data object
@@ -629,15 +632,15 @@ class DotnetEmitter:
         return code
 
     def aclInterfaceText(self, acl: acl, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.interfaceClassText(acl, acl.name, acl.operations, code, indent)
+        return self.interfaceClassText(acl, acl.name, code, indent)
 
     def serviceInterfaceText(self, service: service, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.interfaceClassText(service, service.name, service.operations, code, indent)
+        return self.interfaceClassText(service, service.name, code, indent)
 
     def interfaceInterfaceText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.interfaceClassText(interface, interface.name + f"_v{interface.version}", interface.operations, code, indent)
+        return self.interfaceClassText(interface, interface.name + f"_v{interface.version}", code, indent)
 
-    def interfaceClassText(self, element: internal_scoped_base_element, elementName: str, operations: List[operation], code: dotnet_code, indent: int = 1) -> dotnet_code:
+    def interfaceClassText(self, element: functional_element, elementName: str, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET code for element, just the interface.
         """
@@ -650,15 +653,25 @@ class DotnetEmitter:
         buffer.write(f"{self.tab(indent)}{{\n")
 
         # Loop through each operations and generate code for each
-        for operation in operations:
+        for operation in element.operations:
             # Write each operation
             buffer.write(self.interfaceFunctionText(operation, code, indent+1))
             buffer.write("\n")
+
+        if (element.withEventHandler == True):
+            # Write each event handler
+            for eventhandler in element.eventhandlers:
+                buffer.write(self.documentLines(eventhandler, indent))
+                buffer.write(f"{self.tab(indent+1)}public Task<bool> {eventhandler.name}(CallingContext ctx, {eventhandler.handledEvent.eventName}_v{eventhandler.handledEvent.eventVersion} @event );")
 
         buffer.write(f"\n")
         code.content += buffer.getvalue()
         buffer.seek(0)
         buffer.truncate(0)
+
+        if (element.withEvent == True):
+            for dto in element.events:
+                code = self.eventText(dto, code, indent+1)
 
         # write internal enums if Any
         if (element.withEnum == True):
@@ -672,8 +685,8 @@ class DotnetEmitter:
 
         # write internal valueobjects if Any
         if (element.withDto == True):
-            for dto in element.dtos:
-                code = self.dtoText(dto, code, indent+1)
+            for event in element.dtos:
+                code = self.dtoText(event, code, indent+1)
 
         buffer.write(f"{self.tab(indent)}}}\n")
 

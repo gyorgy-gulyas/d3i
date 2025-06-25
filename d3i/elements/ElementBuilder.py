@@ -535,36 +535,12 @@ class ElementBuilder(d3iGrammarVisitor):
             child.parent = result
             result.decorators.append(child)
 
-        counter = 0
-        while True:
-            event_reference: d3iGrammar.Event_referenceContext = ctx.event_reference((counter))
-            if (event_reference == None):
-                break
-            counter = counter + 1
-            child = self.visit(event_reference)
-            child.parent = result
-            result.handledEvents.append(child)
+        result.handledEvent = event_reference(self.fileName, ctx.start)
+        result.handledEvent.parent = result
+        result.handledEvent.eventName = self.visit(ctx.qualifiedName()).getText()
+        result.handledEvent.eventVersion = int(ctx.INTEGER_CONSTANS().getText())
 
         return result
-
-    # Visit a parse tree produced by d3iGrammar#event_reference.
-    def visitEvent_reference(self, ctx:d3iGrammar.Event_referenceContext):
-        result = event_reference(self.fileName, ctx.start)
-        if (ctx.qualifiedName() != None):
-            result.eventName = self.visit(ctx.qualifiedName())
-            result.eventName.parent = result
-    
-        if( ctx.VERSION() != None):
-            result.eventVersion = int(ctx.INTEGER_CONSTANS().getText())
-
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
-
 
     # Visit a parse tree produced by d3iGrammar#entity.
     def visitEntity(self, ctx: d3iGrammar.EntityContext):
@@ -864,6 +840,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(service_element.event())
                 child.parent = result
                 result.events.append(child)
+            elif (service_element.eventhandler() != None):
+                child = self.visit(service_element.eventhandler())
+                child.parent = result
+                result.eventhandlers.append(child)
             elif (service_element.enum()):
                 child = self.visit(service_element.enum())
                 child.parent = result

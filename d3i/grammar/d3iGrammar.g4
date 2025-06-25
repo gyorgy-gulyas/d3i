@@ -106,11 +106,11 @@ event
         ;
         
 eventhandler
-    : DOCUMENT_LINE* decorator* 'eventhandler' IDENTIFIER 'for' event_reference (',' event_reference)*
+    : DOCUMENT_LINE* decorator* 'eventhandler' IDENTIFIER 'for' 'event' qualifiedName 'version' INTEGER_CONSTANS
     ;
     
     event_reference
-        : DOCUMENT_LINE* 'event' qualifiedName 'version' INTEGER_CONSTANS
+        : DOCUMENT_LINE* 
         ;
 
 entity

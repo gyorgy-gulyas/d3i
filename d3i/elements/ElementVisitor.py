@@ -162,6 +162,10 @@ class ElementVisitor(ABC):
         pass
 
     @abstractmethod
+    def visitFunctionalElement(self, functional_element: functional_element, parentData: Any) -> Any:
+        pass
+
+    @abstractmethod
     def visitHintedBaseElement(self, hinted_base_element: hinted_base_element, parentData: Any) -> Any:
         pass
 

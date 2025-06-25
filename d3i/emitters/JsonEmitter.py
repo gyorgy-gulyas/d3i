@@ -393,6 +393,16 @@ class JsonEmitter(ElementVisitor):
             dict["dtos"] = []
         return dict
 
+    def visitFunctionalElement(self, functional_element: functional_element, parentData: Any) -> Any:
+        dict: Dict[str, Any] = parentData
+
+        if(functional_element.withEvent== True):
+            dict["events"] = []
+        if(functional_element.withEventHandler== True):
+            dict["eventhandlers"] = []
+
+        return dict
+
     def visitHintedBaseElement(self, hinted_base_element: hinted_base_element, parentData: Any) -> Any:
         dict: Dict[str, Any] = parentData
         dict["document_lines"] = []

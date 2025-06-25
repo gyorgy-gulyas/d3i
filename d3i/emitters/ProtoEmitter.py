@@ -107,7 +107,7 @@ class ProtoEmitter:
         buffer.write("<ADDITIONAL_IMPORTS>")
         buffer.write("\n")
 
-        code: proto_code = proto_code(output_path, [domain.name, context.name, subDirectoryName], interface.name)
+        code: proto_code = proto_code(output_path, [domain.name, context.name, subDirectoryName], interface.name+f"v{interface.version}")
         code.content = buffer.getvalue()
         return code
 

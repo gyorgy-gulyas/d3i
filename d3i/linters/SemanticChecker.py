@@ -52,7 +52,7 @@ class SemanticChecker(ElementVisitor):
                 self.__error(eventMember, f"An event member '{eventMember.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitEventHandler(self, the_eventhandler: eventhandler, parentData: Any) -> Any:
-        scope = self.__get_current_scope(eventhandler.parent)
+        scope = self.__get_current_scope(the_eventhandler.parent)
 
         for neighbour in scope.getChildren():
             if (neighbour is the_eventhandler):
@@ -276,13 +276,18 @@ class SemanticChecker(ElementVisitor):
             if (neighbour.name == service.name):
                 self.__error(service, f"A service '{service.name}' with same name is already exists in {neighbour.locationText()}.")
 
-    def visitInterface(self, interface: interface, parentData: Any) -> Any:
-        scope = self.__get_current_scope(interface.parent)
+    def visitInterface(self, the_interface: interface, parentData: Any) -> Any:
+        scope = self.__get_current_scope(the_interface.parent)
         for neighbour in scope.getChildren():
-            if (neighbour is interface):
+            if (neighbour is the_interface):
                 continue
-            if (neighbour.name == interface.name):
-                self.__error(interface, f"An interface '{interface.name}' with same name is already exists in {neighbour.locationText()}.")
+            if (neighbour.name == the_interface.name ):
+                if(isinstance(neighbour, interface) == False ):
+                    self.__error(the_interface, f"An interface '{the_interface.name}' with same name is already exists in {neighbour.locationText()}.")
+                else:
+                    other_interface: interface = neighbour
+                    if( other_interface.version == the_interface.version):
+                        self.__error(the_interface, f"An interface '{the_interface.name}' with same name is already exists in {neighbour.locationText()}.")
 
     def visitOperation(self, operation: operation, parentData: Any) -> Any:
         for neighbour in operation.parent.operations:
@@ -406,6 +411,9 @@ class SemanticChecker(ElementVisitor):
         return element, "ok"
 
     def visitInternalScopedBaseElement(self, internal_scoped_base_element: internal_scoped_base_element, parentData: Any) -> Any:
+        pass
+
+    def visitFunctionalElement(self, functional_element: functional_element, parentData: Any) -> Any:
         pass
 
     def visitHintedBaseElement(self, hinted_base_element: hinted_base_element, parentData: Any) -> Any:

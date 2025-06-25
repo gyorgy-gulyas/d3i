@@ -702,13 +702,13 @@ domain somedomain {
         self.assertEqual(repository.referenced_name, "Order")
         self.assertEqual(repository.kind, repository.Kind.RelationalSQL)
 
-    def test_service_event(self):
+    def test_service_event_ok(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
 domain somedomain {
     context context_1 {
         @decorator
-        service OrderService{
+        service OrderService {
             event OrderPlaced version 1 {
                 enum Importance {
                     High,
@@ -726,6 +726,8 @@ domain somedomain {
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+
         context: context = root.domains[0].contexts[0]
         self.assertEqual(len(context.services[0].events), 1)
         event: event = context.services[0].events[0]
