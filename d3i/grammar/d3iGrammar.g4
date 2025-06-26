@@ -6,7 +6,6 @@
 // interface logging with destination
 // historized entity vagy audited
 // Valamint: mely mezők változása érdekel audit szempontból: @audited status:string
-// uimodel a dto helyett.
 
 parser grammar d3iGrammar;
 options { 
@@ -106,12 +105,8 @@ event
         ;
         
 eventhandler
-    : DOCUMENT_LINE* decorator* 'eventhandler' IDENTIFIER 'for' 'event' qualifiedName 'version' INTEGER_CONSTANS
+    : DOCUMENT_LINE* decorator* 'eventhandler' IDENTIFIER 'for' 'event' qualifiedName
     ;
-    
-    event_reference
-        : DOCUMENT_LINE* 
-        ;
 
 entity
     :  DOCUMENT_LINE* decorator* 'entity' IDENTIFIER inherits? '{' entity_element* '}'

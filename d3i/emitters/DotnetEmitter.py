@@ -200,18 +200,18 @@ class DotnetEmitter:
         buffer.write(f"{self.tab(indent)}}}\n")
 
         # if the enum is defined under the interface and the grpc mapping is enable, then generate the mapping code
-        if(enum.getInterface() != None ):
-            buffer.write(self.enumGrpcMappingText( enum, indent ))
+        if (enum.getInterface() != None):
+            buffer.write(self.enumGrpcMappingText(enum, indent))
 
         code.content += buffer.getvalue()
         return code
 
-    def enumGrpcMappingText(self, enum: enum, indent:int) -> str:
+    def enumGrpcMappingText(self, enum: enum, indent: int) -> str:
         """
         Generates the .NET code for an enum mapping for GRPC.
         """
-        dotnetFullName:str = grpc_utils.getDotnetFullName(enum)
-        protosFullName:str= grpc_utils.getProtoFullName(enum)
+        dotnetFullName: str = grpc_utils.getDotnetFullName(enum)
+        protosFullName: str = grpc_utils.getProtoFullName(enum)
 
         buffer = io.StringIO()
         buffer.write(f"{self.tab(indent)}#region GrpcMapping\n")
@@ -271,7 +271,7 @@ class DotnetEmitter:
         base_composites: List[composite] = []
         inherit_names: List[str] = []
         for inherit in inherits:
-            base = utils.get_referenced_element(element.parent, inherit)
+            base = Engine.get_referenced_element(element.parent, inherit)
             if (isinstance(base, composite) == True):
                 utils.collectBaseCompositsRecursive(base, base_composites)
                 inherit_names.append(utils.join_with_I(inherit.names))
@@ -282,7 +282,7 @@ class DotnetEmitter:
         # Add documentation lines for the composite
         buffer.write(self.documentLines(element, indent))
         # Write the data class declaration with indentation
-        buffer.write(f"{self.tab(indent)}public partial class {element.name}")
+        buffer.write(f"{self.tab(indent)}public partial class {name}")
         # Write inherits if any
         if (len(inherit_names)):
             buffer.write(" : ")
@@ -340,7 +340,7 @@ class DotnetEmitter:
             buffer.write(self.documentLines(member, indent+1))
             buffer.write(self.propertyText(member.name, member.type, code, indent+1))
 
-        if( isinstance(element, dto) and self.configuration.withGrpc==True):
+        if (isinstance(element, dto) and self.configuration.withGrpc == True):
             buffer.write(self.dtoGrpcMappingText(element, code, indent+1))
 
         buffer.write(f"{self.tab(indent)}}}\n")
@@ -355,12 +355,12 @@ class DotnetEmitter:
         """
         bases: List[internal_scoped_base_element] = []
         for inherit in dto.inherits:
-            base = utils.get_referenced_element(dto.parent, inherit)
+            base = Engine.get_referenced_element(dto.parent, inherit)
             if (base != None):
                 utils.collectBaseRecursive(base, bases)
 
-        dotnetFullName:str = grpc_utils.getDotnetFullName(dto)
-        protosFullName:str= grpc_utils.getProtoFullName(dto)
+        dotnetFullName: str = grpc_utils.getDotnetFullName(dto)
+        protosFullName: str = grpc_utils.getProtoFullName(dto)
 
         buffer = io.StringIO()
 
@@ -499,7 +499,7 @@ class DotnetEmitter:
                 return f"Google.Protobuf.ByteString.FromStream({memberName})"
 
     def dataClassMemberToGrpcMappingText_Reference(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int):
-        referenced_element: base_element = utils.get_referenced_element(memberType.parent, memberType.reference_name)
+        referenced_element: base_element = Engine.get_referenced_element(memberType.parent, memberType.reference_name)
 
         buffer = io.StringIO()
         buffer.write(f"{self.tab(indent)}{dst}{utils.camel_to_pascal(memberName)} = ")
@@ -510,14 +510,14 @@ class DotnetEmitter:
         return buffer.getvalue()
 
     def dataClassMemberFromGrpcMappingText_Reference(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int):
-        referenced_element: base_element = utils.get_referenced_element(memberType.parent, memberType.reference_name)
+        referenced_element: base_element = Engine.get_referenced_element(memberType.parent, memberType.reference_name)
 
         buffer = io.StringIO()
         buffer.write(f"{self.tab(indent)}{dst}{memberName} = ")
         if (isinstance(referenced_element, enum) == True):
-            buffer.write( f"{grpc_utils.getDotnetFullName(referenced_element)}Mappings.FromGrpc( {src}{utils.camel_to_pascal(memberName)});\n")
+            buffer.write(f"{grpc_utils.getDotnetFullName(referenced_element)}Mappings.FromGrpc( {src}{utils.camel_to_pascal(memberName)});\n")
         else:
-            buffer.write( f"{src}{utils.camel_to_pascal(memberName)} != null ? {grpc_utils.getDotnetFullName(referenced_element)}.FromGrpc( {src}{utils.camel_to_pascal(memberName)}) : null;\n")
+            buffer.write(f"{src}{utils.camel_to_pascal(memberName)} != null ? {grpc_utils.getDotnetFullName(referenced_element)}.FromGrpc( {src}{utils.camel_to_pascal(memberName)}) : null;\n")
         return buffer.getvalue()
 
     def dataClassMemberToGrpcMappingText_List(self, memberName: str, memberType: list_type, code: dotnet_code, dst: str, src: str, indent: int):
@@ -661,8 +661,10 @@ class DotnetEmitter:
         if (element.withEventHandler == True):
             # Write each event handler
             for eventhandler in element.eventhandlers:
-                buffer.write(self.documentLines(eventhandler, indent))
-                buffer.write(f"{self.tab(indent+1)}public Task<bool> {eventhandler.name}(CallingContext ctx, {eventhandler.handledEvent.eventName}_v{eventhandler.handledEvent.eventVersion} @event );")
+                handled_event:event = Engine.get_referenced_element(eventhandler, eventhandler.handledEvent )
+                if(handled_event != None ):
+                    buffer.write(self.documentLines(eventhandler, indent))
+                    buffer.write(f"{self.tab(indent+1)}public Task<bool> {eventhandler.name}(CallingContext ctx, {grpc_utils.getDotnetFullName(handled_event)} @event );")
 
         buffer.write(f"\n")
         code.content += buffer.getvalue()
@@ -787,7 +789,7 @@ class DotnetEmitter:
             index: int = 1
             params: List[str] = []
             for param in operation.operation_params:
-                buffer.write(f"{self.tab(indent+4)}{self.typeText(param.type, code,fullName=True)} {param.name};\n")
+                buffer.write(f"{self.tab(indent+4)}{self.typeText(param.type, code, fullName=True)} {param.name};\n")
                 buffer.write(f"{self.tab(indent+4)}{self.dataClassMemberFromGrpcMappingText(param.name, param.type, code, dst="", src="request.", indent=0)}")
                 params.append(param.name)
                 index = index + 1
@@ -874,16 +876,16 @@ class DotnetEmitter:
         buffer.write(f"{self.tab(indent)}public {self.typeText(type, code)} {member_name} {{ get; set; }}\n")
         return buffer.getvalue()
 
-    def typeText(self, type: type, code: dotnet_code, fullName:bool=False) -> str:
+    def typeText(self, type: type, code: dotnet_code, fullName: bool = False) -> str:
         match type.kind:
             case type.Kind.Primitive:
                 return self.typeTextPrimitive(type)
             case type.Kind.Reference:
-                return self.typeTextReference(type, code,fullName)
+                return self.typeTextReference(type, code, fullName)
             case type.Kind.List:
-                return self.typeTextList(type, code,fullName)
+                return self.typeTextList(type, code, fullName)
             case type.Kind.Map:
-                return self.typeTextMap(type, code,fullName)
+                return self.typeTextMap(type, code, fullName)
 
     def typeTextPrimitive(self, type: primitive_type) -> str:
         """
@@ -915,21 +917,21 @@ class DotnetEmitter:
             case primitive_type.PrimtiveKind.Stream:
                 return "Stream"
 
-    def typeTextReference(self, type: reference_type, code: dotnet_code, fullName:bool=False) -> str:
-        referenced_element: base_element = utils.get_referenced_element(type.parent, type.reference_name)
+    def typeTextReference(self, type: reference_type, code: dotnet_code, fullName: bool = False) -> str:
+        referenced_element: base_element = Engine.get_referenced_element(type.parent, type.reference_name)
         if (referenced_element != None):
             code.usings.add(f"{referenced_element.getDomain().name}.{referenced_element.getContext().name}")
 
-        if(fullName==True):
-            return grpc_utils.getDotnetFullName( referenced_element )
+        if (fullName == True):
+            return grpc_utils.getDotnetFullName(referenced_element)
         else:
             return type.reference_name.getText()
 
-    def typeTextList(self, type: list_type, code: dotnet_code, fullName:bool=False) -> str:
-        return f"List<{self.typeText(type.item_type, code,fullName)}>"
+    def typeTextList(self, type: list_type, code: dotnet_code, fullName: bool = False) -> str:
+        return f"List<{self.typeText(type.item_type, code, fullName)}>"
 
-    def typeTextMap(self, type: map_type, code, fullName:bool=False) -> str:
-        return f"Dictionary<{self.typeText(type.key_type, code,fullName)},{self.typeText(type.value_type, code,fullName)}>"
+    def typeTextMap(self, type: map_type, code, fullName: bool = False) -> str:
+        return f"Dictionary<{self.typeText(type.key_type, code, fullName)},{self.typeText(type.value_type, code, fullName)}>"
 
     def tab(self, indent=1) -> str:
         return '\t'*indent

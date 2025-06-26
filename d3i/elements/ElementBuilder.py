@@ -535,10 +535,8 @@ class ElementBuilder(d3iGrammarVisitor):
             child.parent = result
             result.decorators.append(child)
 
-        result.handledEvent = event_reference(self.fileName, ctx.start)
+        result.handledEvent = self.visit(ctx.qualifiedName())
         result.handledEvent.parent = result
-        result.handledEvent.eventName = self.visit(ctx.qualifiedName()).getText()
-        result.handledEvent.eventVersion = int(ctx.INTEGER_CONSTANS().getText())
 
         return result
 

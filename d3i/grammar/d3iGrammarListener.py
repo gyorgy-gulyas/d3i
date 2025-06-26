@@ -188,15 +188,6 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by d3iGrammar#event_reference.
-    def enterEvent_reference(self, ctx:d3iGrammar.Event_referenceContext):
-        pass
-
-    # Exit a parse tree produced by d3iGrammar#event_reference.
-    def exitEvent_reference(self, ctx:d3iGrammar.Event_referenceContext):
-        pass
-
-
     # Enter a parse tree produced by d3iGrammar#entity.
     def enterEntity(self, ctx:d3iGrammar.EntityContext):
         pass

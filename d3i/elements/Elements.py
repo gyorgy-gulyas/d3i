@@ -392,25 +392,11 @@ class eventhandler(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
-        self.handledEvent: event_reference = None
+        self.handledEvent: qualified_name = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEventHandler(self, parentData)
         super().visit(visitor, data)
-
-
-class event_reference(hinted_base_element):
-    def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
-        self.eventName: qualified_name = None
-        self.eventVersion: int = None
-
-    def visit(self, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitEventReference(self, parentData)
-        if (self.type != None):
-            self.type.visit(visitor, data, "type")
-        super().visit(visitor, data)
-
 
 class entity(internal_scoped_base_element):
     def __init__(self, fileName, pos):

@@ -80,7 +80,7 @@ namespace WebShop.CustomerContext{
         }
 }
 """
-        self.assertTrue(1, len(result))
+        self.assertEqual(1, len(result))
         self.assertEqual(result[0].fileName, "IWithAddress.cs")
         print(result[0].content)
 

@@ -38,10 +38,6 @@ class ElementVisitor(ABC):
         pass
 
     @abstractmethod
-    def visitEventReference(self, event_reference: event_reference, parentData: Any) -> Any:
-        pass
-
-    @abstractmethod
     def visitEnum(self, enum: enum, parentData: Any) -> Any:
         pass
 

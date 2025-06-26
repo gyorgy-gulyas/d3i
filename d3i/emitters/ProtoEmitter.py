@@ -151,7 +151,7 @@ class ProtoEmitter:
         """
         bases: List[internal_scoped_base_element] = []
         for inherit in dto.inherits:
-            base = utils.get_referenced_element(dto.parent, inherit)
+            base = Engine.get_referenced_element(dto.parent, inherit)
             if (base != None):
                 utils.collectBaseRecursive(base, bases)
 

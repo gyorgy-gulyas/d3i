@@ -267,7 +267,98 @@ class Engine:
                                 context_already.interfaces.append(imported_interface)
 
         return session.main
+    
+    @staticmethod
+    def get_current_scope(element: base_element) -> IScope:
+        current_scope = element
+        while True:
+            if isinstance(current_scope, IScope):
+                break
+            elif (current_scope == None):
+                break
+            current_scope = current_scope.parent
 
+        return current_scope
+
+    @staticmethod
+    def has_version_int_member(obj):
+        return hasattr(obj, 'version') and isinstance(getattr(obj, 'version'), int)
+
+    @staticmethod
+    def get_referenced_element(parent: base_element, name: qualified_name) -> IScope:
+        element, message = Engine.get_referenced_element_with_message(parent,name)
+        return element
+
+    @staticmethod
+    def get_referenced_element_with_message(parent: base_element, name: qualified_name) -> IScope:
+        scope = Engine.get_current_scope(parent)
+
+        first_part: str = name.names[0]
+        version_candidate: str = None
+        if (len(name.names) > 1):
+            version_candidate = name.names[1]
+        
+        rest_name_index = 1
+        # go up until we find the element for the first part of the name vit version is has it
+        element = None
+        while True:
+            if (scope == None):
+                break
+
+            # is the scope that has a child with the name we are looking for
+            if (isinstance(scope, IScope)):
+                for child in scope.getChildren():
+                    if (Engine.has_version_int_member(child) == True):
+                        if (f"v{child.version}" == version_candidate):
+                            element = child
+                            rest_name_index = rest_name_index + 1 # skip version
+                            break
+                    elif (child.name == name.names[0]):
+                        element = child
+                        break
+
+                if (element != None):
+                    break
+
+            scope = scope.parent
+
+        if (element == None):
+            return None, f"The first part of the referenced name '{name.names[0]}' cannot be resolved."
+
+        # processing the rest of the name part if exist
+        rest_names = name.names[rest_name_index:]
+        i: int = 0
+        while i < len(rest_names):
+            name_part = rest_names[i]
+            if (isinstance(element, IScope) == False):
+                return None, f"The referenced name '{name.names[0]}' cannot have an expected child: '{name_part}'."
+
+            scope: IScope = element
+            if i + 1 < len(rest_names):
+                version_candidate = rest_names[i + 1]
+
+            element = None
+            for child in scope.getChildren():
+                if (Engine.has_version_int_member(child)):
+                    if (f"v{child.version}" == version_candidate):
+                        element = child
+                        i = i + 1 # skip version
+                        break
+                elif (child.name == name_part):
+                    element = child
+                    break
+
+            if (element == None):
+                if( Engine.has_version_int_member(scope)):
+                    name = f"{scope.name} version {scope.version}"
+                else:
+                    name = scope.name
+                return None, f"The referenced name '{name}' does not have an expected child: '{name_part}'."
+            
+            i = i + 1
+
+        return element, "ok"
+    
     @staticmethod
     def __find_domain_by_name(session: Session, name):
         for domain in session.main.domains:

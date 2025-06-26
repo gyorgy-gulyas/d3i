@@ -109,11 +109,6 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by d3iGrammar#event_reference.
-    def visitEvent_reference(self, ctx:d3iGrammar.Event_referenceContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by d3iGrammar#entity.
     def visitEntity(self, ctx:d3iGrammar.EntityContext):
         return self.visitChildren(ctx)

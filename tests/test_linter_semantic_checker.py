@@ -704,6 +704,8 @@ domain SomeDomain {
 domain SomeDomain {
     context OrderContext{
         interface TheInterface version 1 {
+        }
+        interface TheInterface version 2 {
             dto dto_out{
                 dto dto_inner{
                     enum enum_inner{
@@ -712,7 +714,14 @@ domain SomeDomain {
             }    
             enum enum_out{
             }    
+            event event_out version 1 {
+            }    
+            event event_out version 2{
+                enum enum_inner {
+                }    
+            }    
         }
+
         service TheService {
             valueobject vo_out{
                 valueobject vo_inner{
@@ -730,7 +739,7 @@ domain SomeDomain {
                     }    
                 }
 
-                member_0: TheInterface.v1.dto_out.dto_inner.enum_inner
+                member_0: TheInterface.v2.event_out.v2.enum_inner
                 member_1: vo_inner
                 member_2: vo_inner.enum_inner
                 member_3: enum_out

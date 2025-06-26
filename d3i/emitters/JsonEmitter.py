@@ -115,19 +115,11 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.eventhandler",
             "name": eventhandler.name,
-            "handled_events": [],
+            "handled_event": eventhandler.handledEvent.getText(),
         }
         parentData["eventhandlers"].append(data)
         return data
     
-    def visitEventReference(self, event_reference: event_reference, parentData: Any) -> Any:
-        data = {
-            "$type": "d3i.event_reference",
-            "event_name": event_reference.eventName.getText(),
-            "event_version": str(event_reference.eventVersion),
-        }
-        parentData["eventhandlers"].append(data)
-        return data
 
     def visitEnum(self, enum: enum, parentData: Any) -> Any:
         data = {
