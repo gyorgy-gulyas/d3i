@@ -30,7 +30,7 @@ class utils:
 
     @staticmethod
     def collectBaseRecursive(base: composite, bases: List[base_element]):
-        bases.insert(0, base)
+        bases.append(base)
 
         for inherit in base.inherits:
             base_base = Engine.get_referenced_element(base.parent, inherit)
@@ -39,7 +39,7 @@ class utils:
 
     @staticmethod
     def collectBaseCompositsRecursive(base_composite: composite, base_composites: List[composite]):
-        base_composites.insert(0, base_composite)
+        base_composites.append(base_composite)
 
         for inherit in base_composite.inherits:
             base = Engine.get_referenced_element(base_composite.parent, inherit)
