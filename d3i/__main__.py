@@ -81,13 +81,36 @@ def __read_config_file(args, unknown_args) -> Dict[str, str]:
         with open(config_file, "r") as file:
             configuration = json.load(file)
 
-    # Add any unknown arguments to the configuration
-    for i in range(0, len(unknown_args), 2):
-        if i + 1 < len(unknown_args):
-            configuration[unknown_args[i]] = unknown_args[i + 1]
+    # Merge unknown args
+    parsed_unknown = __parse_unknown_args(unknown_args)
+    configuration.update(parsed_unknown)
 
     return configuration
 
+def __parse_unknown_args(unknown_args: list[str]) -> Dict[str, object]:
+    """
+    Parses the unknow args.
+    """
+    config: Dict[str, object] = {}
+    current_key = None
+
+    for arg in unknown_args:
+        if arg.startswith("--"):
+            current_key = arg.lstrip("-")
+            config[current_key] = True  # default to True if no value follows
+        else:
+            if current_key is None:
+                continue
+            # If the current key already has a value
+            existing = config.get(current_key)
+            if existing is True:
+                config[current_key] = arg
+            elif isinstance(existing, str):
+                config[current_key] = [existing, arg]
+            elif isinstance(existing, list):
+                existing.append(arg)
+
+    return config
 
 # Parses the input files, creates a session, and returns it
 def __parse_input_files(args, configuration: Dict[str, str]) -> Session:

@@ -119,9 +119,14 @@ class DotnetEmitter:
                     code = self.interfaceInterfaceText(interface, code)
                     code = self.endFile(code)
                     result.append(code)
-                    if (self.configuration.withGrpc == True):
-                        code = self.beginFile(output_path, interface, "Service/Controllers", postfix=f"_v{interface.version}.GrpcGontroller")
+                    if( utils.isPublishedOn( interface, "grpc" ) == True):
+                        code = self.beginFile(output_path, interface, "Service/Controllers", postfix=f"_v{interface.version}.GrpcController")
                         code = self.interfaceGrpcControllerText(interface, code)
+                        code = self.endFile(code)
+                        result.append(code)
+                    if( utils.isPublishedOn( interface, "rest" ) == True):
+                        code = self.beginFile(output_path, interface, "Service/Controllers", postfix=f"_v{interface.version}.RestController")
+                        code = self.interfaceRestControllerText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
 
@@ -343,7 +348,7 @@ class DotnetEmitter:
         # clone and copy
         buffer.write(self.dataClassCloneAndCopyText(element, inherits, name, members, code, indent+1))
 
-        if (isinstance(element, dto) and self.configuration.withGrpc == True):
+        if ( utils.isPublishedOn(element.getInterface(), "grpc" ) == True and isinstance(element,dto)):
             buffer.write(self.dtoGrpcMappingText(element, code, indent+1))
 
         buffer.write(f"{self.tab(indent)}}}\n")
@@ -902,7 +907,7 @@ class DotnetEmitter:
         code.usings.add("Serilog.Context")
         code.usings.add(f"{domain.name}.{context.name}.Protos.{versionedName}")
 
-        # Add documentation lines for the acl
+        # Add documentation lines for the interface
         buffer.write(self.documentLines(interface, indent))
         # class declaration
         buffer.write(f"{self.tab(indent)}public class {versionedName}_GrpcController : {domain.name}.{context.name}.Protos.{versionedName}.{versionedName}.{versionedName}Base \n")
@@ -973,14 +978,14 @@ class DotnetEmitter:
                 buffer.write(f"{self.tab(indent+4)}if( response.IsSuccess() == true )\n")
                 buffer.write(f"{self.tab(indent+4)}{{\n")
                 buffer.write(f"{self.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
-                buffer.write(f"{self.tab(indent+6)}Success = new Empty();\n")
-                buffer.write(f"{self.tab(indent+5)}}}\n")
+                buffer.write(f"{self.tab(indent+6)}Success = new Empty()\n")
+                buffer.write(f"{self.tab(indent+5)}}};\n")
                 buffer.write(f"{self.tab(indent+4)}}}\n")
                 buffer.write(f"{self.tab(indent+4)}else\n")
                 buffer.write(f"{self.tab(indent+4)}{{\n")
                 buffer.write(f"{self.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
                 buffer.write(f"{self.tab(indent+6)}Error = new () {{\n")
-                buffer.write(f"{self.tab(indent+7)}Status = response.Error.Status,\n")
+                buffer.write(f"{self.tab(indent+7)}Status = response.Error.Status.ToGrpc(),\n")
                 buffer.write(f"{self.tab(indent+7)}MessageText = response.Error.MessageText,\n")
                 buffer.write(f"{self.tab(indent+7)}AdditionalInformation = response.Error.AdditionalInformation\n")
                 buffer.write(f"{self.tab(indent+6)}}}\n")
@@ -999,6 +1004,82 @@ class DotnetEmitter:
             buffer.write(f"{self.tab(indent+6)}AdditionalInformation = ex.ToString()\n")
             buffer.write(f"{self.tab(indent+5)}}}\n")
             buffer.write(f"{self.tab(indent+4)}}};\n")
+            buffer.write(f"{self.tab(indent+3)}}}\n")
+            buffer.write(f"{self.tab(indent+3)}finally\n")
+            buffer.write(f"{self.tab(indent+3)}{{\n")
+            buffer.write(f"{self.tab(indent+4)}ctx.ReturnToPool();\n")
+            buffer.write(f"{self.tab(indent+3)}}}\n")
+            buffer.write(f"{self.tab(indent+2)}}}\n")
+            buffer.write(f"{self.tab(indent+1)}}}\n")
+
+        # end of class
+        buffer.write(f"{self.tab(indent)}}}\n")
+
+        code.content += buffer.getvalue()
+        return code
+
+    def interfaceRestControllerText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        Generates the .NET GRPC controller code for interface
+        """
+        buffer = io.StringIO()
+        domain: domain = interface.getDomain()
+        context: context = interface.getContext()
+        versionedName: str = f"{interface.name}_v{interface.version}"
+
+        code.usings.add("Microsoft.AspNetCore.Authorization")
+        code.usings.add("Microsoft.AspNetCore.Http")
+        code.usings.add("Microsoft.AspNetCore.Mvc")
+        code.usings.add("Microsoft.AspNetCore.RateLimiting")
+        code.usings.add("ServiceKit.Net")
+        code.usings.add("Serilog.Context")
+
+        # Add documentation lines for the interface
+        buffer.write(self.documentLines(interface, indent))
+
+        # class declaration
+        buffer.write(f"{self.tab(indent)}public class {versionedName}_RestController : ControllerBase \n")
+        buffer.write(f"{self.tab(indent)}{{\n")
+        # class members
+        buffer.write(f"{self.tab(indent+1)}private readonly ILogger<{versionedName}_RestController> _logger;\n")
+        buffer.write(f"{self.tab(indent+1)}private readonly I{versionedName} _service;\n")
+        # class constructor
+        buffer.write(f"{self.tab(indent+1)}public {versionedName}_RestController( ILogger<{versionedName}_RestController> logger, I{versionedName} service )\n")
+        buffer.write(f"{self.tab(indent+1)}{{\n")
+        buffer.write(f"{self.tab(indent+2)}_logger = logger; \n")
+        buffer.write(f"{self.tab(indent+2)}_service = service; \n")
+        buffer.write(f"{self.tab(indent+1)}}}\n")
+
+        # Add functions based on operations
+        for operation in interface.operations:
+            buffer.write(f"\n")
+            buffer.write(f"{self.tab(indent+1)}public async Task<IActionResult> {operation.name}(")
+            index: int = 0
+            params: List[str] = []
+            for param in operation.operation_params:
+                if( index> 0 ):
+                    buffer.write(", ")
+                buffer.write(f"{self.typeText(param.type, code, fullName=True)} {param.name}")
+                params.append(param.name)
+                index = index + 1
+            buffer.write(f")\n")
+            buffer.write(f"{self.tab(indent+1)}{{\n")
+            buffer.write(f"{self.tab(indent+2)}using(LogContext.PushProperty( \"Scope\", \"{versionedName}.{operation.name}\" ))\n")
+            buffer.write(f"{self.tab(indent+2)}{{\n")
+            buffer.write(f"{self.tab(indent+3)}CallingContext ctx = CallingContext.PoolFromHttpContext( HttpContext, _logger );\n")
+            buffer.write(f"{self.tab(indent+3)}try\n")
+            buffer.write(f"{self.tab(indent+3)}{{\n")
+            buffer.write(f"{self.tab(indent+4)}// calling the service function itself\n")
+            buffer.write(f"{self.tab(indent+4)}var response = await _service.{operation.name}( ctx {", " + ", ".join(params) if params else ""} );\n")
+            buffer.write(f"\n")
+            buffer.write(f"{self.tab(indent+4)}if( response.IsSuccess() == true )\n")
+            buffer.write(f"{self.tab(indent+5)} return Ok(response);\n")
+            buffer.write(f"{self.tab(indent+4)} else\n")
+            buffer.write(f"{self.tab(indent+5)} return BadRequest(response);\n")
+            buffer.write(f"{self.tab(indent+3)}}}\n")
+            buffer.write(f"{self.tab(indent+3)}catch(Exception ex)\n")
+            buffer.write(f"{self.tab(indent+3)}{{\n")
+            buffer.write(f"{self.tab(indent+4)}return StatusCode(StatusCodes.Status500InternalServerError, new {{ message = ex.Message }});\n")
             buffer.write(f"{self.tab(indent+3)}}}\n")
             buffer.write(f"{self.tab(indent+3)}finally\n")
             buffer.write(f"{self.tab(indent+3)}{{\n")
@@ -1101,7 +1182,6 @@ class dotnet_configuration:
 
         self.__read_fileHeader(configuration)
         self.__read_defaultUsings(configuration)
-        self.__read_withGrpc(configuration)
 
     def __read_fileHeader(self, configuration: Dict[str, str]):
         self.fileHeader: str = """
@@ -1111,23 +1191,17 @@ class dotnet_configuration:
 //     Changes to this file may cause incorrect behavior and will be lost if the code is regenerated.
 // </auto-generated>"""
 
-        if "--dotnet.file_header_lines" in configuration:
-            value = configuration["--dotnet.file_header_lines"]
+        if "dotnet.file_header_lines" in configuration:
+            value = configuration["dotnet.file_header_lines"]
             if (isinstance(value, list) and all(isinstance(item, str) for item in value)):
                 self.fileHeader = "\n".join(value)
 
     def __read_defaultUsings(self, configuration: Dict[str, str]):
         self.defaultUsings: List[str] = []
-        if "--dotnet.default_usings" in configuration:
-            value = configuration["--dotnet.default_usings"]
+        if "dotnet.default_usings" in configuration:
+            value = configuration["dotnet.default_usings"]
             if (isinstance(value, list) and all(isinstance(item, str) for item in value)):
                 self.defaultUsings = value
-
-    def __read_withGrpc(self, configuration: Dict[str, str]):
-        self.withGrpc: bool = False
-        if "--dotnet.with_grpc" in configuration:
-            self.withGrpc = bool(configuration["--dotnet.with_grpc"])
-
 
 class dotnet_code:
     def __init__(self, output_path: str, subdirs: List[str], name: str):

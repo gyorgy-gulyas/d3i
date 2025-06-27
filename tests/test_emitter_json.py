@@ -231,7 +231,6 @@ domain SomeDomain {
             @max_length( 100 )
             address:string
             zipCode:integer
-            private_member:external["java.util.map.HashMap<>"]
         }
     }
 }

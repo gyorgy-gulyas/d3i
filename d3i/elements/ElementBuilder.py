@@ -1106,13 +1106,8 @@ class ElementBuilder(d3iGrammarVisitor):
         result = reference_type(self.fileName, ctx.start)
         result.kind = type.Kind.Reference
         if (ctx.qualifiedName() != None):
-            result.isExternal = False
             result.reference_name = self.visit(ctx.qualifiedName())
             result.reference_name.parent = result
-        elif (ctx.EXTERNAL() != None):
-            result.isExternal = True
-            result.reference_name = qualified_name(self.fileName, ctx.start)
-            result.reference_name.names.append(ctx.STRING_LITERAL().getText().strip('"'))
 
         return result
 

@@ -46,6 +46,19 @@ class utils:
             if (isinstance(base, composite) == True):
                 utils.collectBaseCompositsRecursive(base, base_composites)
 
+    @staticmethod
+    def isPublishedOn( interface:interface, protocol:str  ) -> bool:
+        if(interface != None):
+            published = interface.find_decorator( "publish")
+            if(published!= None):
+                for param in published.params:
+                    if( param.kind == decorator_param.Kind.String and param.value == protocol ):
+                        return True
+                    if( param.kind == decorator_param.Kind.QualifiedName and param.value.getText() == protocol ):
+                        return True
+            
+        return False
+
 
 class grpc_utils:
     @staticmethod

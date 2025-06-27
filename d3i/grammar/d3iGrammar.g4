@@ -226,7 +226,6 @@ type
 
     reference_type
         : qualifiedName
-        | 'external' '[' STRING_LITERAL ']'
         ;
 
     list_type

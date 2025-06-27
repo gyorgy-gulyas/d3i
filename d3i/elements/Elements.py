@@ -74,6 +74,13 @@ class hinted_base_element(base_element):
         for decorator in self.decorators:
             decorator.visit(visitor, data)
         return data
+    
+    def find_decorator(self, name:str ) -> decorator:
+        for decorator in self.decorators:
+            if( decorator.name == name ):
+                return decorator
+
+        return None
 
 
 class internal_scoped_base_element(hinted_base_element, IScope):
@@ -679,7 +686,6 @@ class primitive_type(type):
 class reference_type(type):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.isExternal = False
         self.reference_name: qualified_name = None
 
 
