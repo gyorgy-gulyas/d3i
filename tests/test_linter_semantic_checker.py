@@ -553,9 +553,9 @@ domain SomeDomain {
 domain SomeDomain {
     context OrderContext{
         acl TheAcl {
-            TheOperation()
-            TheOperation()
-            OtherOperation()
+            command TheOperation()
+            command TheOperation()
+            command OtherOperation()
         }
     }
 }
@@ -604,9 +604,9 @@ domain SomeDomain {
 domain SomeDomain {
     context OrderContext{
         acl TheService {
-            TheOperation()
-            TheOperation()
-            OtherOperation()
+            command TheOperation()
+            command TheOperation()
+            command OtherOperation()
         }
     }
 }
@@ -655,9 +655,9 @@ domain SomeDomain {
 domain SomeDomain {
     context OrderContext{
         interface TheInterface version 1 {
-            TheOperation()
-            TheOperation()
-            OtherOperation()
+            command TheOperation()
+            command TheOperation()
+            command OtherOperation()
         }
     }
 }
@@ -680,8 +680,8 @@ domain SomeDomain {
 domain SomeDomain {
     context OrderContext{
         interface TheInterface version 1 {
-            TheOperation1( param: string )
-            TheOperation2( already: string, already: string, other: integer)
+            command TheOperation1( param: string )
+            command TheOperation2( already: string, already: string, other: integer)
         }
     }
 }
@@ -694,9 +694,9 @@ domain SomeDomain {
         session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("already" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,27):", "(6,44)"]))
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,35):", "(6,52)"]))
         self.assertTrue("already" in session.diagnostics[1].toText())
-        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,44):", "(6,27)"]))
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,52):", "(6,35)"]))
 
     def test_reference_type_ok(self):
         engine = Engine()

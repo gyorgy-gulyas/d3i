@@ -939,6 +939,11 @@ class ElementBuilder(d3iGrammarVisitor):
             child.parent = result
             result.decorators.append(child)
 
+        if( ctx.COMMAND() != None ):
+            result.kind = operation.Kind.Command
+        elif( ctx.QUERY() != None ):
+            result.kind = operation.Kind.Query
+
         counter = 0
         while True:
             operation_param = ctx.operation_param((counter))
@@ -949,15 +954,9 @@ class ElementBuilder(d3iGrammarVisitor):
             child.parent = result
             result.operation_params.append(child)
 
-        counter = 0
-        while True:
-            operation_return = ctx.operation_return((counter))
-            if (operation_return == None):
-                break
-            counter = counter + 1
-            child = self.visit(operation_return)
-            child.parent = result
-            result.operation_returns.append(child)
+        if(ctx.operation_return() != None ):
+            result.operation_return = self.visit(ctx.operation_return())
+            result.operation_return.parent = result
 
         return result
 
@@ -1166,6 +1165,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#decorator_param.
     def visitDecorator_param(self, ctx: d3iGrammar.Decorator_paramContext):
         result = decorator_param(self.fileName, ctx.start)
+        result.name = ctx.IDENTIFIER().getText()
         if (ctx.qualifiedName() != None):
             result.kind = decorator_param.Kind.QualifiedName
             result.value = self.visit(ctx.qualifiedName())
@@ -1176,9 +1176,12 @@ class ElementBuilder(d3iGrammarVisitor):
         elif (ctx.NUMBER_CONSTANS() != None):
             result.kind = decorator_param.Kind.Number
             result.value = Decimal(ctx.NUMBER_CONSTANS().getText())
-        else:
+        elif (ctx.STRING_LITERAL() != None):
             result.kind = decorator_param.Kind.String
             result.value = ctx.STRING_LITERAL().getText().strip('"')
+        else:
+            result.kind = None
+            result.value = None
 
         return result
 

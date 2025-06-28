@@ -129,18 +129,18 @@ class ProtoEmitter:
         # Add documentation lines for the enum
         buffer.write(self.documentLines(enum, indent))
         # Write the enum declaration with indentation
-        buffer.write(f"{self.tab(indent)}enum {enum.name} {{\n")
+        buffer.write(f"{utils.tab(indent)}enum {enum.name} {{\n")
         # Loop through each enum element and generate code for each
         value: int = 0
         for enum_element in enum.enum_elements:
             buffer.write(self.documentLines(enum_element, indent+1))
             # Write each enum element value
-            buffer.write(f"{self.tab(indent+1)}{enum_element.value} = {value};\n")
+            buffer.write(f"{utils.tab(indent+1)}{enum_element.value} = {value};\n")
             if (len(enum_element.document_lines) > 0):
                 buffer.write("\n")
             value = value + 1
 
-        buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
         buffer.write("\n")
 
         return buffer.getvalue()
@@ -159,12 +159,12 @@ class ProtoEmitter:
         # Add documentation lines for the composite
         buffer.write(self.documentLines(dto, indent))
         # Write the value_object declaration with indentation
-        buffer.write(f"{self.tab(indent)}message {dto.name} {{\n")
+        buffer.write(f"{utils.tab(indent)}message {dto.name} {{\n")
 
         index: int = 1
         # Loop through each base members and generate code for each
         for base in bases:
-            buffer.write(f"{self.tab(indent+1)}// unfold begin: {base.name}\n")
+            buffer.write(f"{utils.tab(indent+1)}// unfold begin: {base.name}\n")
 
             # write internal enums if Any
             if (base.withEnum == True):
@@ -180,7 +180,7 @@ class ProtoEmitter:
                 buffer.write(self.documentLines(member, indent+1))
                 buffer.write(self.protoMemberText(member.name, member.type, code, index, indent+1))
                 index = index + 1
-            buffer.write(f"{self.tab(indent+1)}// unfold end {base.name}\n\n")
+            buffer.write(f"{utils.tab(indent+1)}// unfold end {base.name}\n\n")
 
         # write internal enums if Any
         for child_enum in dto.enums:
@@ -197,7 +197,7 @@ class ProtoEmitter:
             buffer.write(self.protoMemberText(member.name, member.type, code, index, indent+1))
             index = index + 1
 
-        buffer.write(f"{self.tab(indent)}}}\n\n")
+        buffer.write(f"{utils.tab(indent)}}}\n\n")
 
         return buffer.getvalue()
 
@@ -207,48 +207,46 @@ class ProtoEmitter:
         """
         code.imports.add("servicekit_error.proto")
 
-        fullname:str = f"{interface.name}_v{interface.version}"
+        fullname: str = f"{interface.name}_v{interface.version}"
 
         buffer = io.StringIO()
         # Add documentation lines for the service
         buffer.write(self.documentLines(interface, indent))
-        buffer.write(f"{self.tab(indent)}service {fullname} {{\n")
+        buffer.write(f"{utils.tab(indent)}service {fullname} {{\n")
         # Loop through each operations and generate code for each
         for operation in interface.operations:
             # Write each operation as RPC call
             buffer.write(self.documentLines(operation, indent+1))
-            buffer.write(f"{self.tab(indent+1)}rpc {operation.name}({fullname}_{operation.name}Request) returns ({fullname}_{operation.name}Response);\n")
-        buffer.write(f"{self.tab(indent)}}}")
+            buffer.write(f"{utils.tab(indent+1)}rpc {operation.name}({fullname}_{operation.name}Request) returns ({fullname}_{operation.name}Response);\n")
+        buffer.write(f"{utils.tab(indent)}}}")
         buffer.write("\n")
 
         # Add messages based on operations
         for operation in interface.operations:
             # Request message
             buffer.write(f"\n")
-            buffer.write(f"{self.tab(indent)}message {fullname}_{operation.name}Request {{\n")
+            buffer.write(f"{utils.tab(indent)}message {fullname}_{operation.name}Request {{\n")
             index: int = 1
             for param in operation.operation_params:
                 buffer.write(self.documentLines(param, indent+2))
-                buffer.write(f"{self.tab(indent+1)}{self.typeText(param.type, code)} {param.name} = {index};\n")
-            buffer.write(f"{self.tab(indent)}}}\n")
+                buffer.write(f"{utils.tab(indent+1)}{self.typeText(param.type, code)} {param.name} = {index};\n")
+                index = index + 1
+            buffer.write(f"{utils.tab(indent)}}}\n")
             buffer.write(f"\n")
 
             # Response message
-            buffer.write(f"{self.tab(indent)}message {fullname}_{operation.name}Response {{\n")
-            buffer.write(f"{self.tab(indent+1)}oneof result {{\n")
-            if (len(operation.operation_returns) == 0):
+            buffer.write(f"{utils.tab(indent)}message {fullname}_{operation.name}Response {{\n")
+            buffer.write(f"{utils.tab(indent+1)}oneof result {{\n")
+            if (operation.operation_return == None):
                 code.imports.add("google/protobuf/empty.proto")
-                buffer.write(f"{self.tab(indent+2)}google.protobuf.Empty Success = 1;\n")
-                buffer.write(f"{self.tab(indent+2)}ServiceKit.Protos.Error Error = 2;\n")
+                buffer.write(f"{utils.tab(indent+2)}google.protobuf.Empty Success = 1;\n")
+                buffer.write(f"{utils.tab(indent+2)}ServiceKit.Protos.Error Error = 2;\n")
             else:
-                index: int = 1
-                for returns in operation.operation_returns:
-                    buffer.write(f"{self.tab(indent+2)}{self.typeText(returns.type, code)} Value{index} = {index};\n")
-                    index = index+1
-                buffer.write(f"{self.tab(indent+2)}ServiceKit.Protos.Error Error = {index};\n")
+                buffer.write(f"{utils.tab(indent+2)}{self.typeText(operation.operation_return.type, code)} Value = 1;\n")
+                buffer.write(f"{utils.tab(indent+2)}ServiceKit.Protos.Error Error = 2;\n")
 
-            buffer.write(f"{self.tab(indent+1)}}}\n")
-            buffer.write(f"{self.tab(indent)}}}\n")
+            buffer.write(f"{utils.tab(indent+1)}}}\n")
+            buffer.write(f"{utils.tab(indent)}}}\n")
 
         # write internal enums if Any
         for enum in interface.enums:
@@ -263,7 +261,7 @@ class ProtoEmitter:
 
     def protoMemberText(self, member_name: str, type: type, code: proto_code, index: int, indent: int) -> str:
         buffer = io.StringIO()
-        buffer.write(f"{self.tab(indent)}{self.typeText(type, code)} {member_name} = {index};\n")
+        buffer.write(f"{utils.tab(indent)}{self.typeText(type, code)} {member_name} = {index};\n")
         return buffer.getvalue()
 
     def typeText(self, type: type, code: proto_code) -> str:
@@ -289,9 +287,6 @@ class ProtoEmitter:
     def typeTextMap(self, type: map_type, code: proto_code) -> str:
         return f"map<{self.typeText(type.key_type, code)},{self.typeText(type.value_type, code)}>"
 
-    def tab(self, indent=1) -> str:
-        return '\t'*indent
-
     def documentLines(self, hinted_element: hinted_base_element, indent: int = 1) -> str:
         """
         Generates documentation lines for the provided element.
@@ -300,7 +295,7 @@ class ProtoEmitter:
         # Loop through each document line of the hinted element
         for document_line in hinted_element.document_lines:
             # Write the documentation line with the specified indentation
-            buffer.write(f"{self.tab(indent)}///{document_line}")
+            buffer.write(f"{utils.tab(indent)}///{document_line}")
             buffer.write("\n")
         return buffer.getvalue()
 

@@ -282,7 +282,7 @@ class JsonEmitter(ElementVisitor):
             "$type": "d3i.operation",
             "name": operation.name,
             "operation_params": [],
-            "operation_returns": [],
+            "operation_return": None,
         }
         parentData["operations"].append(data)
         return data
@@ -301,7 +301,7 @@ class JsonEmitter(ElementVisitor):
             "$type": "d3i.operation_return",
             "type": {},
         }
-        parentData["operation_returns"].append(data)
+        parentData["operation_return"] = data
         return data
 
     def visitType(self, type: type, parentData: Any, memberName: str) -> Any:

@@ -18,6 +18,7 @@ RBRACKET : ']' ;
 AT : '@' ;
 ARROW : '=>' ;
 PIPE : '|' ;
+EQUAL : '=' ;
 
 // declaration keywords
 ACL : 'acl' ;
@@ -43,6 +44,8 @@ INHERITS : 'inherits' ;
 VERSION : 'version' ;
 FOR : 'for' ;
 PROJECTED: 'projected' ;
+COMMAND : 'command' ;
+QUERY : 'query' ;
 
 // built-in types
 INTEGER : 'integer' ;

@@ -181,7 +181,7 @@ interface
         ;
    
 operation
-    : DOCUMENT_LINE* decorator* IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' ((':' operation_return )? ('|' operation_return)*)
+    : DOCUMENT_LINE* decorator* ('command' | 'query' ) IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' (':' operation_return )?
     ;
 
     operation_param
@@ -245,11 +245,7 @@ decorator
     | '@' IDENTIFIER '(' decorator_param (',' decorator_param)* ')' ;
     
     decorator_param
-        : qualifiedName
-        | INTEGER_CONSTANS
-        | NUMBER_CONSTANS 
-        | STRING_LITERAL
-        ;
+        : IDENTIFIER ('=' ( qualifiedName | INTEGER_CONSTANS | NUMBER_CONSTANS | STRING_LITERAL ))?;
 
 enum
     : DOCUMENT_LINE* decorator* 'enum' IDENTIFIER '{' enum_element? (',' enum_element)* '}'

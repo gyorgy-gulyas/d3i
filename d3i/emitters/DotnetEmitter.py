@@ -64,7 +64,7 @@ class DotnetEmitter:
 
                 # Process all composite in the context
                 for composite in context.composites:
-                    code = self.beginFile(output_path, composite, "Models")
+                    code = self.beginFile(output_path, composite, "Models", prefix="I")
                     code = self.compositeText(composite, code)
                     code = self.endFile(code)
                     result.append(code)
@@ -192,17 +192,17 @@ class DotnetEmitter:
         # Add documentation lines for the enum
         buffer.write(self.documentLines(enum, indent))
         # Write the enum declaration with indentation
-        buffer.write(f"{self.tab(indent)}public enum {enum.name}\n")
-        buffer.write(f"{self.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent)}public enum {enum.name}\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
         # Loop through each enum element and generate code for each
         for enum_element in enum.enum_elements:
             buffer.write(self.documentLines(enum_element, indent+1))
             # Write each enum element value
-            buffer.write(f"{self.tab(indent+1)}{enum_element.value},\n")
+            buffer.write(f"{utils.tab(indent+1)}{enum_element.value},\n")
             if (len(enum_element.document_lines) > 0):
                 buffer.write("\n")
 
-        buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
 
         # if the enum is defined under the interface and the grpc mapping is enable, then generate the mapping code
         if (enum.getInterface() != None):
@@ -219,38 +219,38 @@ class DotnetEmitter:
         protosFullName: str = grpc_utils.getProtoFullName(enum)
 
         buffer = io.StringIO()
-        buffer.write(f"{self.tab(indent)}#region GrpcMapping\n")
-        buffer.write(f"{self.tab(indent)}public static class {enum.name}Mappings\n")
-        buffer.write(f"{self.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent)}#region GrpcMapping\n")
+        buffer.write(f"{utils.tab(indent)}public static class {enum.name}Mappings\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
 
         # ToGrpc
-        buffer.write(f"{self.tab(indent+1)}public static Protos.{protosFullName} ToGrpc( {dotnetFullName} @this )\n")
-        buffer.write(f"{self.tab(indent+1)}{{\n")
-        buffer.write(f"{self.tab(indent+2)}return @this switch\n")
-        buffer.write(f"{self.tab(indent+2)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}public static Protos.{protosFullName} ToGrpc( {dotnetFullName} @this )\n")
+        buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}return @this switch\n")
+        buffer.write(f"{utils.tab(indent+2)}{{\n")
         # Loop through each enum element and generate code for each mapping
         for enum_element in enum.enum_elements:
-            buffer.write(f"{self.tab(indent+3)}{dotnetFullName}.{enum_element.value} => Protos.{protosFullName}.{enum_element.value},\n")
-        buffer.write(f"{self.tab(indent+3)}_ => throw new NotImplementedException(), \n")
-        buffer.write(f"{self.tab(indent+2)}}};\n")
-        buffer.write(f"{self.tab(indent+1)}}}\n")
+            buffer.write(f"{utils.tab(indent+3)}{dotnetFullName}.{enum_element.value} => Protos.{protosFullName}.{enum_element.value},\n")
+        buffer.write(f"{utils.tab(indent+3)}_ => throw new NotImplementedException(), \n")
+        buffer.write(f"{utils.tab(indent+2)}}};\n")
+        buffer.write(f"{utils.tab(indent+1)}}}\n")
         buffer.write(f"\n")
 
         # FromGrpc
-        buffer.write(f"{self.tab(indent+1)}public static {dotnetFullName} FromGrpc( Protos.{protosFullName} @this )\n")
-        buffer.write(f"{self.tab(indent+1)}{{\n")
-        buffer.write(f"{self.tab(indent+2)}return @this switch\n")
-        buffer.write(f"{self.tab(indent+2)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}public static {dotnetFullName} FromGrpc( Protos.{protosFullName} @this )\n")
+        buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}return @this switch\n")
+        buffer.write(f"{utils.tab(indent+2)}{{\n")
         # Loop through each enum element and generate code for each mapping
         for enum_element in enum.enum_elements:
-            buffer.write(f"{self.tab(indent+3)}Protos.{protosFullName}.{enum_element.value} => {dotnetFullName}.{enum_element.value},\n")
-        buffer.write(f"{self.tab(indent+3)}_ => throw new NotImplementedException(), \n")
-        buffer.write(f"{self.tab(indent+2)}}};\n")
-        buffer.write(f"{self.tab(indent+1)}}}\n")
+            buffer.write(f"{utils.tab(indent+3)}Protos.{protosFullName}.{enum_element.value} => {dotnetFullName}.{enum_element.value},\n")
+        buffer.write(f"{utils.tab(indent+3)}_ => throw new NotImplementedException(), \n")
+        buffer.write(f"{utils.tab(indent+2)}}};\n")
+        buffer.write(f"{utils.tab(indent+1)}}}\n")
         buffer.write(f"\n")
 
-        buffer.write(f"{self.tab(indent)}}}\n")
-        buffer.write(f"{self.tab(indent)}#endregion GrpcMapping\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}#endregion GrpcMapping\n")
 
         return buffer.getvalue()
 
@@ -287,12 +287,12 @@ class DotnetEmitter:
         # Add documentation lines for the composite
         buffer.write(self.documentLines(element, indent))
         # Write the data class declaration with indentation
-        buffer.write(f"{self.tab(indent)}public partial class {name}")
+        buffer.write(f"{utils.tab(indent)}public partial class {name}")
         # Write inherits if any
         if (len(inherit_names)):
             buffer.write(" : ")
             buffer.write(", ".join(inherit_names))
-        buffer.write(f"\n{self.tab(indent)}{{\n")
+        buffer.write(f"\n{utils.tab(indent)}{{\n")
 
         # flush current text
         code.content += buffer.getvalue()
@@ -301,7 +301,7 @@ class DotnetEmitter:
 
         # Loop through each coposite members and generate code for each
         for base_composite in base_composites:
-            buffer.write(f"{self.tab(indent+1)}#region I{base_composite.name}\n")
+            buffer.write(f"{utils.tab(indent+1)}#region I{base_composite.name}\n")
 
             # write internal enums if Any
             if (base_composite.withEnum == True):
@@ -322,7 +322,7 @@ class DotnetEmitter:
                 # Write each member
                 buffer.write(self.documentLines(member, indent+1))
                 buffer.write(self.propertyText(member.name, member.type, code, indent+1))
-            buffer.write(f"{self.tab(indent+1)}#endregion I{base_composite.name}\n\n")
+            buffer.write(f"{utils.tab(indent+1)}#endregion I{base_composite.name}\n\n")
 
         # write internal enums if Any
         if (element.withEnum == True):
@@ -351,7 +351,7 @@ class DotnetEmitter:
         if ( utils.isPublishedOn(element.getInterface(), "grpc" ) == True and isinstance(element,dto)):
             buffer.write(self.dtoGrpcMappingText(element, code, indent+1))
 
-        buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
         buffer.write(f"\n")
 
         code.content += buffer.getvalue()
@@ -371,33 +371,33 @@ class DotnetEmitter:
 
         buffer = io.StringIO()
         buffer.write(f"\n")
-        buffer.write(f"{self.tab(indent)}#region Clone & Copy \n")
+        buffer.write(f"{utils.tab(indent)}#region Clone & Copy \n")
         if(hasBaseClass == True ):
             method_modifier = "override"
         else:
             method_modifier = "virtual"
 
-        buffer.write(f"{self.tab(indent)}{method_modifier} public {name} Clone()\n")
-        buffer.write(f"{self.tab(indent)}{{\n")
-        buffer.write(f"{self.tab(indent+1)}{name} clone = new();\n\n")
+        buffer.write(f"{utils.tab(indent)}{method_modifier} public {name} Clone()\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}{name} clone = new();\n\n")
 
         # Loop through each base members and generate code for each
         for base in bases:
-            buffer.write(f"{self.tab(indent+1)}// unfold begin: {base.name}\n")
+            buffer.write(f"{utils.tab(indent+1)}// unfold begin: {base.name}\n")
             # Write each base member
             for member in base.members:
                 buffer.write(self.dataClassMemberCloneText(member.name, member.type, code, dst="clone.", src="", indent=indent+1))
                 pass
-            buffer.write(f"{self.tab(indent+1)}// unfold end {base.name}\n\n")
+            buffer.write(f"{utils.tab(indent+1)}// unfold end {base.name}\n\n")
         # Write each own member
         for member in element.members:
             buffer.write(self.dataClassMemberCloneText(member.name, member.type, code, dst="clone.", src="", indent=indent+1))
             pass
 
         buffer.write(f"\n")
-        buffer.write(f"{self.tab(indent+1)}return clone;\n")
-        buffer.write(f"{self.tab(indent)}}}\n")
-        buffer.write(f"{self.tab(indent)}#endregion Clone & Copy \n")
+        buffer.write(f"{utils.tab(indent+1)}return clone;\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}#endregion Clone & Copy \n")
 
         return buffer.getvalue()
 
@@ -413,7 +413,7 @@ class DotnetEmitter:
                 return self.dataClassMemberCloneText_Map(memberName, memberType, code, dst, src, indent)
             
     def dataClassMemberCloneText_Primitive(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
-        return f"{self.tab(indent)}{dst}{memberName} = {self.dataClassMemberCloneExpression( f"{src}{memberName}", memberType, code )};\n"
+        return f"{utils.tab(indent)}{dst}{memberName} = {self.dataClassMemberCloneExpression( f"{src}{memberName}", memberType, code )};\n"
     
     def dataClassMemberCloneExpression(self, memberName: str, memberType: type, code:dotnet_code ) -> str:
         buffer = io.StringIO()
@@ -442,7 +442,7 @@ class DotnetEmitter:
         referenced_element: base_element = Engine.get_referenced_element(memberType.parent, memberType.reference_name)
 
         buffer = io.StringIO()
-        buffer.write(f"{self.tab(indent)}{dst}{memberName} = ")
+        buffer.write(f"{utils.tab(indent)}{dst}{memberName} = ")
         if (isinstance(referenced_element, enum) == True):
             buffer.write(f"{src}{memberName};\n")
         else:
@@ -455,14 +455,14 @@ class DotnetEmitter:
 
         match memberType.item_type.kind:
             case type.Kind.Primitive:
-                buffer.write(f"{self.tab(indent)}{dst}{memberName}.AddRange( {src}{memberName}.Select( v => {self.dataClassMemberCloneExpression( "v", memberType.item_type, code )} ));\n")
+                buffer.write(f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{memberName}.Select( v => {self.dataClassMemberCloneExpression( "v", memberType.item_type, code )} ));\n")
             case type.Kind.Reference:
                 reference_type: reference_type = memberType.item_type
                 referenced_element: base_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name )
                 if (isinstance(referenced_element, enum) == True):
-                    buffer.write( f"{self.tab(indent)}{dst}{memberName}.AddRange( {src}{memberName} );\n")
+                    buffer.write( f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{memberName} );\n")
                 else:
-                    buffer.write( f"{self.tab(indent)}{dst}{memberName}.AddRange( {src}{memberName}.Select( v => v.Clone() ));\n")
+                    buffer.write( f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{memberName}.Select( v => v.Clone() ));\n")
             case type.Kind.List:
                 pass
             case type.Kind.Map:
@@ -475,17 +475,17 @@ class DotnetEmitter:
 
         match memberType.value_type.kind:
             case type.Kind.Primitive:
-                buffer.write(f"{self.tab(indent)}foreach( var kvp in {src}{memberName})\n")
-                buffer.write( f"{self.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.dataClassMemberCloneExpression("kvp.Value", memberType.value_type, code)};\n")
+                buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{memberName})\n")
+                buffer.write( f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.dataClassMemberCloneExpression("kvp.Value", memberType.value_type, code)};\n")
             case type.Kind.Reference:
-                buffer.write(f"{self.tab(indent)}foreach( var kvp in {src}{memberName})\n")
+                buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{memberName})\n")
 
                 reference_type: reference_type = memberType.value_type
                 referenced_element: base_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name )
                 if (isinstance(referenced_element, enum) == True):
-                    buffer.write(f"{self.tab(indent+1)}{dst}{memberName}[kvp.Key] = kvp.Value;\n")
+                    buffer.write(f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = kvp.Value;\n")
                 else:
-                    buffer.write(f"{self.tab(indent+1)}{dst}{memberName}[kvp.Key] = kvp.Value?.Clone();\n")
+                    buffer.write(f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = kvp.Value?.Clone();\n")
                 pass
             case type.Kind.List:
                 # not supported types
@@ -513,50 +513,50 @@ class DotnetEmitter:
 
         # ToGrpc
         buffer.write(f"\n")
-        buffer.write(f"{self.tab(indent)}#region GrpcMapping\n")
-        buffer.write(f"{self.tab(indent)}public static Protos.{protosFullName} ToGrpc( {dotnetFullName} @this )\n")
-        buffer.write(f"{self.tab(indent)}{{\n")
-        buffer.write(f"{self.tab(indent+1)}Protos.{protosFullName} result = new();\n")
+        buffer.write(f"{utils.tab(indent)}#region GrpcMapping\n")
+        buffer.write(f"{utils.tab(indent)}public static Protos.{protosFullName} ToGrpc( {dotnetFullName} @this )\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}Protos.{protosFullName} result = new();\n")
         buffer.write(f"\n")
 
         # Loop through each base members and generate code for each
         for base in bases:
-            buffer.write(f"{self.tab(indent+1)}// unfold begin: {base.name}\n")
+            buffer.write(f"{utils.tab(indent+1)}// unfold begin: {base.name}\n")
             # Write each base member
             for member in base.members:
                 buffer.write(self.dataClassMemberToGrpcMappingText(member.name, member.type, code, dst="result.", src="@this.", indent=indent+1))
                 pass
-            buffer.write(f"{self.tab(indent+1)}// unfold end {base.name}\n\n")
+            buffer.write(f"{utils.tab(indent+1)}// unfold end {base.name}\n\n")
         # Write each own member
         for member in dto.members:
             buffer.write(self.dataClassMemberToGrpcMappingText(member.name, member.type, code, dst="result.", src="@this.", indent=indent+1))
             pass
         buffer.write(f"\n")
-        buffer.write(f"{self.tab(indent+1)}return result;\n")
-        buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent+1)}return result;\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
 
         # FromGrpc
-        buffer.write(f"{self.tab(indent)}public static {dotnetFullName} FromGrpc( Protos.{protosFullName} @from )\n")
-        buffer.write(f"{self.tab(indent)}{{\n")
-        buffer.write(f"{self.tab(indent+1)}{dotnetFullName} result = new();\n")
+        buffer.write(f"{utils.tab(indent)}public static {dotnetFullName} FromGrpc( Protos.{protosFullName} @from )\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}{dotnetFullName} result = new();\n")
         buffer.write(f"\n")
         # Loop through each base members and generate code for each
         for base in bases:
-            buffer.write(f"{self.tab(indent+1)}// unfold begin: {base.name}\n")
+            buffer.write(f"{utils.tab(indent+1)}// unfold begin: {base.name}\n")
             # Write each own member
             for member in base.members:
                 buffer.write(self.dataClassMemberFromGrpcMappingText(member.name, member.type, code, dst="result.", src="@from.", indent=indent+1))
                 pass
-            buffer.write(f"{self.tab(indent+1)}// unfold end {base.name}\n\n")
+            buffer.write(f"{utils.tab(indent+1)}// unfold end {base.name}\n\n")
 
         for member in dto.members:
             # Write each member
             buffer.write(self.dataClassMemberFromGrpcMappingText(member.name, member.type, code, dst="result.", src="@from.", indent=indent+1))
             pass
         buffer.write(f"\n")
-        buffer.write(f"{self.tab(indent+1)}return result;\n")
-        buffer.write(f"{self.tab(indent)}}}\n")
-        buffer.write(f"{self.tab(indent)}#endregion GrpcMapping\n")
+        buffer.write(f"{utils.tab(indent+1)}return result;\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}#endregion GrpcMapping\n")
 
         return buffer.getvalue()
 
@@ -583,10 +583,10 @@ class DotnetEmitter:
                 return self.dataClassMemberFromGrpcMappingText_Map(memberName, memberType, code, dst, src, indent)
 
     def dataClassMemberToGrpcMappingText_Primitive(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int):
-        return f"{self.tab(indent)}{dst}{utils.camel_to_pascal(memberName)} = {self.convertExpressionToGrpcRepresentation(f"{src}{memberName}", memberType, code)};\n"
+        return f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)} = {self.convertExpressionToGrpcRepresentation(f"{src}{memberName}", memberType, code)};\n"
 
     def dataClassMemberFromGrpcMappingText_Primitive(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int):
-        return f"{self.tab(indent)}{dst}{memberName} = {self.convertExpressionFromGrpcRepresentation(f"{src}{utils.camel_to_pascal(memberName)}", memberType, code)};\n"
+        return f"{utils.tab(indent)}{dst}{memberName} = {self.convertExpressionFromGrpcRepresentation(f"{src}{utils.camel_to_pascal(memberName)}", memberType, code)};\n"
 
     def convertExpressionToGrpcRepresentation(self, memberName: str, memberType: type, code: dotnet_code):
         match memberType.primtiveKind:
@@ -649,7 +649,7 @@ class DotnetEmitter:
         referenced_element: base_element = Engine.get_referenced_element(memberType.parent, memberType.reference_name)
 
         buffer = io.StringIO()
-        buffer.write(f"{self.tab(indent)}{dst}{utils.camel_to_pascal(memberName)} = ")
+        buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)} = ")
         if (isinstance(referenced_element, enum) == True):
             buffer.write(f"{grpc_utils.getDotnetFullName(referenced_element)}Mappings.ToGrpc( {src}{memberName});\n")
         else:
@@ -660,7 +660,7 @@ class DotnetEmitter:
         referenced_element: base_element = Engine.get_referenced_element(memberType.parent, memberType.reference_name)
 
         buffer = io.StringIO()
-        buffer.write(f"{self.tab(indent)}{dst}{memberName} = ")
+        buffer.write(f"{utils.tab(indent)}{dst}{memberName} = ")
         if (isinstance(referenced_element, enum) == True):
             buffer.write(f"{grpc_utils.getDotnetFullName(referenced_element)}Mappings.FromGrpc( {src}{utils.camel_to_pascal(memberName)});\n")
         else:
@@ -675,14 +675,14 @@ class DotnetEmitter:
         match memberType.item_type.kind:
             case type.Kind.Primitive:
                 if (memberType.item_type.primtiveKind == primitive_type.PrimtiveKind.Integer or memberType.item_type.primtiveKind == primitive_type.PrimtiveKind.String or memberType.item_type.primtiveKind == primitive_type.PrimtiveKind.Float or memberType.item_type.primtiveKind == primitive_type.PrimtiveKind.Boolean):
-                    buffer.write(f"{self.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.AddRange( {src}{memberName});\n")
+                    buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.AddRange( {src}{memberName});\n")
                 else:
                     buffer.write(
-                        f"{self.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.AddRange( {src}{memberName}.Select( v => {self.convertExpressionToGrpcRepresentation("v", memberType.item_type, code)} ));\n")
+                        f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.AddRange( {src}{memberName}.Select( v => {self.convertExpressionToGrpcRepresentation("v", memberType.item_type, code)} ));\n")
             case type.Kind.Reference:
                 reference_type: reference_type = memberType.item_type
                 buffer.write(
-                    f"{self.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.AddRange( {src}{memberName}.Select( v => {reference_type.reference_name.getText()}.ToGrpc( v ) ));\n")
+                    f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.AddRange( {src}{memberName}.Select( v => {reference_type.reference_name.getText()}.ToGrpc( v ) ));\n")
             case type.Kind.List:
                 pass
             case type.Kind.Map:
@@ -698,13 +698,13 @@ class DotnetEmitter:
         match memberType.item_type.kind:
             case type.Kind.Primitive:
                 if (memberType.item_type.primtiveKind == primitive_type.PrimtiveKind.Integer or memberType.item_type.primtiveKind == primitive_type.PrimtiveKind.String or memberType.item_type.primtiveKind == primitive_type.PrimtiveKind.Float or memberType.item_type.primtiveKind == primitive_type.PrimtiveKind.Boolean):
-                    buffer.write(f"{self.tab(indent)}{dst}{memberName}.AddRange( {src}{utils.camel_to_pascal(memberName)});\n")
+                    buffer.write(f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{utils.camel_to_pascal(memberName)});\n")
                 else:
                     buffer.write(
-                        f"{self.tab(indent)}{dst}{memberName}.AddRange( {src}{utils.camel_to_pascal(memberName)}.Select( v => {self.convertExpressionFromGrpcRepresentation("v", memberType.item_type, code)} ));\n")
+                        f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{utils.camel_to_pascal(memberName)}.Select( v => {self.convertExpressionFromGrpcRepresentation("v", memberType.item_type, code)} ));\n")
             case type.Kind.Reference:
                 buffer.write(
-                    f"{self.tab(indent)}{dst}{memberName}.AddRange( {src}{utils.camel_to_pascal(memberName)}.Select( v => {self.typeText(memberType.item_type, code)}.FromGrpc(v) ));\n")
+                    f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{utils.camel_to_pascal(memberName)}.Select( v => {self.typeText(memberType.item_type, code)}.FromGrpc(v) ));\n")
             case type.Kind.List:
                 # not supported types
                 pass
@@ -721,11 +721,11 @@ class DotnetEmitter:
         match memberType.value_type.kind:
             case type.Kind.Primitive:
                 if (memberType.value_type.primtiveKind == primitive_type.PrimtiveKind.Integer or memberType.value_type.primtiveKind == primitive_type.PrimtiveKind.String or memberType.value_type.primtiveKind == primitive_type.PrimtiveKind.Float or memberType.value_type.primtiveKind == primitive_type.PrimtiveKind.Boolean):
-                    buffer.write(f"{self.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add({src}{memberName});\n")
+                    buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add({src}{memberName});\n")
                 else:
-                    buffer.write(f"{self.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add({src}{memberName}.ToDictionary( kvp => kvp.Key, kvp => {self.convertExpressionToGrpcRepresentation("kvp.Value", memberType.value_type, code)}));\n")
+                    buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add({src}{memberName}.ToDictionary( kvp => kvp.Key, kvp => {self.convertExpressionToGrpcRepresentation("kvp.Value", memberType.value_type, code)}));\n")
             case type.Kind.Reference:
-                buffer.write(f"{self.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add( {src}{memberName}.ToDictionary( kvp => kvp.Key, kvp => {self.typeText(memberType.value_type, code)}.ToGrpc( kvp.Value ) ));\n")
+                buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add( {src}{memberName}.ToDictionary( kvp => kvp.Key, kvp => {self.typeText(memberType.value_type, code)}.ToGrpc( kvp.Value ) ));\n")
             case type.Kind.List:
                 # not supported types
                 pass
@@ -741,12 +741,12 @@ class DotnetEmitter:
 
         match memberType.value_type.kind:
             case type.Kind.Primitive:
-                buffer.write(f"{self.tab(indent)}foreach( var kvp in {src}{utils.camel_to_pascal(memberName)})\n")
+                buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{utils.camel_to_pascal(memberName)})\n")
                 buffer.write(
-                    f"{self.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.convertExpressionFromGrpcRepresentation("kvp.Value", memberType.value_type, code)};\n")
+                    f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.convertExpressionFromGrpcRepresentation("kvp.Value", memberType.value_type, code)};\n")
             case type.Kind.Reference:
-                buffer.write(f"{self.tab(indent)}foreach( var kvp in {src}{utils.camel_to_pascal(memberName)})\n")
-                buffer.write(f"{self.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.typeText(memberType.value_type, code)}.FromGrpc(kvp.Value);\n")
+                buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{utils.camel_to_pascal(memberName)})\n")
+                buffer.write(f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.typeText(memberType.value_type, code)}.FromGrpc(kvp.Value);\n")
                 pass
             case type.Kind.List:
                 # not supported types
@@ -766,14 +766,14 @@ class DotnetEmitter:
         # Add documentation lines for the composite
         buffer.write(self.documentLines(composite, indent))
         # Write the composite interface declaration with indentation
-        buffer.write(f"{self.tab(indent)}public interface I{composite.name}\n")
-        buffer.write(f"{self.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent)}public interface I{composite.name}\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
         # Loop through each composite members and generate code for each
         for member in composite.members:
             buffer.write(self.documentLines(member, indent+1))
             # Write each member
             buffer.write(self.propertyText(member.name, member.type, code, indent+1))
-        buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
 
         code.content += buffer.getvalue()
         return code
@@ -796,8 +796,8 @@ class DotnetEmitter:
         # Add documentation lines for the element
         buffer.write(self.documentLines(element, indent))
         # Write the interface class declaration with indentation
-        buffer.write(f"{self.tab(indent)}public partial interface I{elementName}\n")
-        buffer.write(f"{self.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent)}public partial interface I{elementName}\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
 
         # Loop through each operations and generate code for each
         for operation in element.operations:
@@ -811,7 +811,7 @@ class DotnetEmitter:
                 handled_event:event = Engine.get_referenced_element(eventhandler, eventhandler.handledEvent )
                 if(handled_event != None ):
                     buffer.write(self.documentLines(eventhandler, indent))
-                    buffer.write(f"{self.tab(indent+1)}public Task<bool> {eventhandler.name}(CallingContext ctx, {grpc_utils.getDotnetFullName(handled_event)} @event );")
+                    buffer.write(f"{utils.tab(indent+1)}public Task<bool> {eventhandler.name}(CallingContext ctx, {grpc_utils.getDotnetFullName(handled_event)} @event );")
 
         buffer.write(f"\n")
         code.content += buffer.getvalue()
@@ -837,7 +837,7 @@ class DotnetEmitter:
             for event in element.dtos:
                 code = self.dtoText(event, code, indent+1)
 
-        buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
 
         code.content += buffer.getvalue()
         return code
@@ -847,41 +847,38 @@ class DotnetEmitter:
 
         # Add summary for operation
         if (len(operation.document_lines) > 0):
-            buffer.write(f"{self.tab(indent)}/// <summary>\n")
+            buffer.write(f"{utils.tab(indent)}/// <summary>\n")
             for line in operation.document_lines:
-                buffer.write(f"{self.tab(indent)}/// {line}\n")
-            buffer.write(f"{self.tab(indent)}/// </summary>\n")
+                buffer.write(f"{utils.tab(indent)}/// {line}\n")
+            buffer.write(f"{utils.tab(indent)}/// </summary>\n")
 
         # Add param comments for operation
         for param in operation.operation_params:
             if (len(param.document_lines) == 1):
-                buffer.write(f"{self.tab(indent)}/// <param name='{param.name}'>{param.document_lines[0]}</param>\n")
+                buffer.write(f"{utils.tab(indent)}/// <param name='{param.name}'>{param.document_lines[0]}</param>\n")
             elif (len(param.document_lines) > 1):
-                buffer.write(f"{self.tab(indent)}/// <param name='{param.name}'>\n")
+                buffer.write(f"{utils.tab(indent)}/// <param name='{param.name}'>\n")
                 for line in param.document_lines:
-                    buffer.write(f"{self.tab(indent)}/// {line}\n")
-                buffer.write(f"{self.tab(indent)}/// </param>\n")
+                    buffer.write(f"{utils.tab(indent)}/// {line}\n")
+                buffer.write(f"{utils.tab(indent)}/// </param>\n")
 
-        # Add response code comments
-        for returns in operation.operation_returns:
-            status_decorator: decorator = next((d for d in returns.decorators if d.name == "status"), None)
-            if (status_decorator != None and len(status_decorator.params) > 0):
-                status_code = status_decorator.params[0].value
-                if (len(returns.document_lines) == 1):
-                    buffer.write(f"{self.tab(indent)}/// <response code='{status_code}'>{returns.document_lines[0]}</response>\n")
-                elif (len(returns.document_lines) > 1):
-                    buffer.write(f"{self.tab(indent)}/// <response code='{status_code}'>\n")
-                    for line in returns.document_lines:
-                        buffer.write(f"{self.tab(indent)}/// {line}\n")
-                    buffer.write(f"{self.tab(indent)}/// </response>\n")
+        # Add return code comments
+        if( operation.operation_return != None ):
+            if (len(operation.operation_return.document_lines) == 1):
+                buffer.write(f"{utils.tab(indent)}/// <return>{operation.operation_return.document_lines[0]}</return>\n")
+            elif (len(operation.operation_return.document_lines) > 1):
+                buffer.write(f"{utils.tab(indent)}/// <return>\n")
+                for line in operation.operation_return.document_lines:
+                    buffer.write(f"{utils.tab(indent)}/// {line}\n")
+                buffer.write(f"{utils.tab(indent)}/// </return>\n")
+            else:
+                buffer.write(f"{utils.tab(indent)}/// <return>{self.typeText( operation.operation_return.type, code )}</return>\n")
 
         # Add return value
-        buffer.write(f"{self.tab(indent)}public Task<Response")
-        if (len(operation.operation_returns) > 0):
-            buffer.write("<")
-            buffer.write(", ".join(self.typeText(item.type, code) for item in operation.operation_returns))
-            buffer.write(">")
-        buffer.write(">")
+        buffer.write(f"{utils.tab(indent)}public Task<Response")
+        if (operation.operation_return != None ):
+            buffer.write(f"<{self.typeText(operation.operation_return.type, code)}>")
+        buffer.write(f">")
         # Add function name
         buffer.write(f" {operation.name}(CallingContext ctx")
         # Add parameters
@@ -910,110 +907,109 @@ class DotnetEmitter:
         # Add documentation lines for the interface
         buffer.write(self.documentLines(interface, indent))
         # class declaration
-        buffer.write(f"{self.tab(indent)}public class {versionedName}_GrpcController : {domain.name}.{context.name}.Protos.{versionedName}.{versionedName}.{versionedName}Base \n")
-        buffer.write(f"{self.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent)}public class {versionedName}_GrpcController : {domain.name}.{context.name}.Protos.{versionedName}.{versionedName}.{versionedName}Base \n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
         # class members
-        buffer.write(f"{self.tab(indent+1)}private readonly ILogger<{versionedName}_GrpcController> _logger;\n")
-        buffer.write(f"{self.tab(indent+1)}private readonly I{versionedName} _service;\n")
+        buffer.write(f"{utils.tab(indent+1)}private readonly ILogger<{versionedName}_GrpcController> _logger;\n")
+        buffer.write(f"{utils.tab(indent+1)}private readonly I{versionedName} _service;\n")
         buffer.write(f"\n")
         # class constructor
-        buffer.write(f"{self.tab(indent+1)}public {versionedName}_GrpcController( ILogger<{versionedName}_GrpcController> logger, I{versionedName} service )\n")
-        buffer.write(f"{self.tab(indent+1)}{{\n")
-        buffer.write(f"{self.tab(indent+2)}_logger = logger; \n")
-        buffer.write(f"{self.tab(indent+2)}_service = service; \n")
-        buffer.write(f"{self.tab(indent+1)}}}\n")
+        buffer.write(f"{utils.tab(indent+1)}public {versionedName}_GrpcController( ILogger<{versionedName}_GrpcController> logger, I{versionedName} service )\n")
+        buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}_logger = logger; \n")
+        buffer.write(f"{utils.tab(indent+2)}_service = service; \n")
+        buffer.write(f"{utils.tab(indent+1)}}}\n")
 
         # Add functions based on operations
         for operation in interface.operations:
             buffer.write(f"\n")
-            buffer.write(f"{self.tab(indent+1)}public override async Task<{versionedName}_{operation.name}Response> {operation.name}( {versionedName}_{operation.name}Request request, ServerCallContext grpcContext)\n")
-            buffer.write(f"{self.tab(indent+1)}{{\n")
-            buffer.write(f"{self.tab(indent+2)}using(LogContext.PushProperty( \"Scope\", \"{versionedName}.{operation.name}\" ))\n")
-            buffer.write(f"{self.tab(indent+2)}{{\n")
-            buffer.write(f"{self.tab(indent+3)}CallingContext ctx = CallingContext.PoolFromGrpcContext( grpcContext, _logger );\n")
-            buffer.write(f"{self.tab(indent+3)}try\n")
-            buffer.write(f"{self.tab(indent+3)}{{\n")
+            buffer.write(f"{utils.tab(indent+1)}public override async Task<{versionedName}_{operation.name}Response> {operation.name}( {versionedName}_{operation.name}Request request, ServerCallContext grpcContext)\n")
+            buffer.write(f"{utils.tab(indent+1)}{{\n")
+            buffer.write(f"{utils.tab(indent+2)}using(LogContext.PushProperty( \"Scope\", \"{versionedName}.{operation.name}\" ))\n")
+            buffer.write(f"{utils.tab(indent+2)}{{\n")
+            buffer.write(f"{utils.tab(indent+3)}CallingContext ctx = CallingContext.PoolFromGrpcContext( grpcContext, _logger );\n")
+            buffer.write(f"{utils.tab(indent+3)}try\n")
+            buffer.write(f"{utils.tab(indent+3)}{{\n")
             index: int = 1
             params: List[str] = []
             for param in operation.operation_params:
-                buffer.write(f"{self.tab(indent+4)}{self.typeText(param.type, code, fullName=True)} {param.name};\n")
-                buffer.write(f"{self.tab(indent+4)}{self.dataClassMemberFromGrpcMappingText(param.name, param.type, code, dst="", src="request.", indent=0)}")
+                buffer.write(f"{utils.tab(indent+4)}{self.typeText(param.type, code, fullName=True)} {param.name};\n")
+                buffer.write(f"{utils.tab(indent+4)}{self.dataClassMemberFromGrpcMappingText(param.name, param.type, code, dst="", src="request.", indent=0)}")
                 params.append(param.name)
                 index = index + 1
             buffer.write(f"\n")
-            buffer.write(f"{self.tab(indent+4)}// calling the service function itself\n")
-            buffer.write(f"{self.tab(indent+4)}var response = await _service.{operation.name}( ctx {", " + ", ".join(params) if params else ""} );\n")
+            buffer.write(f"{utils.tab(indent+4)}// calling the service function itself\n")
+            buffer.write(f"{utils.tab(indent+4)}var response = await _service.{operation.name}( ctx {", " + ", ".join(params) if params else ""} );\n")
             buffer.write(f"\n")
-            if (len(operation.operation_returns) > 0):
-                index: int = 1
-                for returns in operation.operation_returns:
-                    buffer.write(f"{self.tab(indent+4)}if( response.HasValue{index}() == true )\n")
-                    buffer.write(f"{self.tab(indent+4)}{{\n")
-                    buffer.write(f"{self.tab(indent+5)}var result = new {versionedName}_{operation.name}Response();\n")
-                    buffer.write(f"{self.tab(indent+5)}{self.dataClassMemberToGrpcMappingText(f"Value{index}", returns.type, code, dst="result.", src="response.", indent=0)}")
-                    buffer.write(f"{self.tab(indent+5)}return result;\n")
-                    buffer.write(f"{self.tab(indent+4)}}}\n")
-                    buffer.write(f"{self.tab(indent+4)}\n")
-                    index = index+1
-
-                buffer.write(f"{self.tab(indent+4)}if( response.IsSuccess() == false )\n")
-                buffer.write(f"{self.tab(indent+4)}{{\n")
-                buffer.write(f"{self.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
-                buffer.write(f"{self.tab(indent+6)}Error = new () {{\n")
-                buffer.write(f"{self.tab(indent+7)}Status = response.Error.Status.ToGrpc(),\n")
-                buffer.write(f"{self.tab(indent+7)}MessageText = response.Error.MessageText,\n")
-                buffer.write(f"{self.tab(indent+7)}AdditionalInformation = response.Error.AdditionalInformation\n")
-                buffer.write(f"{self.tab(indent+6)}}}\n")
-                buffer.write(f"{self.tab(indent+5)}}};\n")
-                buffer.write(f"{self.tab(indent+4)}}}\n")
-                buffer.write(f"{self.tab(indent+4)}\n")
-
-                buffer.write(f"{self.tab(indent+4)}return new {versionedName}_{operation.name}Response {{\n")
-                buffer.write(f"{self.tab(indent+5)}Error = new () {{\n")
-                buffer.write(f"{self.tab(indent+6)}Status = ServiceKit.Protos.Statuses.NotImplemented,\n")
-                buffer.write(f"{self.tab(indent+6)}MessageText = \"Not handled reponse in GRPC Controller when calling '{versionedName}.{operation.name}'\",\n")
-                buffer.write(f"{self.tab(indent+5)}}}\n")
-                buffer.write(f"{self.tab(indent+4)}}};\n")
+            if ( operation.operation_return != None ):
+                
+                buffer.write(f"{utils.tab(indent+4)}if( response.IsSuccess() == true )\n")
+                buffer.write(f"{utils.tab(indent+4)}{{\n")
+                buffer.write(f"{utils.tab(indent+5)}if( response.HasValue() == true )\n")
+                buffer.write(f"{utils.tab(indent+5)}{{\n")
+                buffer.write(f"{utils.tab(indent+6)}var result = new {versionedName}_{operation.name}Response();\n")
+                buffer.write(f"{utils.tab(indent+6)}{self.dataClassMemberToGrpcMappingText(f"Value", operation.operation_return.type, code, dst="result.", src="response.", indent=0)}")
+                buffer.write(f"{utils.tab(indent+6)}return result;\n")
+                buffer.write(f"{utils.tab(indent+5)}}}\n")
+                buffer.write(f"{utils.tab(indent+5)}else\n")
+                buffer.write(f"{utils.tab(indent+5)}{{\n")
+                buffer.write(f"{utils.tab(indent+6)}return new {versionedName}_{operation.name}Response {{\n")
+                buffer.write(f"{utils.tab(indent+7)}Error = new () {{\n")
+                buffer.write(f"{utils.tab(indent+8)}Status = ServiceKit.Protos.Statuses.NotImplemented,\n")
+                buffer.write(f"{utils.tab(indent+8)}MessageText = \"Not handled reponse in GRPC Controller when calling '{versionedName}.{operation.name}'\",\n")
+                buffer.write(f"{utils.tab(indent+7)}}}\n")
+                buffer.write(f"{utils.tab(indent+6)}}};\n")
+                buffer.write(f"{utils.tab(indent+5)}}}\n")
+                buffer.write(f"{utils.tab(indent+4)}}}\n")
+                buffer.write(f"{utils.tab(indent+4)}else\n")
+                buffer.write(f"{utils.tab(indent+4)}{{\n")
+                buffer.write(f"{utils.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
+                buffer.write(f"{utils.tab(indent+6)}Error = new () {{\n")
+                buffer.write(f"{utils.tab(indent+7)}Status = response.Error.Status.ToGrpc(),\n")
+                buffer.write(f"{utils.tab(indent+7)}MessageText = response.Error.MessageText,\n")
+                buffer.write(f"{utils.tab(indent+7)}AdditionalInformation = response.Error.AdditionalInformation\n")
+                buffer.write(f"{utils.tab(indent+6)}}}\n")
+                buffer.write(f"{utils.tab(indent+5)}}};\n")
+                buffer.write(f"{utils.tab(indent+4)}}}\n")
             else:
-                buffer.write(f"{self.tab(indent+4)}if( response.IsSuccess() == true )\n")
-                buffer.write(f"{self.tab(indent+4)}{{\n")
-                buffer.write(f"{self.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
-                buffer.write(f"{self.tab(indent+6)}Success = new Empty()\n")
-                buffer.write(f"{self.tab(indent+5)}}};\n")
-                buffer.write(f"{self.tab(indent+4)}}}\n")
-                buffer.write(f"{self.tab(indent+4)}else\n")
-                buffer.write(f"{self.tab(indent+4)}{{\n")
-                buffer.write(f"{self.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
-                buffer.write(f"{self.tab(indent+6)}Error = new () {{\n")
-                buffer.write(f"{self.tab(indent+7)}Status = response.Error.Status.ToGrpc(),\n")
-                buffer.write(f"{self.tab(indent+7)}MessageText = response.Error.MessageText,\n")
-                buffer.write(f"{self.tab(indent+7)}AdditionalInformation = response.Error.AdditionalInformation\n")
-                buffer.write(f"{self.tab(indent+6)}}}\n")
-                buffer.write(f"{self.tab(indent+5)}}};\n")
-                buffer.write(f"{self.tab(indent+4)}}}\n")
-                buffer.write(f"{self.tab(indent+4)}\n")
+                buffer.write(f"{utils.tab(indent+4)}if( response.IsSuccess() == true )\n")
+                buffer.write(f"{utils.tab(indent+4)}{{\n")
+                buffer.write(f"{utils.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
+                buffer.write(f"{utils.tab(indent+6)}Success = new Empty()\n")
+                buffer.write(f"{utils.tab(indent+5)}}};\n")
+                buffer.write(f"{utils.tab(indent+4)}}}\n")
+                buffer.write(f"{utils.tab(indent+4)}else\n")
+                buffer.write(f"{utils.tab(indent+4)}{{\n")
+                buffer.write(f"{utils.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
+                buffer.write(f"{utils.tab(indent+6)}Error = new () {{\n")
+                buffer.write(f"{utils.tab(indent+7)}Status = response.Error.Status.ToGrpc(),\n")
+                buffer.write(f"{utils.tab(indent+7)}MessageText = response.Error.MessageText,\n")
+                buffer.write(f"{utils.tab(indent+7)}AdditionalInformation = response.Error.AdditionalInformation\n")
+                buffer.write(f"{utils.tab(indent+6)}}}\n")
+                buffer.write(f"{utils.tab(indent+5)}}};\n")
+                buffer.write(f"{utils.tab(indent+4)}}}\n")
+                buffer.write(f"{utils.tab(indent+4)}\n")
 
-            buffer.write(f"{self.tab(indent+4)}\n")
-            buffer.write(f"{self.tab(indent+3)}}}\n")
-            buffer.write(f"{self.tab(indent+3)}catch(Exception ex)\n")
-            buffer.write(f"{self.tab(indent+3)}{{\n")
-            buffer.write(f"{self.tab(indent+4)}return new {versionedName}_{operation.name}Response {{\n")
-            buffer.write(f"{self.tab(indent+5)}Error = new () {{\n")
-            buffer.write(f"{self.tab(indent+6)}Status = ServiceKit.Protos.Statuses.InternalError,\n")
-            buffer.write(f"{self.tab(indent+6)}MessageText = ex.Message,\n")
-            buffer.write(f"{self.tab(indent+6)}AdditionalInformation = ex.ToString()\n")
-            buffer.write(f"{self.tab(indent+5)}}}\n")
-            buffer.write(f"{self.tab(indent+4)}}};\n")
-            buffer.write(f"{self.tab(indent+3)}}}\n")
-            buffer.write(f"{self.tab(indent+3)}finally\n")
-            buffer.write(f"{self.tab(indent+3)}{{\n")
-            buffer.write(f"{self.tab(indent+4)}ctx.ReturnToPool();\n")
-            buffer.write(f"{self.tab(indent+3)}}}\n")
-            buffer.write(f"{self.tab(indent+2)}}}\n")
-            buffer.write(f"{self.tab(indent+1)}}}\n")
+            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(f"{utils.tab(indent+3)}catch(Exception ex)\n")
+            buffer.write(f"{utils.tab(indent+3)}{{\n")
+            buffer.write(f"{utils.tab(indent+4)}return new {versionedName}_{operation.name}Response {{\n")
+            buffer.write(f"{utils.tab(indent+5)}Error = new () {{\n")
+            buffer.write(f"{utils.tab(indent+6)}Status = ServiceKit.Protos.Statuses.InternalError,\n")
+            buffer.write(f"{utils.tab(indent+6)}MessageText = ex.Message,\n")
+            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = ex.ToString()\n")
+            buffer.write(f"{utils.tab(indent+5)}}}\n")
+            buffer.write(f"{utils.tab(indent+4)}}};\n")
+            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(f"{utils.tab(indent+3)}finally\n")
+            buffer.write(f"{utils.tab(indent+3)}{{\n")
+            buffer.write(f"{utils.tab(indent+4)}ctx.ReturnToPool();\n")
+            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(f"{utils.tab(indent+2)}}}\n")
+            buffer.write(f"{utils.tab(indent+1)}}}\n")
 
         # end of class
-        buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
 
         code.content += buffer.getvalue()
         return code
@@ -1027,10 +1023,14 @@ class DotnetEmitter:
         context: context = interface.getContext()
         versionedName: str = f"{interface.name}_v{interface.version}"
 
+
+        code.usings.add("System.Net.Mime")
         code.usings.add("Microsoft.AspNetCore.Authorization")
         code.usings.add("Microsoft.AspNetCore.Http")
         code.usings.add("Microsoft.AspNetCore.Mvc")
         code.usings.add("Microsoft.AspNetCore.RateLimiting")
+        code.usings.add("Swashbuckle.AspNetCore.Annotations")
+        code.usings.add("Swashbuckle.AspNetCore.Swagger")
         code.usings.add("ServiceKit.Net")
         code.usings.add("Serilog.Context")
 
@@ -1038,65 +1038,130 @@ class DotnetEmitter:
         buffer.write(self.documentLines(interface, indent))
 
         # class declaration
-        buffer.write(f"{self.tab(indent)}public class {versionedName}_RestController : ControllerBase \n")
-        buffer.write(f"{self.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent)}[ApiController]\n")
+        buffer.write(f"{utils.tab(indent)}[Route( \"[controller]\" )]\n")
+        if( len(interface.document_lines) > 0 ):
+            buffer.write(f"{utils.tab(indent)}[SwaggerTag( \"{utils.document_lines_to_one(interface)}\" )]\n")
+        buffer.write(f"{utils.tab(indent)}public class {versionedName}_RestController : ControllerBase \n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
         # class members
-        buffer.write(f"{self.tab(indent+1)}private readonly ILogger<{versionedName}_RestController> _logger;\n")
-        buffer.write(f"{self.tab(indent+1)}private readonly I{versionedName} _service;\n")
+        buffer.write(f"{utils.tab(indent+1)}private readonly ILogger<{versionedName}_RestController> _logger;\n")
+        buffer.write(f"{utils.tab(indent+1)}private readonly I{versionedName} _service;\n")
         # class constructor
-        buffer.write(f"{self.tab(indent+1)}public {versionedName}_RestController( ILogger<{versionedName}_RestController> logger, I{versionedName} service )\n")
-        buffer.write(f"{self.tab(indent+1)}{{\n")
-        buffer.write(f"{self.tab(indent+2)}_logger = logger; \n")
-        buffer.write(f"{self.tab(indent+2)}_service = service; \n")
-        buffer.write(f"{self.tab(indent+1)}}}\n")
+        buffer.write(f"{utils.tab(indent+1)}public {versionedName}_RestController( ILogger<{versionedName}_RestController> logger, I{versionedName} service )\n")
+        buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}_logger = logger; \n")
+        buffer.write(f"{utils.tab(indent+2)}_service = service; \n")
+        buffer.write(f"{utils.tab(indent+1)}}}\n")
 
         # Add functions based on operations
         for operation in interface.operations:
             buffer.write(f"\n")
-            buffer.write(f"{self.tab(indent+1)}public async Task<IActionResult> {operation.name}(")
+            buffer.write(self.documentLines(operation, indent+1))
+            http_operation:rest_operation = rest_operation(operation)
+            match http_operation.verb:
+                case rest_operation.Verb.Get:
+                    buffer.write(f"{utils.tab(indent+1)}[HttpGet( \"{http_operation.route}\" )] \n")        
+                case rest_operation.Verb.Post:
+                    buffer.write(f"{utils.tab(indent+1)}[HttpPost( \"{http_operation.route}\" )] \n")        
+            buffer.write(f"{utils.tab(indent+1)}[Produces( MediaTypeNames.Application.Json )]\n")
+            if( len(operation.document_lines) > 0 ):
+                buffer.write(f"{utils.tab(indent+1)}[SwaggerOperation( \"{utils.document_lines_to_one(operation)}\" )]\n")
+            if( operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status200OK, \"{utils.document_lines_to_one(operation.operation_return)}\", typeof({self.typeText( operation.operation_return.type, code, fullName=True )}) )]\n")
+            else:
+                buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status200OK, \"Ok\" )]\n")
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status400BadRequest, nameof(StatusCodes.Status400BadRequest), typeof(ServiceKit.Net.Error) )]\n")
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status408RequestTimeout, nameof(StatusCodes.Status408RequestTimeout), typeof(ServiceKit.Net.Error) )]\n")
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status404NotFound, nameof(StatusCodes.Status404NotFound), typeof(ServiceKit.Net.Error) )]\n")
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status401Unauthorized, nameof(StatusCodes.Status401Unauthorized), typeof(ServiceKit.Net.Error) )]\n")
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status501NotImplemented, nameof(StatusCodes.Status501NotImplemented), typeof(ServiceKit.Net.Error) )]\n")
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status500InternalServerError, nameof(StatusCodes.Status500InternalServerError), typeof(ServiceKit.Net.Error) )]\n")
+            buffer.write(f"{utils.tab(indent+1)}public async Task<IActionResult> {operation.name}(")
             index: int = 0
             params: List[str] = []
             for param in operation.operation_params:
                 if( index> 0 ):
                     buffer.write(", ")
-                buffer.write(f"{self.typeText(param.type, code, fullName=True)} {param.name}")
+                
+                http_param:rest_param = http_operation.params[param.name]
+                match http_param.bindingSource:
+                    case rest_param.BindingSource.FromRoute:
+                        buffer.write( f" [FromRoute] {self.typeText(param.type, code, fullName=True)} {http_param.httpName}")
+                    case rest_param.BindingSource.FromQuery:
+                        buffer.write( f" [FromQuery] {self.typeText(param.type, code, fullName=True)} {http_param.httpName}")
+                    case rest_param.BindingSource.FromBody:
+                        buffer.write( f" [FromBody] {self.typeText(param.type, code, fullName=True)} {http_param.httpName}")
+                    case rest_param.BindingSource.FromForm:
+                        buffer.write( f" [FromForm] IFormFile {http_param.httpName}")
                 params.append(param.name)
                 index = index + 1
             buffer.write(f")\n")
-            buffer.write(f"{self.tab(indent+1)}{{\n")
-            buffer.write(f"{self.tab(indent+2)}using(LogContext.PushProperty( \"Scope\", \"{versionedName}.{operation.name}\" ))\n")
-            buffer.write(f"{self.tab(indent+2)}{{\n")
-            buffer.write(f"{self.tab(indent+3)}CallingContext ctx = CallingContext.PoolFromHttpContext( HttpContext, _logger );\n")
-            buffer.write(f"{self.tab(indent+3)}try\n")
-            buffer.write(f"{self.tab(indent+3)}{{\n")
-            buffer.write(f"{self.tab(indent+4)}// calling the service function itself\n")
-            buffer.write(f"{self.tab(indent+4)}var response = await _service.{operation.name}( ctx {", " + ", ".join(params) if params else ""} );\n")
+            buffer.write(f"{utils.tab(indent+1)}{{\n")
+            buffer.write(f"{utils.tab(indent+2)}using(LogContext.PushProperty( \"Scope\", \"{versionedName}.{operation.name}\" ))\n")
+            buffer.write(f"{utils.tab(indent+2)}{{\n")
+            buffer.write(f"{utils.tab(indent+3)}CallingContext ctx = CallingContext.PoolFromHttpContext( HttpContext, _logger );\n")
+            buffer.write(f"{utils.tab(indent+3)}try\n")
+            buffer.write(f"{utils.tab(indent+3)}{{\n")
+            for http_param in http_operation.params.values():
+                match http_param.bindingSource:
+                    case rest_param.BindingSource.FromRoute | rest_param.BindingSource.FromQuery | rest_param.BindingSource.FromBody:
+                        pass
+                    case rest_param.BindingSource.FromForm:
+                        if( rest_utils.is_stream_type_param( http_param.param ) == True ):
+                            buffer.write(f"{utils.tab(indent+4)}Stream {http_param.param.name} = {http_param.httpName}?.OpenReadStream();\n")
+                            buffer.write(f"{utils.tab(indent+4)}if(content.CanSeek)\n")
+                            buffer.write(f"{utils.tab(indent+5)}content.Seek( 0, SeekOrigin.Begin );\n")
+                            buffer.write(f"\n")
+                        elif( rest_utils.is_body_type_param( http_param.param ) == True ):
+                            code.usings.add("System.Text.Json")
+                            buffer.write(f"{utils.tab(indent+4)}string json_{http_param.param.name} = await new StreamReader( {http_param.httpName}.OpenReadStream() ).ReadToEndAsync();\n")
+                            buffer.write(f"{utils.tab(indent+4)}{self.typeText(http_param.param.type, code, fullName=True)} {http_param.param.name} = JsonSerializer.Deserialize<{self.typeText(http_param.param.type, code, fullName=True)}>( json_{http_param.param.name} );\n")
+                            buffer.write(f"\n")
+
+            buffer.write(f"{utils.tab(indent+4)}// calling the service function itself\n")
+            buffer.write(f"{utils.tab(indent+4)}var response = await _service.{operation.name}( ctx{", " + ", ".join(params) if params else ""} );\n")
             buffer.write(f"\n")
-            buffer.write(f"{self.tab(indent+4)}if( response.IsSuccess() == true )\n")
-            buffer.write(f"{self.tab(indent+5)} return Ok(response);\n")
-            buffer.write(f"{self.tab(indent+4)} else\n")
-            buffer.write(f"{self.tab(indent+5)} return BadRequest(response);\n")
-            buffer.write(f"{self.tab(indent+3)}}}\n")
-            buffer.write(f"{self.tab(indent+3)}catch(Exception ex)\n")
-            buffer.write(f"{self.tab(indent+3)}{{\n")
-            buffer.write(f"{self.tab(indent+4)}return StatusCode(StatusCodes.Status500InternalServerError, new {{ message = ex.Message }});\n")
-            buffer.write(f"{self.tab(indent+3)}}}\n")
-            buffer.write(f"{self.tab(indent+3)}finally\n")
-            buffer.write(f"{self.tab(indent+3)}{{\n")
-            buffer.write(f"{self.tab(indent+4)}ctx.ReturnToPool();\n")
-            buffer.write(f"{self.tab(indent+3)}}}\n")
-            buffer.write(f"{self.tab(indent+2)}}}\n")
-            buffer.write(f"{self.tab(indent+1)}}}\n")
+            buffer.write(f"{utils.tab(indent+4)}if( response.IsSuccess() == true )\n")
+            buffer.write(f"{utils.tab(indent+4)}{{\n")
+            if( operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+5)}if( response.HasValue() == true )\n")
+                buffer.write(f"{utils.tab(indent+5)}{{\n")
+                buffer.write(f"{utils.tab(indent+6)}return Ok(response.Value);\n")
+                buffer.write(f"{utils.tab(indent+5)}}}\n")
+                buffer.write(f"{utils.tab(indent+5)}else\n")
+                buffer.write(f"{utils.tab(indent+5)}{{\n")
+                buffer.write(f"{utils.tab(indent+6)}return StatusCode(StatusCodes.Status501NotImplemented, \"Not handled reponse in REST Controller when calling '{versionedName}.{operation.name}'\" );\n")
+                buffer.write(f"{utils.tab(indent+5)}}}\n")
+            else:
+                buffer.write(f"{utils.tab(indent+5)}return Ok();\n")
+                
+            buffer.write(f"{utils.tab(indent+4)}}}\n")
+            buffer.write(f"{utils.tab(indent+4)}else\n")
+            buffer.write(f"{utils.tab(indent+4)}{{\n")
+            buffer.write(f"{utils.tab(indent+5)}return StatusCode(response.Error.Status.ToHttp(), response.Error);\n")
+            buffer.write(f"{utils.tab(indent+4)}}}\n")
+            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(f"{utils.tab(indent+3)}catch(Exception ex)\n")
+            buffer.write(f"{utils.tab(indent+3)}{{\n")
+            buffer.write(f"{utils.tab(indent+4)}return StatusCode(StatusCodes.Status500InternalServerError, new Error() {{ Status = Statuses.InternalError, MessageText = ex.Message, AdditionalInformation = ex.ToString()}} );\n")
+            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(f"{utils.tab(indent+3)}finally\n")
+            buffer.write(f"{utils.tab(indent+3)}{{\n")
+            buffer.write(f"{utils.tab(indent+4)}ctx.ReturnToPool();\n")
+            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(f"{utils.tab(indent+2)}}}\n")
+            buffer.write(f"{utils.tab(indent+1)}}}\n")
 
         # end of class
-        buffer.write(f"{self.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
 
         code.content += buffer.getvalue()
         return code
 
     def propertyText(self, member_name: str, type: type, code: dotnet_code, indent: int) -> str:
         buffer = io.StringIO()
-        buffer.write(f"{self.tab(indent)}public {self.typeText(type, code)} {member_name} {{ get; set; }}")
+        buffer.write(f"{utils.tab(indent)}public {self.typeText(type, code)} {member_name} {{ get; set; }}")
         if(type.kind == type.Kind.List or type.kind == type.Kind.Map ):
             buffer.write(f" = new();")
         buffer.write(f"\n")
@@ -1160,9 +1225,6 @@ class DotnetEmitter:
     def typeTextMap(self, type: map_type, code, fullName: bool = False) -> str:
         return f"Dictionary<{self.typeText(type.key_type, code, fullName)},{self.typeText(type.value_type, code, fullName)}>"
 
-    def tab(self, indent=1) -> str:
-        return '\t'*indent
-
     def documentLines(self, hinted_element: hinted_base_element, indent: int = 1) -> str:
         """
         Generates documentation lines for the provided element.
@@ -1171,7 +1233,7 @@ class DotnetEmitter:
         # Loop through each document line of the hinted element
         for document_line in hinted_element.document_lines:
             # Write the documentation line with the specified indentation
-            buffer.write(f"{self.tab(indent)}///{document_line}")
+            buffer.write(f"{utils.tab(indent)}///{document_line}")
             buffer.write("\n")
         return buffer.getvalue()
 

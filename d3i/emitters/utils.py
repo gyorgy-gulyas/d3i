@@ -1,9 +1,18 @@
+import io
 import os
 from d3i.Engine import *
 from d3i.elements.Elements import *
 
 
 class utils:
+    @staticmethod
+    def tab(indent=1) -> str:
+        return '\t'*indent
+
+    @staticmethod
+    def document_lines_to_one(hinted_element: hinted_base_element) -> str:
+        return " ".join(hinted_element.document_lines).replace("  ", " ").strip()
+
     @staticmethod
     def create_folder(output_dir: str, folder_name: str):
         folder_path = os.path.join(output_dir, folder_name)
@@ -47,16 +56,14 @@ class utils:
                 utils.collectBaseCompositsRecursive(base, base_composites)
 
     @staticmethod
-    def isPublishedOn( interface:interface, protocol:str  ) -> bool:
-        if(interface != None):
-            published = interface.find_decorator( "publish")
-            if(published!= None):
-                for param in published.params:
-                    if( param.kind == decorator_param.Kind.String and param.value == protocol ):
-                        return True
-                    if( param.kind == decorator_param.Kind.QualifiedName and param.value.getText() == protocol ):
-                        return True
-            
+    def isPublishedOn(interface: interface, protocol: str) -> bool:
+        if (interface != None):
+            published = interface.find_decorator("publish")
+            if (published != None):
+                param = published.find_param(protocol)
+                if (param != None):
+                    return True
+
         return False
 
 
@@ -135,7 +142,7 @@ class grpc_utils:
             if (element == None):
                 break
             if (Engine.has_version_int_member(element)):
-                if( isinstance(element, interface)):
+                if (isinstance(element, interface)):
                     dotnetNames.insert(0, f"I{element.name}_v{element.version}")
                 else:
                     dotnetNames.insert(0, f"{element.name}_v{element.version}")
@@ -145,3 +152,129 @@ class grpc_utils:
             element = element.parent
 
         return ".".join(dotnetNames)
+
+
+class rest_utils:
+    @staticmethod
+    def is_id_type_param(param: operation_param):
+        if (param.type.kind == type.Kind.Primitive):
+            if (param.type.primtiveKind == primitive_type.PrimtiveKind.String or param.type.primtiveKind == primitive_type.PrimtiveKind.Integer):
+                return True
+
+        return False
+
+    def is_body_type_param(param: operation_param):
+        if (param.type.kind != type.Kind.Primitive):
+            return True
+
+        if (param.type.primtiveKind != primitive_type.PrimtiveKind.String and param.type.primtiveKind != primitive_type.PrimtiveKind.Integer):
+            return True
+
+        return False
+
+    def is_stream_type_param(param: operation_param):
+        if (param.type.kind == type.Kind.Primitive and param.type.primtiveKind == primitive_type.PrimtiveKind.Stream):
+            return True
+
+        return False
+
+    @staticmethod
+    def count_body_param(operation: operation) -> bool:
+        count: int = 0
+        for param in operation.operation_params:
+            if (rest_utils.is_body_type_param(param) == True):
+                count = count + 1
+
+        return count
+
+    @staticmethod
+    def count_stream_param(operation: operation) -> int:
+        count: int = 0
+        for param in operation.operation_params:
+            if (rest_utils.is_stream_type_param(param) == True):
+                count = count + 1
+
+        return count
+
+class rest_operation:
+    # only this two verb is supported, beacuse of the Hungarian National Cybersecurity Institute guidance
+    class Verb(Enum):
+        Get = 0
+        Post = 1
+
+    def __init__(self, _operation: operation):
+        self.operation: operation = _operation
+        self.verb: rest_operation.Verb = None
+        self.params: Dict[str, rest_param] = {}
+        self.route: str = None
+        self.__setVerb()
+        self.__setParams()
+        self.__setRoute()
+
+    def isMultiPartFormData(self) -> bool:
+        for param in self.params.values():
+            if (param.bindingSource == rest_param.BindingSource.FromForm ):
+                return True
+            
+        return False
+        
+
+    def __setVerb(self):
+        count_stream = rest_utils.count_stream_param(self.operation)
+        count_body = rest_utils.count_body_param(self.operation)
+
+        if (self.operation.kind == operation.Kind.Command or count_stream > 0 or count_body > 0):
+            self.verb = rest_operation.Verb.Post
+        else:
+            self.verb = rest_operation.Verb.Get
+
+    def __setParams(self):
+        count_stream = rest_utils.count_stream_param(self.operation)
+        count_body = rest_utils.count_body_param(self.operation)
+
+        for param in self.operation.operation_params:
+            if (rest_utils.is_id_type_param(param) == True):
+                _rest_param = rest_param(param)
+                _rest_param.bindingSource = rest_param.BindingSource.FromRoute
+                _rest_param.httpName = param.name
+                self.params[param.name] = _rest_param
+            elif (count_stream > 0 or count_body > 1):
+                _rest_param = rest_param(param)
+                _rest_param.bindingSource = rest_param.BindingSource.FromForm
+                _rest_param.httpName = "_file_" + param.name
+                self.params[param.name] = _rest_param
+            elif (rest_utils.is_body_type_param(param) and count_body == 1):
+                _rest_param = rest_param(param)
+                _rest_param.bindingSource = rest_param.BindingSource.FromBody
+                _rest_param.httpName = param.name
+                self.params[param.name] = _rest_param
+            else:
+                _rest_param = rest_param(param)
+                _rest_param.bindingSource = rest_param.BindingSource.FromQuery
+                _rest_param.httpName = param.name
+                self.params[param.name] = _rest_param
+
+    def __setRoute(self):
+        http: decorator = self.operation.find_decorator("http")
+        if (http != None and http.get_param_value("route") != None):
+            self.route = http.get_param_value("route")
+        else:
+            self.route = self.operation.name.lower()
+            
+        routeParamNames: List[str] = [param.httpName for param in self.params.values() if param.bindingSource == rest_param.BindingSource.FromRoute]
+        if(len(routeParamNames) > 0 ):
+            self.route = self.route + "/" + "/".join([f"{{{name}}}" for name in routeParamNames])
+
+
+class rest_param:
+    class BindingSource(Enum):
+        FromRoute = 0
+        FromQuery = 1
+        FromBody = 2
+        FromForm = 3
+        FromHeader = 4 # currently not used
+
+    def __init__(self, _param: operation_param):
+        self.param: operation_param = _param
+        self.httpName: str = _param.name
+        self.bindingSource: rest_param.BindingSource = None

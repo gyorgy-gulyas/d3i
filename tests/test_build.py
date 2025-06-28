@@ -816,7 +816,7 @@ domain somedomain {
             }
           
             @verb("get")
-            getOrderData( @fromBody customerId: string ): OrderData
+            query getOrderData( @fromBody customerId: string ): OrderData
         }
     }
 }
@@ -838,8 +838,8 @@ domain somedomain {
         self.assertEqual(operation_param.type.kind, type.Kind.Primitive)
         self.assertEqual(operation_param.type.primtiveKind, primitive_type.PrimtiveKind.String)
         self.assertEqual(len(operation_param.decorators), 1)
-        self.assertEqual(operation.operation_returns[0].type.kind, type.Kind.Reference)
-        self.assertEqual(operation.operation_returns[0].type.reference_name.getText(), "OrderData")
+        self.assertEqual(operation.operation_return.type.kind, type.Kind.Reference)
+        self.assertEqual(operation.operation_return.type.reference_name.getText(), "OrderData")
 
     def test_service(self):
         engine = Engine()
@@ -859,9 +859,8 @@ domain somedomain {
             }
           
             @verb("get")
-            getOrder( @fromBody orderId: string )
+            query getOrder( @fromBody orderId: string )
                 : @status(200) OrderData
-                | @status(404) ErrorNotFound
         }
     }
 }
@@ -883,14 +882,10 @@ domain somedomain {
         self.assertEqual(operation_param.type.kind, type.Kind.Primitive)
         self.assertEqual(operation_param.type.primtiveKind, primitive_type.PrimtiveKind.String)
         self.assertEqual(len(operation_param.decorators), 1)
-        operation_return: operation_return = operation.operation_returns[0]
+        operation_return: operation_return = operation.operation_return
         self.assertEqual(len(operation_return.decorators), 1)
         self.assertEqual(operation_return.type.kind, type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "OrderData")
-        operation_return: operation_return = operation.operation_returns[1]
-        self.assertEqual(len(operation_return.decorators), 1)
-        self.assertEqual(operation_return.type.kind, type.Kind.Reference)
-        self.assertEqual(operation_return.type.reference_name.getText(), "ErrorNotFound")
 
     def test_interface(self):
         engine = Engine()
@@ -910,7 +905,7 @@ domain somedomain {
             }
           
             @verb("get")
-            getOrder( @fromBody orderId: string )
+            query getOrder( @fromBody orderId: string )
                 : @status(200) OrderDTO
                 | @status(404) ErrorNotFound
         }
@@ -935,14 +930,10 @@ domain somedomain {
         self.assertEqual(operation_param.type.kind, type.Kind.Primitive)
         self.assertEqual(operation_param.type.primtiveKind, primitive_type.PrimtiveKind.String)
         self.assertEqual(len(operation_param.decorators), 1)
-        operation_return: operation_return = operation.operation_returns[0]
+        operation_return: operation_return = operation.operation_return
         self.assertEqual(len(operation_return.decorators), 1)
         self.assertEqual(operation_return.type.kind, type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "OrderDTO")
-        operation_return: operation_return = operation.operation_returns[1]
-        self.assertEqual(len(operation_return.decorators), 1)
-        self.assertEqual(operation_return.type.kind, type.Kind.Reference)
-        self.assertEqual(operation_return.type.reference_name.getText(), "ErrorNotFound")
 
 
 if __name__ == "__main__":

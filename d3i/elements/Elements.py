@@ -153,22 +153,36 @@ class decorator(base_element):
             param.visit(visitor, data)
         return data
 
+    def find_param(self, name:str ) -> decorator_param:
+        for param in self.params:
+            if( param.name == name ):
+                return param
+
+        return None
+
+    def get_param_value(self, name:str ) -> decorator:
+        for param in self.params:
+            if( param.name == name ):
+                return param.value
+
+        return None
 
 class decorator_param(base_element):
-    def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
-        self.kind = None
-        self.value = None
-
-    def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
-        data = visitor.visitDecoratorParam(self, parentData)
-        super().visit(visitor, data)
-
     class Kind(Enum):
         QualifiedName = 1
         Integer = 2
         Number = 3
         String = 4
+
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = None
+        self.kind: decorator_param.Kind = None
+        self.value = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
+        data = visitor.visitDecoratorParam(self, parentData)
+        super().visit(visitor, data)
 
 
 class d3(IScope):
@@ -579,19 +593,24 @@ class interface(functional_element):
 
 
 class operation(hinted_base_element):
+    class Kind(Enum):
+        Command = 1
+        Query = 2
+
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
         self.operation_params: List[operation_param] = []
-        self.operation_returns: List[operation_return] = []
+        self.operation_return: operation_return = None
+        self.kind: operation.Kind = operation.Kind.Command
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitOperation(self, parentData)
         super().visit(visitor, data)
         for operation_param in self.operation_params:
             operation_param.visit(visitor, data)
-        for operation_return in self.operation_returns:
-            operation_return.visit(visitor, data)
+        if(self.operation_return != None ):
+            self.operation_return.visit(visitor, data)
 
 
 class operation_param(hinted_base_element):
@@ -633,15 +652,15 @@ class acl(functional_element):
 
 
 class type(base_element):
-    def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
-        self.kind: type.Kind = None
-
     class Kind(Enum):
         Primitive = 1
         Reference = 2
         List = 3
         Map = 4
+
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.kind: type.Kind = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any, memberName: str):
         match self.kind:
