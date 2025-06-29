@@ -115,7 +115,7 @@ class DotnetEmitter:
                 # Process all inerface in the context
                 for interface in context.interfaces:
                     # interface
-                    code = self.beginFile(output_path, interface, "Service/Interfaces", prefix="I", postfix=f"_v{interface.version}")
+                    code = self.beginFile(output_path, interface, "Interfaces", prefix="I", postfix=f"_v{interface.version}")
                     code = self.interfaceInterfaceText(interface, code)
                     code = self.endFile(code)
                     result.append(code)
@@ -124,9 +124,17 @@ class DotnetEmitter:
                         code = self.interfaceGrpcControllerText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
+                        code = self.beginFile(output_path, interface, "Client", postfix=f"_v{interface.version}.GrpcClient")
+                        code = self.interfaceGrpcClientText(interface, code)
+                        code = self.endFile(code)
+                        result.append(code)
                     if( utils.isPublishedOn( interface, "rest" ) == True):
                         code = self.beginFile(output_path, interface, "Service/Controllers", postfix=f"_v{interface.version}.RestController")
                         code = self.interfaceRestControllerText(interface, code)
+                        code = self.endFile(code)
+                        result.append(code)
+                        code = self.beginFile(output_path, interface, "Client", postfix=f"_v{interface.version}.RestClient")
+                        code = self.interfaceRestClientText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
 
@@ -161,13 +169,14 @@ class DotnetEmitter:
         buffer.write("<ADDITIONAL_USINGS>")
         buffer.write("\n")
         if (aggregate != None):
-            buffer.write(f"namespace {domain.name}.{context.name}.{aggregate.name}\n")
+            current_namespace = f"{domain.name}.{context.name}.{aggregate.name}"
         else:
-            buffer.write(f"namespace {domain.name}.{context.name}\n")
+            current_namespace = f"{domain.name}.{context.name}"
 
+        buffer.write(f"namespace {current_namespace}\n")
         buffer.write("{\n")
 
-        code: dotnet_code = dotnet_code(output_path, [domain.name, context.name, subDirectoryName], prefix + element.name + postfix)
+        code: dotnet_code = dotnet_code(output_path, [domain.name, context.name, subDirectoryName], prefix + element.name + postfix, current_namespace )
         code.content = buffer.getvalue()
         return code
 
@@ -206,16 +215,16 @@ class DotnetEmitter:
 
         # if the enum is defined under the interface and the grpc mapping is enable, then generate the mapping code
         if (enum.getInterface() != None):
-            buffer.write(self.enumGrpcMappingText(enum, indent))
+            buffer.write(self.enumGrpcMappingText(enum, code, indent))
 
         code.content += buffer.getvalue()
         return code
 
-    def enumGrpcMappingText(self, enum: enum, indent: int) -> str:
+    def enumGrpcMappingText(self, enum: enum, code:dotnet_code, indent: int) -> str:
         """
         Generates the .NET code for an enum mapping for GRPC.
         """
-        dotnetFullName: str = grpc_utils.getDotnetFullName(enum)
+        dotnetFullName: str = code.getDotnetFullName(enum)
         protosFullName: str = grpc_utils.getProtoFullName(enum)
 
         buffer = io.StringIO()
@@ -506,7 +515,7 @@ class DotnetEmitter:
             if (base != None):
                 utils.collectBaseRecursive(base, bases)
 
-        dotnetFullName: str = grpc_utils.getDotnetFullName(dto)
+        dotnetFullName: str = code.getDotnetFullName(dto)
         protosFullName: str = grpc_utils.getProtoFullName(dto)
 
         buffer = io.StringIO()
@@ -598,9 +607,10 @@ class DotnetEmitter:
                 code.usings.add("System.Globalization")
                 return f"{memberName}.ToString(CultureInfo.InvariantCulture)"
             case primitive_type.PrimtiveKind.Date:
-                return f"{memberName}.ToString(CultureInfo.InvariantCulture)"
+                code.usings.add("System.Globalization")
+                return f"{memberName}.ToString( \"yyyy-MM-dd\", CultureInfo.InvariantCulture)"
             case primitive_type.PrimtiveKind.Time:
-                return f"{memberName}.ToString(\"HH:mm\")"
+                return f"{memberName}.ToString(\"HH:mm:ss\")"
             case primitive_type.PrimtiveKind.DateTime:
                 code.usings.add("Google.Protobuf.WellKnownTypes")
                 return f"Timestamp.FromDateTime({memberName})"
@@ -651,9 +661,9 @@ class DotnetEmitter:
         buffer = io.StringIO()
         buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)} = ")
         if (isinstance(referenced_element, enum) == True):
-            buffer.write(f"{grpc_utils.getDotnetFullName(referenced_element)}Mappings.ToGrpc( {src}{memberName});\n")
+            buffer.write(f"{code.getDotnetFullName(referenced_element)}Mappings.ToGrpc( {src}{memberName} );\n")
         else:
-            buffer.write(f"{src}{memberName} != null ? {grpc_utils.getDotnetFullName(referenced_element)}.ToGrpc( {src}{memberName}) : null;\n")
+            buffer.write(f"{src}{memberName} != null ? {code.getDotnetFullName(referenced_element)}.ToGrpc( {src}{memberName} ) : null;\n")
         return buffer.getvalue()
 
     def dataClassMemberFromGrpcMappingText_Reference(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int):
@@ -662,9 +672,9 @@ class DotnetEmitter:
         buffer = io.StringIO()
         buffer.write(f"{utils.tab(indent)}{dst}{memberName} = ")
         if (isinstance(referenced_element, enum) == True):
-            buffer.write(f"{grpc_utils.getDotnetFullName(referenced_element)}Mappings.FromGrpc( {src}{utils.camel_to_pascal(memberName)});\n")
+            buffer.write(f"{code.getDotnetFullName(referenced_element)}Mappings.FromGrpc( {src}{utils.camel_to_pascal(memberName)}) ;\n")
         else:
-            buffer.write(f"{src}{utils.camel_to_pascal(memberName)} != null ? {grpc_utils.getDotnetFullName(referenced_element)}.FromGrpc( {src}{utils.camel_to_pascal(memberName)}) : null;\n")
+            buffer.write(f"{src}{utils.camel_to_pascal(memberName)} != null ? {code.getDotnetFullName(referenced_element)}.FromGrpc( {src}{utils.camel_to_pascal(memberName)} ) : null;\n")
         return buffer.getvalue()
 
     def dataClassMemberToGrpcMappingText_List(self, memberName: str, memberType: list_type, code: dotnet_code, dst: str, src: str, indent: int):
@@ -811,7 +821,7 @@ class DotnetEmitter:
                 handled_event:event = Engine.get_referenced_element(eventhandler, eventhandler.handledEvent )
                 if(handled_event != None ):
                     buffer.write(self.documentLines(eventhandler, indent))
-                    buffer.write(f"{utils.tab(indent+1)}public Task<bool> {eventhandler.name}(CallingContext ctx, {grpc_utils.getDotnetFullName(handled_event)} @event );")
+                    buffer.write(f"{utils.tab(indent+1)}public Task<bool> {eventhandler.name}(CallingContext ctx, {code.getDotnetFullName(handled_event)} @event );")
 
         buffer.write(f"\n")
         code.content += buffer.getvalue()
@@ -888,6 +898,136 @@ class DotnetEmitter:
         buffer.write(");\n")
 
         return buffer.getvalue()
+    
+    def interfaceGrpcClientText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        Generates the .NET GRPC client code for interface
+        """
+        buffer = io.StringIO()
+        domain: domain = interface.getDomain()
+        context: context = interface.getContext()
+        versionedName: str = f"{interface.name}_v{interface.version}"
+
+        code.usings.add("Google.Protobuf.WellKnownTypes")
+        code.usings.add("Grpc.Core")
+        code.usings.add("Grpc.Net.Client")
+        code.usings.add("ServiceKit.Net")
+        code.usings.add(f"{domain.name}.{context.name}.Protos.{versionedName}")
+
+        # Add documentation lines for the interface
+        buffer.write(self.documentLines(interface, indent))
+        # client class declaration
+        buffer.write(f"{utils.tab(indent)}public class {versionedName}_GrpcClient : I{versionedName} \n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        # private members
+        buffer.write(f"{utils.tab(indent+1)}private readonly GrpcChannel _channel;\n")
+        buffer.write(f"{utils.tab(indent+1)}private readonly {versionedName}.{versionedName}Client _client;\n")
+
+        # Add constructor with server address
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent+1)}{versionedName}_GrpcClient( string serverAddress )\n")
+        buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}_channel = GrpcChannel.ForAddress(serverAddress);\n")
+        buffer.write(f"{utils.tab(indent+2)}_client = new {versionedName}.{versionedName}Client(_channel);\n")
+        buffer.write(f"{utils.tab(indent+1)}}}\n")
+        buffer.write(f"\n")
+        
+        # Add functions based on operations
+        for operation in interface.operations:
+            buffer.write(f"{utils.tab(indent+1)}/// <inheritdoc />\n")
+            # Add return value
+            buffer.write(f"{utils.tab(indent+1)}async Task<Response")
+            if (operation.operation_return != None ):
+                buffer.write(f"<{self.typeText(operation.operation_return.type, code,fullName=True)}>")
+            buffer.write(f">")
+            # Add function name
+            buffer.write(f" I{versionedName}.{operation.name}(CallingContext ctx")
+            # Add parameters
+            if (len(operation.operation_params) > 0):
+                buffer.write(f", ")
+            buffer.write(", ".join([self.typeText(param.type, code,fullName=True) + " " + param.name for param in operation.operation_params]))
+            buffer.write(")\n")
+            buffer.write(f"{utils.tab(indent+1)}{{\n")
+            buffer.write(f"{utils.tab(indent+2)}try\n")
+            buffer.write(f"{utils.tab(indent+2)}{{\n")
+            buffer.write(f"{utils.tab(indent+3)}// fill grpc request\n")
+            buffer.write(f"{utils.tab(indent+3)}var request = new {versionedName}_{operation.name}Request();\n")
+            for param in operation.operation_params:
+                buffer.write(f"{utils.tab(indent+3)}{self.dataClassMemberToGrpcMappingText( param.name, param.type, code, dst="request.", src="", indent=0)}")
+            buffer.write("\n")
+            buffer.write(f"{utils.tab(indent+3)}// calling grpc client\n")
+            buffer.write(f"{utils.tab(indent+3)}var grpc_response = await _client.{operation.name}Async( request, new CallOptions(ctx.ToGrpcMetadata( \"{domain.name}{context.name}{versionedName}\", \"{operation.name}\" ))).ResponseAsync;\n")
+            buffer.write("\n")
+            buffer.write(f"{utils.tab(indent+3)}// fill response\n")
+            buffer.write(f"{utils.tab(indent+3)}switch( grpc_response.ResultCase )\n")
+            buffer.write(f"{utils.tab(indent+3)}{{\n")
+            # sucess
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+4)}case {versionedName}_{operation.name}Response.ResultOneofCase.Value:\n")
+                buffer.write(f"{utils.tab(indent+5)}{self.typeText( operation.operation_return.type, code, fullName=True)} value;\n")
+                buffer.write(f"{utils.tab(indent+5)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.", indent=0)}")
+                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Success( value );\n\n")
+            else:
+                buffer.write(f"{utils.tab(indent+4)}case {versionedName}_{operation.name}Response.ResultOneofCase.Success:\n")
+                buffer.write(f"{utils.tab(indent+5)}return Response.Success();\n\n")
+
+            # error
+            buffer.write(f"{utils.tab(indent+4)}case {versionedName}_{operation.name}Response.ResultOneofCase.Error:\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+6)}Status = grpc_response.Error.Status.FromGrpc(),\n")
+            buffer.write(f"{utils.tab(indent+6)}MessageText = grpc_response.Error.MessageText,\n")
+            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = grpc_response.Error.AdditionalInformation,\n")
+            buffer.write(f"{utils.tab(indent+5)}}} );\n\n")
+
+            # None result and default
+            buffer.write(f"{utils.tab(indent+4)}case {versionedName}_{operation.name}Response.ResultOneofCase.None:\n")
+            buffer.write(f"{utils.tab(indent+4)}default:\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+6)}Status = grpc_response.Error.Status.FromGrpc(),\n")
+            buffer.write(f"{utils.tab(indent+6)}MessageText = \"Not handled reponse in GRPC client when calling '{versionedName}_{operation.name}'\",\n")
+            buffer.write(f"{utils.tab(indent+5)}}} );\n")
+
+            buffer.write(f"{utils.tab(indent+3)}}}\n") # switch
+            buffer.write(f"{utils.tab(indent+2)}}}\n") # try
+            buffer.write(f"{utils.tab(indent+2)}catch (RpcException ex)\n")
+            buffer.write(f"{utils.tab(indent+2)}{{\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+3)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+3)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+4)}Status = ex.StatusCode.FromGrpc(),\n")
+            buffer.write(f"{utils.tab(indent+4)}MessageText = ex.Message,\n")
+            buffer.write(f"{utils.tab(indent+4)}AdditionalInformation = ex.ToString(),\n")
+            buffer.write(f"{utils.tab(indent+3)}}} );\n")
+            buffer.write(f"{utils.tab(indent+2)}}}\n") # catch RpcException
+            buffer.write(f"{utils.tab(indent+2)}catch (Exception ex)\n")
+            buffer.write(f"{utils.tab(indent+2)}{{\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+3)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+3)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+4)}Status = Statuses.InternalError,\n")
+            buffer.write(f"{utils.tab(indent+4)}MessageText = ex.Message,\n")
+            buffer.write(f"{utils.tab(indent+4)}AdditionalInformation = ex.ToString(),\n")
+            buffer.write(f"{utils.tab(indent+3)}}} );\n")
+            buffer.write(f"{utils.tab(indent+2)}}}\n") # catch Exception
+            buffer.write(f"{utils.tab(indent+1)}}}\n") # function
+            buffer.write(f"\n")
+
+        buffer.write(f"{utils.tab(indent)}}}\n") # classs
+
+        code.content += buffer.getvalue()
+        return code
 
     def interfaceGrpcControllerText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
@@ -906,7 +1046,7 @@ class DotnetEmitter:
 
         # Add documentation lines for the interface
         buffer.write(self.documentLines(interface, indent))
-        # class declaration
+        # controller class declaration
         buffer.write(f"{utils.tab(indent)}public class {versionedName}_GrpcController : {domain.name}.{context.name}.Protos.{versionedName}.{versionedName}.{versionedName}Base \n")
         buffer.write(f"{utils.tab(indent)}{{\n")
         # class members
@@ -1014,9 +1154,176 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
 
+    def interfaceRestClientText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        Generates the .NET rest client code for interface
+        """
+        buffer = io.StringIO()
+        domain: domain = interface.getDomain()
+        context: context = interface.getContext()
+        versionedName: str = f"{interface.name}_v{interface.version}"
+
+        code.usings.add("System.Net")
+        code.usings.add("ServiceKit.Net")
+
+        # Add documentation lines for the interface
+        buffer.write(self.documentLines(interface, indent))
+        # client class declaration
+        buffer.write(f"{utils.tab(indent)}public class {versionedName}_RestClient : I{versionedName} \n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        # private members
+        buffer.write(f"{utils.tab(indent+1)}private readonly HttpClient _httpClient;\n")
+
+        # Add constructor with server address
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent+1)}{versionedName}_RestClient( string serverAddress )\n")
+        buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}_httpClient = new HttpClient();\n")
+        buffer.write(f"{utils.tab(indent+2)}_httpClient.BaseAddress = new Uri( serverAddress );\n")
+        buffer.write(f"{utils.tab(indent+2)}_httpClient.DefaultRequestHeaders.Add(\"Accept\", \"application/json\");\n")
+        buffer.write(f"{utils.tab(indent+1)}}}\n")
+        buffer.write(f"\n")
+        
+        # Add functions based on operations
+        for operation in interface.operations:
+            buffer.write(f"{utils.tab(indent+1)}/// <inheritdoc />\n")
+            # Add return value
+            buffer.write(f"{utils.tab(indent+1)}async Task<Response")
+            if (operation.operation_return != None ):
+                buffer.write(f"<{self.typeText(operation.operation_return.type, code,fullName=True)}>")
+            buffer.write(f">")
+            # Add function name
+            buffer.write(f" I{versionedName}.{operation.name}(CallingContext ctx")
+            # Add parameters
+            if (len(operation.operation_params) > 0):
+                buffer.write(f", ")
+            buffer.write(", ".join([self.typeText(param.type, code,fullName=True) + " " + param.name for param in operation.operation_params]))
+            buffer.write(")\n")
+            buffer.write(f"{utils.tab(indent+1)}{{\n")
+            buffer.write(f"{utils.tab(indent+2)}try\n")
+            buffer.write(f"{utils.tab(indent+2)}{{\n")
+            buffer.write(f"{utils.tab(indent+3)}_httpClient.DefaultRequestHeaders.Remove(\"x-request-id\");\n")
+            buffer.write(f"{utils.tab(indent+3)}_httpClient.DefaultRequestHeaders.Add(\"x-request-id\", Guid.NewGuid().ToString());\n")
+
+            http_operation:rest_operation = rest_operation(operation)
+            buffer.write("\n")
+            buffer.write(f"{utils.tab(indent+3)}// build request\n")
+
+            # build route with FromRoute and Query params
+            base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{http_operation.route}"
+            query_params = [
+                f"{{{param.httpName}}}={self.convertToQueryValue(param.param.name, param.param.type, code)}"
+                for param in http_operation.params.values()
+                if param.bindingSource == rest_param.BindingSource.FromQuery
+            ]
+            query_string = f"?{'&'.join(query_params)}" if query_params else ""
+
+            buffer.write(f"{utils.tab(indent+3)}HttpRequestMessage request = new HttpRequestMessage( HttpMethod.{http_operation.verb.name}, WebUtility.UrlEncode( $\"{base_route}{query_string}\" ) );\n")
+            buffer.write(f"{utils.tab(indent+3)}ctx.FillHttpRequest( request, \"{domain.name}{context.name}{versionedName}\", \"{operation.name}\" );\n")
+            buffer.write("\n")
+
+            if(http_operation.isMultiPartFormData()):
+                buffer.write(f"{utils.tab(indent+3)}// build multi part content\n")
+                buffer.write(f"{utils.tab(indent+3)}MultipartFormDataContent multipartContent = new();\n")
+                for http_param in http_operation.params.values():
+                    match http_param.bindingSource:
+                        case rest_param.BindingSource.FromRoute | rest_param.BindingSource.FromQuery | rest_param.BindingSource.FromBody:
+                            pass
+                        case rest_param.BindingSource.FromForm:
+                            if( rest_utils.is_stream_type_param( http_param.param ) == True ):
+                                buffer.write(f"{utils.tab(indent+3)}if(content.CanSeek)\n")
+                                buffer.write(f"{utils.tab(indent+4)}content.Seek( 0, SeekOrigin.Begin );\n")
+                                buffer.write(f"{utils.tab(indent+3)}multipartContent.Add(new StreamContent(stream), {http_param.httpName}, \"__temp\");\n")
+                            elif( rest_utils.is_body_type_param( http_param.param ) == True ):
+                                code.usings.add("System.Text")
+                                code.usings.add("System.Text.Json")
+                                buffer.write(f"{utils.tab(indent+3)}multipartContent.Add( new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name} ), Encoding.UTF8, \"application/json\" ), \"{http_param.httpName}\", \"{http_param.httpName}.json\" );\n")
+                buffer.write(f"{utils.tab(indent+3)}request.Content = multipartContent;\n")
+                buffer.write("\n")
+            else:
+                count_body = rest_utils.count_body_param(operation)
+                if( count_body > 0 ):
+                    buffer.write(f"{utils.tab(indent+3)}// build content\n")
+                    for http_param in http_operation.params.values():
+                        match http_param.bindingSource:
+                            case rest_param.BindingSource.FromRoute | rest_param.BindingSource.FromQuery | rest_param.BindingSource.FromForm:
+                                pass
+                            case rest_param.BindingSource.FromBody:
+                                code.usings.add("System.Text.Json")
+                                buffer.write(f"{utils.tab(indent+3)}request.Content = new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name} ));\n")
+                    buffer.write("\n")
+            
+            # call hhtp
+            buffer.write(f"{utils.tab(indent+3)}// call http client \n")
+            buffer.write(f"{utils.tab(indent+3)}HttpResponseMessage response = await _httpClient.SendAsync( request );\n")
+
+            # process result
+            buffer.write("\n")
+            buffer.write(f"{utils.tab(indent+3)}if (response.IsSuccessStatusCode)\n")
+            buffer.write(f"{utils.tab(indent+3)}{{\n")
+            if( operation.operation_return != None ):
+                code.usings.add( "System.Net.Http.Json")
+                buffer.write(f"{utils.tab(indent+4)}var value = await response.Content.ReadFromJsonAsync<{self.typeText( operation.operation_return.type, code, fullName=True)}>();\n")
+                buffer.write(f"{utils.tab(indent+4)}return Response<{self.typeText( operation.operation_return.type, code, fullName=True)}>.Success( value );\n")
+            else:
+                buffer.write(f"{utils.tab(indent+4)}return Response.Success();\n")
+                pass
+            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(f"{utils.tab(indent+3)}else if( response.Content != null )\n")
+            buffer.write(f"{utils.tab(indent+3)}{{\n")
+            buffer.write(f"{utils.tab(indent+4)}var error = await response.Content.ReadFromJsonAsync<Error>();\n")
+            if( operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+4)}return Response<{self.typeText( operation.operation_return.type, code, fullName=True)}>.Failure( error );\n")
+            else:
+                buffer.write(f"{utils.tab(indent+4)}return Response.Failure( error );\n")
+            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(f"{utils.tab(indent+3)}else\n")
+            buffer.write(f"{utils.tab(indent+3)}{{\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+4)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+4)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+5)}Status = response.StatusCode.FromHttp(),\n")
+            buffer.write(f"{utils.tab(indent+5)}MessageText = \"Not handled reponse in GRPC client when calling '{versionedName}_{operation.name}'\",\n")
+            buffer.write(f"{utils.tab(indent+4)}}} );\n")
+            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(f"{utils.tab(indent+2)}}}\n") # try
+            buffer.write(f"{utils.tab(indent+2)}catch (HttpRequestException ex)\n")
+            buffer.write(f"{utils.tab(indent+2)}{{\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+3)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+3)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+4)}Status = ex.StatusCode.HasValue ? ex.StatusCode.Value.FromHttp() : Statuses.InternalError,\n")
+            buffer.write(f"{utils.tab(indent+4)}MessageText = ex.Message,\n")
+            buffer.write(f"{utils.tab(indent+4)}AdditionalInformation = ex.ToString(),\n")
+            buffer.write(f"{utils.tab(indent+3)}}} );\n")
+            buffer.write(f"{utils.tab(indent+2)}}}\n") # catch RpcException
+            buffer.write(f"{utils.tab(indent+2)}catch (Exception ex)\n")
+            buffer.write(f"{utils.tab(indent+2)}{{\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+3)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+3)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+4)}Status = Statuses.InternalError,\n")
+            buffer.write(f"{utils.tab(indent+4)}MessageText = ex.Message,\n")
+            buffer.write(f"{utils.tab(indent+4)}AdditionalInformation = ex.ToString(),\n")
+            buffer.write(f"{utils.tab(indent+3)}}} );\n")
+            buffer.write(f"{utils.tab(indent+2)}}}\n") # catch Exception
+            buffer.write(f"{utils.tab(indent+1)}}}\n") # function
+            buffer.write(f"\n")
+
+        buffer.write(f"{utils.tab(indent)}}}\n") # classs
+
+        code.content += buffer.getvalue()
+        return code
+
     def interfaceRestControllerText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
-        Generates the .NET GRPC controller code for interface
+        Generates the .NET Rest controller code for interface
         """
         buffer = io.StringIO()
         domain: domain = interface.getDomain()
@@ -1039,7 +1346,7 @@ class DotnetEmitter:
 
         # class declaration
         buffer.write(f"{utils.tab(indent)}[ApiController]\n")
-        buffer.write(f"{utils.tab(indent)}[Route( \"[controller]\" )]\n")
+        buffer.write(f"{utils.tab(indent)}[Route( \"{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}\" )]\n")
         if( len(interface.document_lines) > 0 ):
             buffer.write(f"{utils.tab(indent)}[SwaggerTag( \"{utils.document_lines_to_one(interface)}\" )]\n")
         buffer.write(f"{utils.tab(indent)}public class {versionedName}_RestController : ControllerBase \n")
@@ -1065,6 +1372,9 @@ class DotnetEmitter:
                 case rest_operation.Verb.Post:
                     buffer.write(f"{utils.tab(indent+1)}[HttpPost( \"{http_operation.route}\" )] \n")        
             buffer.write(f"{utils.tab(indent+1)}[Produces( MediaTypeNames.Application.Json )]\n")
+            if( http_operation.isMultiPartFormData() == True ):
+                buffer.write(f"{utils.tab(indent+1)}[Consumes( \"multipart/form-data\" )]\n")
+                
             if( len(operation.document_lines) > 0 ):
                 buffer.write(f"{utils.tab(indent+1)}[SwaggerOperation( \"{utils.document_lines_to_one(operation)}\" )]\n")
             if( operation.operation_return != None ):
@@ -1158,6 +1468,27 @@ class DotnetEmitter:
 
         code.content += buffer.getvalue()
         return code
+    
+    def convertToQueryValue( self, name:str, type:primitive_type, code:dotnet_code ) -> str:
+        match type.primtiveKind:
+            case primitive_type.PrimtiveKind.I18NString | primitive_type.PrimtiveKind.Any | primitive_type.PrimtiveKind.Bytes | primitive_type.PrimtiveKind.Stream:
+                return f"{{{name}}}"
+            case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Number | primitive_type.PrimtiveKind.Float :
+                code.usings.add("System.Globalization")
+                return f"{{{name}.ToString(CultureInfo.InvariantCulture)}}"
+            case primitive_type.PrimtiveKind.Date:
+                code.usings.add("System.Globalization")
+                return f"{{{name}.ToString(\"yyyy-MM-dd\" CultureInfo.InvariantCulture)}}"
+            case primitive_type.PrimtiveKind.Time:
+                code.usings.add("System.Globalization")
+                return f"{{{name}.ToString(\"HH:mm:ss\" CultureInfo.InvariantCulture)}}"
+            case primitive_type.PrimtiveKind.DateTime:
+                code.usings.add("System.Globalization")
+                return f"{{{name}.ToString(\"o\" CultureInfo.InvariantCulture)}}"
+            case primitive_type.PrimtiveKind.String:
+                return f"{{{name}}}"
+            case primitive_type.PrimtiveKind.Boolean:
+                return f"{{{name}.ToString().ToLowerInvariant()}}"
 
     def propertyText(self, member_name: str, type: type, code: dotnet_code, indent: int) -> str:
         buffer = io.StringIO()
@@ -1215,7 +1546,7 @@ class DotnetEmitter:
             code.usings.add(f"{referenced_element.getDomain().name}.{referenced_element.getContext().name}")
 
         if (fullName == True):
-            return grpc_utils.getDotnetFullName(referenced_element)
+            return code.getDotnetFullName(referenced_element)
         else:
             return type.reference_name.getText()
 
@@ -1266,12 +1597,38 @@ class dotnet_configuration:
                 self.defaultUsings = value
 
 class dotnet_code:
-    def __init__(self, output_path: str, subdirs: List[str], name: str):
+    def __init__(self, output_path: str, subdirs: List[str], name: str, current_namespace: str):
         """
         Initializes a dotnet_code instance with the file path, file name, and content.
         """
         self.output_path = output_path
         self.fileName: str = name + ".cs"
         self.fullPath: str = os.path.join(output_path + "/".join(subdirs), self.fileName)
+        self.current_namespace: str = current_namespace
         self.usings: set[str] = set()
         self.content: str = ""
+
+    def getDotnetFullName(self, element: base_element ) -> str:
+        dotnetNames: List[str] = []
+        while True:
+            if (element == None):
+                break
+            if (Engine.has_version_int_member(element)):
+                if (isinstance(element, interface)):
+                    dotnetNames.insert(0, f"I{element.name}_v{element.version}")
+                else:
+                    dotnetNames.insert(0, f"{element.name}_v{element.version}")
+            else:
+                dotnetNames.insert(0, element.name)
+
+            element = element.parent
+
+
+        current_namespaces = self.current_namespace.split(".")
+
+        if dotnetNames[:len(current_namespaces)] == current_namespaces:
+            dotnetNames = dotnetNames[len(current_namespaces):]
+
+        return ".".join(dotnetNames)
+
+

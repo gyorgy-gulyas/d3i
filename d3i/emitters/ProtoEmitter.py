@@ -51,7 +51,7 @@ class ProtoEmitter:
 
                 # Process all inerface in the context
                 for interface in context.interfaces:
-                    code = self.beginFile(output_path, interface, "Service/Protos")
+                    code = self.beginFile(output_path, interface, "Interfaces/Protos")
                     code = self.interfaceText(interface, code)
                     code = self.endFile(code)
                     result.append(code)

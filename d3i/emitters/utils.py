@@ -135,24 +135,6 @@ class grpc_utils:
 
         return ".".join(protoNames) + f".{element.name}"
 
-    @staticmethod
-    def getDotnetFullName(element: base_element) -> str:
-        dotnetNames: List[str] = []
-        while True:
-            if (element == None):
-                break
-            if (Engine.has_version_int_member(element)):
-                if (isinstance(element, interface)):
-                    dotnetNames.insert(0, f"I{element.name}_v{element.version}")
-                else:
-                    dotnetNames.insert(0, f"{element.name}_v{element.version}")
-            else:
-                dotnetNames.insert(0, element.name)
-
-            element = element.parent
-
-        return ".".join(dotnetNames)
-
 
 class rest_utils:
     @staticmethod
@@ -166,11 +148,28 @@ class rest_utils:
     def is_body_type_param(param: operation_param):
         if (param.type.kind != type.Kind.Primitive):
             return True
-
-        if (param.type.primtiveKind != primitive_type.PrimtiveKind.String and param.type.primtiveKind != primitive_type.PrimtiveKind.Integer):
-            return True
-
-        return False
+        
+        match param.type.primtiveKind:
+            case (
+                primitive_type.PrimtiveKind.I18NString |
+                primitive_type.PrimtiveKind.Any |
+                primitive_type.PrimtiveKind.Bytes |
+                primitive_type.PrimtiveKind.Stream
+            ):
+                return True
+            case (
+                primitive_type.PrimtiveKind.Integer |
+                primitive_type.PrimtiveKind.Number |
+                primitive_type.PrimtiveKind.Float |
+                primitive_type.PrimtiveKind.Date |
+                primitive_type.PrimtiveKind.Time |
+                primitive_type.PrimtiveKind.DateTime |
+                primitive_type.PrimtiveKind.String |
+                primitive_type.PrimtiveKind.Boolean
+            ):
+                return False
+        
+        return True
 
     def is_stream_type_param(param: operation_param):
         if (param.type.kind == type.Kind.Primitive and param.type.primtiveKind == primitive_type.PrimtiveKind.Stream):
@@ -196,6 +195,7 @@ class rest_utils:
 
         return count
 
+
 class rest_operation:
     # only this two verb is supported, beacuse of the Hungarian National Cybersecurity Institute guidance
     class Verb(Enum):
@@ -213,11 +213,20 @@ class rest_operation:
 
     def isMultiPartFormData(self) -> bool:
         for param in self.params.values():
-            if (param.bindingSource == rest_param.BindingSource.FromForm ):
+            if (param.bindingSource == rest_param.BindingSource.FromForm):
                 return True
-            
+
         return False
-        
+    
+    def getQueryString(self) -> str:
+
+        for param in self.params.values():
+            if (param.bindingSource == rest_param.BindingSource.FromQuery):
+                # do something
+                pass
+
+        # do something
+        return False
 
     def __setVerb(self):
         count_stream = rest_utils.count_stream_param(self.operation)
@@ -241,7 +250,10 @@ class rest_operation:
             elif (count_stream > 0 or count_body > 1):
                 _rest_param = rest_param(param)
                 _rest_param.bindingSource = rest_param.BindingSource.FromForm
-                _rest_param.httpName = "_file_" + param.name
+                if (rest_utils.is_stream_type_param(param) == True):
+                    _rest_param.httpName = "_file_" + param.name
+                else:
+                    _rest_param.httpName = "_json_" + param.name
                 self.params[param.name] = _rest_param
             elif (rest_utils.is_body_type_param(param) and count_body == 1):
                 _rest_param = rest_param(param)
@@ -260,11 +272,10 @@ class rest_operation:
             self.route = http.get_param_value("route")
         else:
             self.route = self.operation.name.lower()
-            
-        routeParamNames: List[str] = [param.httpName for param in self.params.values() if param.bindingSource == rest_param.BindingSource.FromRoute]
-        if(len(routeParamNames) > 0 ):
-            self.route = self.route + "/" + "/".join([f"{{{name}}}" for name in routeParamNames])
 
+        routeParams: List[rest_param] = [param for param in self.params.values() if param.bindingSource == rest_param.BindingSource.FromRoute]
+        if (len(routeParams) > 0):
+            self.route = self.route + "/" + "/".join([f"{{{param.param.name}}}" for param in routeParams])
 
 class rest_param:
     class BindingSource(Enum):
@@ -272,7 +283,7 @@ class rest_param:
         FromQuery = 1
         FromBody = 2
         FromForm = 3
-        FromHeader = 4 # currently not used
+        FromHeader = 4  # currently not used
 
     def __init__(self, _param: operation_param):
         self.param: operation_param = _param
