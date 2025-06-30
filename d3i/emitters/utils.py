@@ -1,8 +1,7 @@
-import io
+from __future__ import annotations
 import os
 from d3i.Engine import *
 from d3i.elements.Elements import *
-
 
 class utils:
     @staticmethod
@@ -94,8 +93,10 @@ class grpc_utils:
                 return "string"  # must be converted to string
             case primitive_type.PrimtiveKind.Float:
                 return "double"
-            case primitive_type.PrimtiveKind.Date | primitive_type.PrimtiveKind.Time | primitive_type.PrimtiveKind.DateTime:
-                return "string"  # must be converted to string with timezone
+            case primitive_type.PrimtiveKind.Date | primitive_type.PrimtiveKind.Time:
+                return "string"  # must be converted to string
+            case primitive_type.PrimtiveKind.DateTime:
+                return "google.protobuf.Timestamp"
             case primitive_type.PrimtiveKind.String:
                 return "string"
             case primitive_type.PrimtiveKind.I18NString:
@@ -114,7 +115,7 @@ class grpc_utils:
         return f"RepeatedField<{grpc_utils.d3iTypeToGrpcRepresentation(type.item_type)}>"
 
     @staticmethod
-    def d3iTypeToGrpcRepresentation_List(type: map_type) -> str:
+    def d3iTypeToGrpcRepresentation_Map(type: map_type) -> str:
         return f"MapField<{grpc_utils.d3iTypeToGrpcRepresentation(type.key_type)},{grpc_utils.d3iTypeToGrpcRepresentation(type.value_type)}>"
 
     @staticmethod

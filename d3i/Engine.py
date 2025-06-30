@@ -41,7 +41,7 @@ class Source:
         source.fileName = os.path.normpath(os.path.abspath(fileName))
 
         # Open and read the file content
-        with open(fileName, 'r') as file:
+        with open(fileName, 'r', encoding='utf-8') as file:
             source.content = file.read()
         return source
 
@@ -168,7 +168,7 @@ class Engine:
 
         # Process imported d3s
         for _import in _d3.imports:
-            import_path = os.path.normpath(os.path.join(Path(source.fileName).parent, _import.name + ".d3"))
+            import_path = os.path.normpath(os.path.join(Path(source.fileName).parent, _import.name.replace(".", "/") + ".d3"))
             # Import only if not already processed
             if import_path not in session.all:
                 imported_d3 = self.__import_d3(import_path, _import, session)

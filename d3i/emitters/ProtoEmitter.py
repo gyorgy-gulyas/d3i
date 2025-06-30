@@ -24,7 +24,7 @@ def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
         if dir_name and not os.path.exists(dir_name):
             os.makedirs(dir_name)
 
-        with open(code.fullPath, "w") as file:
+        with open(code.fullPath, "w", encoding="UTF8") as file:
             file.write(code.content)
 
     return results
@@ -135,7 +135,7 @@ class ProtoEmitter:
         for enum_element in enum.enum_elements:
             buffer.write(self.documentLines(enum_element, indent+1))
             # Write each enum element value
-            buffer.write(f"{utils.tab(indent+1)}{enum_element.value} = {value};\n")
+            buffer.write(f"{utils.tab(indent+1)}{enum.name}_{enum_element.value} = {value};\n")
             if (len(enum_element.document_lines) > 0):
                 buffer.write("\n")
             value = value + 1
@@ -217,22 +217,28 @@ class ProtoEmitter:
         for operation in interface.operations:
             # Write each operation as RPC call
             buffer.write(self.documentLines(operation, indent+1))
-            buffer.write(f"{utils.tab(indent+1)}rpc {operation.name}({fullname}_{operation.name}Request) returns ({fullname}_{operation.name}Response);\n")
+            if(len(operation.operation_params) > 0 ):
+                buffer.write(f"{utils.tab(indent+1)}rpc {operation.name}({fullname}_{operation.name}Request) returns ({fullname}_{operation.name}Response);\n")
+            else:
+                code.imports.add("google/protobuf/empty.proto")
+                buffer.write(f"{utils.tab(indent+1)}rpc {operation.name}(google.protobuf.Empty) returns ({fullname}_{operation.name}Response);\n")
         buffer.write(f"{utils.tab(indent)}}}")
         buffer.write("\n")
 
         # Add messages based on operations
         for operation in interface.operations:
-            # Request message
-            buffer.write(f"\n")
-            buffer.write(f"{utils.tab(indent)}message {fullname}_{operation.name}Request {{\n")
-            index: int = 1
-            for param in operation.operation_params:
-                buffer.write(self.documentLines(param, indent+2))
-                buffer.write(f"{utils.tab(indent+1)}{self.typeText(param.type, code)} {param.name} = {index};\n")
-                index = index + 1
-            buffer.write(f"{utils.tab(indent)}}}\n")
-            buffer.write(f"\n")
+            if(len(operation.operation_params) > 0 ):
+                # Request message
+                buffer.write(f"\n")
+                buffer.write(f"{utils.tab(indent)}message {fullname}_{operation.name}Request {{\n")
+                index: int = 1
+                for param in operation.operation_params:
+                    buffer.write(self.documentLines(param, indent+2))
+                    buffer.write(f"{utils.tab(indent+1)}{self.typeText(param.type, code)} {param.name} = {index};\n")
+                    index = index + 1
+                buffer.write(f"{utils.tab(indent)}}}\n")
+                buffer.write(f"\n")
+               
 
             # Response message
             buffer.write(f"{utils.tab(indent)}message {fullname}_{operation.name}Response {{\n")
@@ -242,7 +248,7 @@ class ProtoEmitter:
                 buffer.write(f"{utils.tab(indent+2)}google.protobuf.Empty Success = 1;\n")
                 buffer.write(f"{utils.tab(indent+2)}ServiceKit.Protos.Error Error = 2;\n")
             else:
-                buffer.write(f"{utils.tab(indent+2)}{self.typeText(operation.operation_return.type, code)} Value = 1;\n")
+                buffer.write(f"{utils.tab(indent+2)}{self.typeText(operation.operation_return.type, code,inOneOf=True)} Value = 1;\n")
                 buffer.write(f"{utils.tab(indent+2)}ServiceKit.Protos.Error Error = 2;\n")
 
             buffer.write(f"{utils.tab(indent+1)}}}\n")
@@ -256,6 +262,10 @@ class ProtoEmitter:
         for dto in interface.dtos:
             buffer.write(self.dtoText(dto, code, indent))
 
+        for addtionalMessage in code.additionalMessages.values():
+            buffer.write(addtionalMessage)
+            buffer.write("\n")
+
         code.content += buffer.getvalue()
         return code
 
@@ -264,28 +274,62 @@ class ProtoEmitter:
         buffer.write(f"{utils.tab(indent)}{self.typeText(type, code)} {member_name} = {index};\n")
         return buffer.getvalue()
 
-    def typeText(self, type: type, code: proto_code) -> str:
+    def typeText(self, type: type, code: proto_code, inOneOf:bool=False) -> str:
         match type.kind:
             case type.Kind.Primitive:
-                return self.typeTextPrimitive(type)
+                return self.typeTextPrimitive(type,code)
             case type.Kind.Reference:
                 return self.typeTextReference(type, code)
             case type.Kind.List:
-                return self.typeTextList(type, code)
+                return self.typeTextList(type, code, inOneOf)
             case type.Kind.Map:
-                return self.typeTextMap(type, code)
+                return self.typeTextMap(type, code, inOneOf)
 
-    def typeTextPrimitive(self, type: primitive_type) -> str:
-        return grpc_utils.d3iTypeToGrpcRepresentation(type)
+    def typeTextPrimitive(self, type: primitive_type,code:proto_code) -> str:
+        match type.primtiveKind:
+            case primitive_type.PrimtiveKind.Any:
+                return "object"
+            case primitive_type.PrimtiveKind.Integer:
+                return "int"
+            case primitive_type.PrimtiveKind.Number:
+                return "string"
+            case primitive_type.PrimtiveKind.Float:
+                return "double"
+            case primitive_type.PrimtiveKind.Date | primitive_type.PrimtiveKind.Time:
+                return "string"
+            case primitive_type.PrimtiveKind.DateTime:
+                code.imports.add("google/protobuf/timestamp.proto")
+                return "google.protobuf.Timestamp"
+            case primitive_type.PrimtiveKind.String:
+                return "string"
+            case primitive_type.PrimtiveKind.I18NString:
+                return "string"
+            case primitive_type.PrimtiveKind.Boolean:
+                return "bool"
+            case primitive_type.PrimtiveKind.Bytes | primitive_type.PrimtiveKind.Stream:
+                return "bytes"
 
     def typeTextReference(self, type: reference_type, code: proto_code) -> str:
         return type.reference_name.getText()
 
-    def typeTextList(self, type: list_type, code: proto_code) -> str:
-        return f"repeated {self.typeText(type.item_type, code)}"
+    def typeTextList(self, type: list_type, code: proto_code, inOneOf:bool) -> str:
+        if(inOneOf==False):
+            return f"repeated {self.typeText(type.item_type, code)}"
+        else:
+            typestring:str = f"list_{self.typeText(type.item_type, code)}"
 
-    def typeTextMap(self, type: map_type, code: proto_code) -> str:
-        return f"map<{self.typeText(type.key_type, code)},{self.typeText(type.value_type, code)}>"
+            buffer = io.StringIO()
+            buffer.write( f"message {typestring} {{\n");
+            buffer.write( f"{utils.tab(1)}{self.typeTextList( type, code, inOneOf=False)} Value = 1;\n");
+            buffer.write( f"}}\n");
+            code.additionalMessages[typestring] = buffer.getvalue()
+            return f"list_{self.typeText(type.item_type, code)}"
+
+    def typeTextMap(self, type: map_type, code: proto_code, inOneOf:bool) -> str:
+        if(inOneOf==False):
+            return f"map<{self.typeText(type.key_type, code)},{self.typeText(type.value_type, code)}>"
+        else:
+            return f"map_{self.typeText(type.key_type, code)}_{self.typeText(type.value_type, code)}"
 
     def documentLines(self, hinted_element: hinted_base_element, indent: int = 1) -> str:
         """
@@ -337,4 +381,5 @@ class proto_code:
         self.fileName: str = name + ".proto"
         self.fullPath: str = os.path.join(output_path + "/".join(subdirs), self.fileName)
         self.imports: set[str] = set()
+        self.additionalMessages: map[str,str] = {}
         self.content: str = ""

@@ -23,7 +23,7 @@ def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
         if dir_name and not os.path.exists(dir_name):
             os.makedirs(dir_name)
 
-        with open(code.fullPath, "w") as file:
+        with open(code.fullPath, "w", encoding='utf-8') as file:
             file.write(code.content)
 
     return results
@@ -124,7 +124,7 @@ class DotnetEmitter:
                         code = self.interfaceGrpcControllerText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
-                        code = self.beginFile(output_path, interface, "Client", postfix=f"_v{interface.version}.GrpcClient")
+                        code = self.beginFile(output_path, interface, "InternalClient", postfix=f"_v{interface.version}.GrpcClient")
                         code = self.interfaceGrpcClientText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
@@ -133,7 +133,7 @@ class DotnetEmitter:
                         code = self.interfaceRestControllerText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
-                        code = self.beginFile(output_path, interface, "Client", postfix=f"_v{interface.version}.RestClient")
+                        code = self.beginFile(output_path, interface, "InternalClient", postfix=f"_v{interface.version}.RestClient")
                         code = self.interfaceRestClientText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
@@ -642,7 +642,7 @@ class DotnetEmitter:
                 return f"{memberName}.ToString(\"HH:mm\")"
             case primitive_type.PrimtiveKind.DateTime:
                 code.usings.add("Google.Protobuf.WellKnownTypes")
-                return f"{memberName}).ToDateTime()"
+                return f"{memberName}.ToDateTime()"
             case primitive_type.PrimtiveKind.String:
                 return f"{memberName}"
             case primitive_type.PrimtiveKind.I18NString:
@@ -691,8 +691,8 @@ class DotnetEmitter:
                         f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.AddRange( {src}{memberName}.Select( v => {self.convertExpressionToGrpcRepresentation("v", memberType.item_type, code)} ));\n")
             case type.Kind.Reference:
                 reference_type: reference_type = memberType.item_type
-                buffer.write(
-                    f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.AddRange( {src}{memberName}.Select( v => {reference_type.reference_name.getText()}.ToGrpc( v ) ));\n")
+                referenced_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
+                buffer.write( f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.AddRange( {src}{memberName}.Select( v => {code.getDotnetFullName(referenced_element)}.ToGrpc( v ) ));\n")
             case type.Kind.List:
                 pass
             case type.Kind.Map:
@@ -713,8 +713,9 @@ class DotnetEmitter:
                     buffer.write(
                         f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{utils.camel_to_pascal(memberName)}.Select( v => {self.convertExpressionFromGrpcRepresentation("v", memberType.item_type, code)} ));\n")
             case type.Kind.Reference:
-                buffer.write(
-                    f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{utils.camel_to_pascal(memberName)}.Select( v => {self.typeText(memberType.item_type, code)}.FromGrpc(v) ));\n")
+                reference_type: reference_type = memberType.item_type
+                referenced_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
+                buffer.write(f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{utils.camel_to_pascal(memberName)}.Select( v => {code.getDotnetFullName(referenced_element)}.FromGrpc(v) ));\n")
             case type.Kind.List:
                 # not supported types
                 pass
@@ -789,15 +790,15 @@ class DotnetEmitter:
         return code
 
     def aclInterfaceText(self, acl: acl, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.interfaceClassText(acl, acl.name, code, indent)
+        return self.interfaceClassText(acl, acl.name, withRespose=False,code=code, indent=indent)
 
     def serviceInterfaceText(self, service: service, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.interfaceClassText(service, service.name, code, indent)
+        return self.interfaceClassText(service, service.name, withRespose=False,code=code, indent=indent)
 
     def interfaceInterfaceText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.interfaceClassText(interface, interface.name + f"_v{interface.version}", code, indent)
+        return self.interfaceClassText(interface, interface.name + f"_v{interface.version}", withRespose=True,code=code, indent=indent)
 
-    def interfaceClassText(self, element: functional_element, elementName: str, code: dotnet_code, indent: int = 1) -> dotnet_code:
+    def interfaceClassText(self, element: functional_element, elementName: str, withRespose:bool, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET code for element, just the interface.
         """
@@ -812,7 +813,7 @@ class DotnetEmitter:
         # Loop through each operations and generate code for each
         for operation in element.operations:
             # Write each operation
-            buffer.write(self.interfaceFunctionText(operation, code, indent+1))
+            buffer.write(self.interfaceFunctionText(operation, code, withRespose, indent+1))
             buffer.write("\n")
 
         if (element.withEventHandler == True):
@@ -852,7 +853,7 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
 
-    def interfaceFunctionText(self, operation: operation, code: dotnet_code, indent: int) -> str:
+    def interfaceFunctionText(self, operation: operation, code: dotnet_code, withRespose:bool, indent: int) -> str:
         buffer = io.StringIO()
 
         # Add summary for operation
@@ -885,10 +886,13 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent)}/// <return>{self.typeText( operation.operation_return.type, code )}</return>\n")
 
         # Add return value
-        buffer.write(f"{utils.tab(indent)}public Task<Response")
+        buffer.write(f"{utils.tab(indent)}public Task")
+        if( withRespose== True):
+            buffer.write(f"<Response")
         if (operation.operation_return != None ):
             buffer.write(f"<{self.typeText(operation.operation_return.type, code)}>")
-        buffer.write(f">")
+        if( withRespose== True):
+            buffer.write(f">")
         # Add function name
         buffer.write(f" {operation.name}(CallingContext ctx")
         # Add parameters
@@ -951,7 +955,11 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+2)}try\n")
             buffer.write(f"{utils.tab(indent+2)}{{\n")
             buffer.write(f"{utils.tab(indent+3)}// fill grpc request\n")
-            buffer.write(f"{utils.tab(indent+3)}var request = new {versionedName}_{operation.name}Request();\n")
+            if(len(operation.operation_params)):
+                requestType = f"{versionedName}_{operation.name}Request"
+            else:
+                requestType = f"Empty"
+            buffer.write(f"{utils.tab(indent+3)}var request = new {requestType}();\n")
             for param in operation.operation_params:
                 buffer.write(f"{utils.tab(indent+3)}{self.dataClassMemberToGrpcMappingText( param.name, param.type, code, dst="request.", src="", indent=0)}")
             buffer.write("\n")
@@ -964,8 +972,12 @@ class DotnetEmitter:
             # sucess
             if (operation.operation_return != None ):
                 buffer.write(f"{utils.tab(indent+4)}case {versionedName}_{operation.name}Response.ResultOneofCase.Value:\n")
-                buffer.write(f"{utils.tab(indent+5)}{self.typeText( operation.operation_return.type, code, fullName=True)} value;\n")
-                buffer.write(f"{utils.tab(indent+5)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.", indent=0)}")
+                if( operation.operation_return.type.kind == type.Kind.List or operation.operation_return.type.kind == type.Kind.Map ):
+                    buffer.write(f"{utils.tab(indent+5)}{self.typeText( operation.operation_return.type, code, fullName=True)} value = new();\n")
+                    buffer.write(f"{utils.tab(indent+5)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.Value.", indent=0)}")
+                else:
+                    buffer.write(f"{utils.tab(indent+5)}{self.typeText( operation.operation_return.type, code, fullName=True)} value;\n")
+                    buffer.write(f"{utils.tab(indent+5)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.", indent=0)}")
                 buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Success( value );\n\n")
             else:
                 buffer.write(f"{utils.tab(indent+4)}case {versionedName}_{operation.name}Response.ResultOneofCase.Success:\n")
@@ -1063,7 +1075,11 @@ class DotnetEmitter:
         # Add functions based on operations
         for operation in interface.operations:
             buffer.write(f"\n")
-            buffer.write(f"{utils.tab(indent+1)}public override async Task<{versionedName}_{operation.name}Response> {operation.name}( {versionedName}_{operation.name}Request request, ServerCallContext grpcContext)\n")
+            if(len(operation.operation_params)):
+                requestType = f"{versionedName}_{operation.name}Request"
+            else:
+                requestType = f"Empty"
+            buffer.write(f"{utils.tab(indent+1)}public override async Task<{versionedName}_{operation.name}Response> {operation.name}( {requestType} request, ServerCallContext grpcContext)\n")
             buffer.write(f"{utils.tab(indent+1)}{{\n")
             buffer.write(f"{utils.tab(indent+2)}using(LogContext.PushProperty( \"Scope\", \"{versionedName}.{operation.name}\" ))\n")
             buffer.write(f"{utils.tab(indent+2)}{{\n")
@@ -1088,7 +1104,10 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent+5)}if( response.HasValue() == true )\n")
                 buffer.write(f"{utils.tab(indent+5)}{{\n")
                 buffer.write(f"{utils.tab(indent+6)}var result = new {versionedName}_{operation.name}Response();\n")
-                buffer.write(f"{utils.tab(indent+6)}{self.dataClassMemberToGrpcMappingText(f"Value", operation.operation_return.type, code, dst="result.", src="response.", indent=0)}")
+                if(operation.operation_return.type.kind == type.Kind.List or operation.operation_return.type.kind == type.Kind.Map ):
+                    buffer.write(f"{utils.tab(indent+6)}{self.dataClassMemberToGrpcMappingText(f"Value", operation.operation_return.type, code, dst="result.Value.", src="response.", indent=0)}")
+                else:
+                    buffer.write(f"{utils.tab(indent+6)}{self.dataClassMemberToGrpcMappingText(f"Value", operation.operation_return.type, code, dst="result.", src="response.", indent=0)}")
                 buffer.write(f"{utils.tab(indent+6)}return result;\n")
                 buffer.write(f"{utils.tab(indent+5)}}}\n")
                 buffer.write(f"{utils.tab(indent+5)}else\n")
@@ -1329,7 +1348,6 @@ class DotnetEmitter:
         domain: domain = interface.getDomain()
         context: context = interface.getContext()
         versionedName: str = f"{interface.name}_v{interface.version}"
-
 
         code.usings.add("System.Net.Mime")
         code.usings.add("Microsoft.AspNetCore.Authorization")
