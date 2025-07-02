@@ -790,15 +790,15 @@ class DotnetEmitter:
         return code
 
     def aclInterfaceText(self, acl: acl, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.interfaceClassText(acl, acl.name, withRespose=False,code=code, indent=indent)
+        return self.interfaceClassText(acl, acl.name,code=code, indent=indent)
 
     def serviceInterfaceText(self, service: service, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.interfaceClassText(service, service.name, withRespose=False,code=code, indent=indent)
+        return self.interfaceClassText(service, service.name,code=code, indent=indent)
 
     def interfaceInterfaceText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.interfaceClassText(interface, interface.name + f"_v{interface.version}", withRespose=True,code=code, indent=indent)
+        return self.interfaceClassText(interface, interface.name + f"_v{interface.version}",code=code, indent=indent)
 
-    def interfaceClassText(self, element: functional_element, elementName: str, withRespose:bool, code: dotnet_code, indent: int = 1) -> dotnet_code:
+    def interfaceClassText(self, element: functional_element, elementName: str, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET code for element, just the interface.
         """
@@ -813,7 +813,7 @@ class DotnetEmitter:
         # Loop through each operations and generate code for each
         for operation in element.operations:
             # Write each operation
-            buffer.write(self.interfaceFunctionText(operation, code, withRespose, indent+1))
+            buffer.write(self.interfaceFunctionText(operation, code, indent+1))
             buffer.write("\n")
 
         if (element.withEventHandler == True):
@@ -853,7 +853,7 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
 
-    def interfaceFunctionText(self, operation: operation, code: dotnet_code, withRespose:bool, indent: int) -> str:
+    def interfaceFunctionText(self, operation: operation, code: dotnet_code, indent: int) -> str:
         buffer = io.StringIO()
 
         # Add summary for operation
@@ -886,13 +886,10 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent)}/// <return>{self.typeText( operation.operation_return.type, code )}</return>\n")
 
         # Add return value
-        buffer.write(f"{utils.tab(indent)}public Task")
-        if( withRespose== True):
-            buffer.write(f"<Response")
+        buffer.write(f"{utils.tab(indent)}public Task<Response")
         if (operation.operation_return != None ):
             buffer.write(f"<{self.typeText(operation.operation_return.type, code)}>")
-        if( withRespose== True):
-            buffer.write(f">")
+        buffer.write(f">")
         # Add function name
         buffer.write(f" {operation.name}(CallingContext ctx")
         # Add parameters
