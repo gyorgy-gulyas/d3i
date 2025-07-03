@@ -212,6 +212,7 @@ class Engine:
                 # Find or create the domein in the main d3
                 domain_already: domain = self.__find_domain_by_name(session, imported_domain.name)
                 if domain_already is None:
+                    imported_domain.parent = session.main
                     session.main.domains.append(imported_domain)
                 else:
                     # merge to merged

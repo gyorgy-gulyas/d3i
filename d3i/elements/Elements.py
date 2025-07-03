@@ -27,7 +27,7 @@ class base_element:
         if (isinstance(self, domain)):
             return self
 
-        if (self.parent != None):
+        if (self.parent != None and isinstance( self.parent, base_element)):
             return self.parent.getDomain()
 
         return None
@@ -36,7 +36,7 @@ class base_element:
         if (isinstance(self, context)):
             return self
 
-        if (self.parent != None):
+        if (self.parent != None and isinstance( self.parent, base_element)):
             return self.parent.getContext()
 
         return None
@@ -45,7 +45,7 @@ class base_element:
         if (isinstance(self, aggregate)):
             return self
 
-        if (self.parent != None):
+        if (self.parent != None and isinstance( self.parent, base_element)):
             return self.parent.getAggregate()
 
         return None
@@ -54,7 +54,7 @@ class base_element:
         if (isinstance(self, interface)):
             return self
 
-        if (self.parent != None):
+        if (self.parent != None and isinstance( self.parent, base_element)):
             return self.parent.getInterface()
 
         return None

@@ -777,7 +777,7 @@ class DotnetEmitter:
         # Add documentation lines for the composite
         buffer.write(self.documentLines(composite, indent))
         # Write the composite interface declaration with indentation
-        buffer.write(f"{utils.tab(indent)}public interface I{composite.name}\n")
+        buffer.write(f"{utils.tab(indent)}public partial interface I{composite.name}\n")
         buffer.write(f"{utils.tab(indent)}{{\n")
         # Loop through each composite members and generate code for each
         for member in composite.members:
@@ -1626,7 +1626,7 @@ class dotnet_code:
     def getDotnetFullName(self, element: base_element ) -> str:
         dotnetNames: List[str] = []
         while True:
-            if (element == None):
+            if (element == None or isinstance( element, d3 )):
                 break
             if (Engine.has_version_int_member(element)):
                 if (isinstance(element, interface)):
