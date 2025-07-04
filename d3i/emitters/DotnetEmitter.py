@@ -330,7 +330,7 @@ class DotnetEmitter:
             for member in base_composite.members:
                 # Write each member
                 buffer.write(self.documentLines(member, indent+1))
-                buffer.write(self.propertyText(member.name, member.type, code, indent+1))
+                buffer.write(self.propertyText(member, code, indent+1))
             buffer.write(f"{utils.tab(indent+1)}#endregion I{base_composite.name}\n\n")
 
         # write internal enums if Any
@@ -352,7 +352,7 @@ class DotnetEmitter:
         for member in members:
             # Write each member
             buffer.write(self.documentLines(member, indent+1))
-            buffer.write(self.propertyText(member.name, member.type, code, indent+1))
+            buffer.write(self.propertyText(member, code, indent+1))
 
         # clone and copy
         buffer.write(self.dataClassCloneAndCopyText(element, inherits, name, members, code, indent+1))
@@ -783,7 +783,7 @@ class DotnetEmitter:
         for member in composite.members:
             buffer.write(self.documentLines(member, indent+1))
             # Write each member
-            buffer.write(self.propertyText(member.name, member.type, code, indent+1))
+            buffer.write(self.propertyText(member, code, indent+1))
         buffer.write(f"{utils.tab(indent)}}}\n")
 
         code.content += buffer.getvalue()
@@ -1505,10 +1505,19 @@ class DotnetEmitter:
             case primitive_type.PrimtiveKind.Boolean:
                 return f"{{{name}.ToString().ToLowerInvariant()}}"
 
-    def propertyText(self, member_name: str, type: type, code: dotnet_code, indent: int) -> str:
+    def propertyText(self, member: hinted_base_element, code: dotnet_code, indent: int) -> str:
         buffer = io.StringIO()
-        buffer.write(f"{utils.tab(indent)}public {self.typeText(type, code)} {member_name} {{ get; set; }}")
-        if(type.kind == type.Kind.List or type.kind == type.Kind.Map ):
+
+        dotnet_code:decorator = member.find_decorator("dotnet_code")
+        if(dotnet_code != None):
+            namespace = dotnet_code.find_param("namespace")
+            if(namespace != None ):
+                code.usings.add(f"{namespace.value}")
+            value = dotnet_code.find_param("code")
+            if( value != None ):
+                buffer.write(f"{utils.tab(indent)}{value.value}\n")
+        buffer.write(f"{utils.tab(indent)}public {self.typeText(member.type, code)} {member.name} {{ get; set; }}")
+        if(member.type.kind == type.Kind.List or member.type.kind == type.Kind.Map ):
             buffer.write(f" = new();")
         buffer.write(f"\n")
 
