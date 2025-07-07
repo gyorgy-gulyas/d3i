@@ -3,6 +3,7 @@ import os
 from d3i.Engine import *
 from d3i.elements.Elements import *
 
+
 class utils:
     @staticmethod
     def tab(indent=1) -> str:
@@ -62,6 +63,16 @@ class utils:
                 param = published.find_param(protocol)
                 if (param != None):
                     return True
+
+        return False
+
+    @staticmethod
+    def isEnumType(type: type):
+        if (type.kind == type.Kind.Reference):
+            reference_type: reference_type = type
+            referenced_element: base_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
+            if (isinstance(referenced_element, enum) == True):
+                return True
 
         return False
 
@@ -147,29 +158,35 @@ class rest_utils:
         return False
 
     def is_body_type_param(param: operation_param):
-        if (param.type.kind != type.Kind.Primitive):
-            return True
-        
-        match param.type.primtiveKind:
-            case (
-                primitive_type.PrimtiveKind.I18NString |
-                primitive_type.PrimtiveKind.Any |
-                primitive_type.PrimtiveKind.Bytes |
-                primitive_type.PrimtiveKind.Stream
-            ):
-                return True
-            case (
-                primitive_type.PrimtiveKind.Integer |
-                primitive_type.PrimtiveKind.Number |
-                primitive_type.PrimtiveKind.Float |
-                primitive_type.PrimtiveKind.Date |
-                primitive_type.PrimtiveKind.Time |
-                primitive_type.PrimtiveKind.DateTime |
-                primitive_type.PrimtiveKind.String |
-                primitive_type.PrimtiveKind.Boolean
-            ):
+        if (param.type.kind == type.Kind.Primitive):
+            primitive_type: primitive_type = param.type
+            match primitive_type.primtiveKind:
+                case (
+                    primitive_type.PrimtiveKind.I18NString |
+                    primitive_type.PrimtiveKind.Any |
+                    primitive_type.PrimtiveKind.Bytes |
+                    primitive_type.PrimtiveKind.Stream
+                ):
+                    return True
+                case (
+                    primitive_type.PrimtiveKind.Integer |
+                    primitive_type.PrimtiveKind.Number |
+                    primitive_type.PrimtiveKind.Float |
+                    primitive_type.PrimtiveKind.Date |
+                    primitive_type.PrimtiveKind.Time |
+                    primitive_type.PrimtiveKind.DateTime |
+                    primitive_type.PrimtiveKind.String |
+                    primitive_type.PrimtiveKind.Boolean
+                ):
+                    return False
+        elif (param.type.kind == type.Kind.Reference):
+            reference_type: reference_type = param.type
+            referenced_element: base_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
+            if (isinstance(referenced_element, enum) == True):
                 return False
-        
+            else:
+                return True
+
         return True
 
     def is_stream_type_param(param: operation_param):
@@ -196,6 +213,35 @@ class rest_utils:
 
         return count
 
+    @staticmethod
+    def convertToQueryValue(name: str, _type: type, usings: set[str]) -> str:
+        if (_type.kind == type.Kind.Primitive):
+            primitive_type: primitive_type = _type
+            match primitive_type.primtiveKind:
+                case primitive_type.PrimtiveKind.I18NString | primitive_type.PrimtiveKind.Any | primitive_type.PrimtiveKind.Bytes | primitive_type.PrimtiveKind.Stream:
+                    return f"{{{name}}}"
+                case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Number | primitive_type.PrimtiveKind.Float:
+                    usings.add("System.Globalization")
+                    return f"{{{name}.ToString(CultureInfo.InvariantCulture)}}"
+                case primitive_type.PrimtiveKind.Date:
+                    usings.add("System.Globalization")
+                    return f"{{{name}.ToString(\"yyyy-MM-dd\" CultureInfo.InvariantCulture)}}"
+                case primitive_type.PrimtiveKind.Time:
+                    usings.add("System.Globalization")
+                    return f"{{{name}.ToString(\"HH:mm:ss\" CultureInfo.InvariantCulture)}}"
+                case primitive_type.PrimtiveKind.DateTime:
+                    usings.add("System.Globalization")
+                    return f"{{{name}.ToString(\"o\" CultureInfo.InvariantCulture)}}"
+                case primitive_type.PrimtiveKind.String:
+                    return f"{{{name}}}"
+                case primitive_type.PrimtiveKind.Boolean:
+                    return f"{{{name}.ToString().ToLowerInvariant()}}"
+        elif (_type.kind == type.Kind.Reference):
+            reference_type: reference_type = _type
+            referenced_element: base_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
+            if (isinstance(referenced_element, enum) == True):
+                return f"{{{name}.ToString()}}"
+
 
 class rest_operation:
     # only this two verb is supported, beacuse of the Hungarian National Cybersecurity Institute guidance
@@ -218,7 +264,7 @@ class rest_operation:
                 return True
 
         return False
-    
+
     def getQueryString(self) -> str:
 
         for param in self.params.values():
@@ -264,7 +310,10 @@ class rest_operation:
             else:
                 _rest_param = rest_param(param)
                 _rest_param.bindingSource = rest_param.BindingSource.FromQuery
-                _rest_param.httpName = param.name
+                if (utils.isEnumType(param.type)):
+                    _rest_param.httpName = "_str_" + param.name
+                else:
+                    _rest_param.httpName = param.name
                 self.params[param.name] = _rest_param
 
     def __setRoute(self):
@@ -277,6 +326,7 @@ class rest_operation:
         routeParams: List[rest_param] = [param for param in self.params.values() if param.bindingSource == rest_param.BindingSource.FromRoute]
         if (len(routeParams) > 0):
             self.route = self.route + "/" + "/".join([f"{{{param.param.name}}}" for param in routeParams])
+
 
 class rest_param:
     class BindingSource(Enum):

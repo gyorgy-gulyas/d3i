@@ -1228,7 +1228,7 @@ class DotnetEmitter:
             # build route with FromRoute and Query params
             base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{http_operation.route}"
             query_params = [
-                f"{{{param.httpName}}}={self.convertToQueryValue(param.param.name, param.param.type, code)}"
+                f"{param.httpName}={rest_utils.convertToQueryValue(param.param.name, param.param.type, code.usings)}"
                 for param in http_operation.params.values()
                 if param.bindingSource == rest_param.BindingSource.FromQuery
             ]
@@ -1414,7 +1414,10 @@ class DotnetEmitter:
                     case rest_param.BindingSource.FromRoute:
                         buffer.write( f" [FromRoute] {self.typeText(param.type, code, fullName=True)} {http_param.httpName}")
                     case rest_param.BindingSource.FromQuery:
-                        buffer.write( f" [FromQuery] {self.typeText(param.type, code, fullName=True)} {http_param.httpName}")
+                        if( utils.isEnumType(param.type) == False ):
+                            buffer.write( f" [FromQuery] {self.typeText(param.type, code, fullName=True)} {http_param.httpName}")
+                        else:
+                            buffer.write( f" [FromQuery] string {http_param.httpName}")
                     case rest_param.BindingSource.FromBody:
                         buffer.write( f" [FromBody] {self.typeText(param.type, code, fullName=True)} {http_param.httpName}")
                     case rest_param.BindingSource.FromForm:
@@ -1430,8 +1433,12 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+3)}{{\n")
             for http_param in http_operation.params.values():
                 match http_param.bindingSource:
-                    case rest_param.BindingSource.FromRoute | rest_param.BindingSource.FromQuery | rest_param.BindingSource.FromBody:
+                    case rest_param.BindingSource.FromRoute | rest_param.BindingSource.FromBody:
                         pass
+                    case rest_param.BindingSource.FromQuery:
+                        if( utils.isEnumType(http_param.param.type) == True ):
+                            buffer.write(f"{utils.tab(indent+4)}{self.typeText(http_param.param.type, code, fullName=True)} {http_param.param.name} = ({self.typeText(http_param.param.type, code, fullName=True)})Enum.Parse(typeof({self.typeText(http_param.param.type, code, fullName=True)}), {http_param.httpName});\n")
+                            pass
                     case rest_param.BindingSource.FromForm:
                         if( rest_utils.is_stream_type_param( http_param.param ) == True ):
                             buffer.write(f"{utils.tab(indent+4)}Stream {http_param.param.name} = {http_param.httpName}?.OpenReadStream();\n")
@@ -1484,26 +1491,7 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
     
-    def convertToQueryValue( self, name:str, type:primitive_type, code:dotnet_code ) -> str:
-        match type.primtiveKind:
-            case primitive_type.PrimtiveKind.I18NString | primitive_type.PrimtiveKind.Any | primitive_type.PrimtiveKind.Bytes | primitive_type.PrimtiveKind.Stream:
-                return f"{{{name}}}"
-            case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Number | primitive_type.PrimtiveKind.Float :
-                code.usings.add("System.Globalization")
-                return f"{{{name}.ToString(CultureInfo.InvariantCulture)}}"
-            case primitive_type.PrimtiveKind.Date:
-                code.usings.add("System.Globalization")
-                return f"{{{name}.ToString(\"yyyy-MM-dd\" CultureInfo.InvariantCulture)}}"
-            case primitive_type.PrimtiveKind.Time:
-                code.usings.add("System.Globalization")
-                return f"{{{name}.ToString(\"HH:mm:ss\" CultureInfo.InvariantCulture)}}"
-            case primitive_type.PrimtiveKind.DateTime:
-                code.usings.add("System.Globalization")
-                return f"{{{name}.ToString(\"o\" CultureInfo.InvariantCulture)}}"
-            case primitive_type.PrimtiveKind.String:
-                return f"{{{name}}}"
-            case primitive_type.PrimtiveKind.Boolean:
-                return f"{{{name}.ToString().ToLowerInvariant()}}"
+
 
     def propertyText(self, member: hinted_base_element, code: dotnet_code, indent: int) -> str:
         buffer = io.StringIO()
