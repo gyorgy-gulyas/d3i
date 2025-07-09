@@ -142,7 +142,6 @@ def __parse_input_files(args, configuration: Dict[str, str]) -> Session:
 
     return session
 
-
 # Checks for errors in the session and exits if conditions are met
 def __check_errors(session: Session, args, action: str):
     """
@@ -169,7 +168,6 @@ def __check_errors(session: Session, args, action: str):
         if (args.verbose):
             print(f"information: no error found in {action}")
 
-
 # Calls the linters specified in the arguments
 def __call_linters(session: Session, args, configuration: Dict[str, str]):
     """
@@ -194,7 +192,6 @@ def __call_linters(session: Session, args, configuration: Dict[str, str]):
         if (args.verbose):
             print(f"information: calling linter:'{linter_file}'")
         module.DoLint(session, configuration)
-
 
 # Calls the emitters specified in the arguments
 def __call_emiters(session: Session, args, configuration: Dict[str, str]):
@@ -229,7 +226,6 @@ def __call_emiters(session: Session, args, configuration: Dict[str, str]):
         spec.loader.exec_module(module)
         module.DoEmit(session, args.output_dir, configuration)
 
-
 # Main function to run the script
 def main():
     """
@@ -261,7 +257,46 @@ def main():
     __call_emiters(session, args, configuration)
     __check_errors(session, args, "emitting")
 
+from pygls.server import LanguageServer
+from lsprotocol.types import (
+    InitializeParams,
+    InitializeResult,
+    TextDocumentSyncKind,
+    TextDocumentItem,
+    Diagnostic as LspDiagnostic,
+    DiagnosticSeverity,
+    Position,
+    Range
+)
 
-# Run the main function if this is the main script
-if __name__ == "__main__":
-    main()
+def lsp_initialize(ls: LanguageServer, params: InitializeParams):
+    return InitializeResult(
+        capabilities={
+            'textDocumentSync': TextDocumentSyncKind.FULL,
+            'diagnosticProvider': True,
+        }
+    )
+
+def lsp_did_open_text(ls: LanguageServer, params):
+    doc: TextDocumentItem = params.textDocument
+
+    # Create a session from the input file
+    session = Session(Source.CreateFromText(doc.text))
+
+
+    # Build the engine with the session
+    engine = Engine()
+    root = engine.Build(session)
+
+    errors = []
+    for diag in session.diagnostics:
+        errors.append(LspDiagnostic(
+            range=Range(
+                start=Position(diag.line-1, diag.column),
+                end=Position(diag.line-1, diag.column+1)
+            ),
+            severity=DiagnosticSeverity.Error,
+            message=diag.message
+        ))
+    ls.publish_diagnostics(doc.uri, errors)
+
