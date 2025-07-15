@@ -291,17 +291,14 @@ class DotnetEmitter:
                 inherit_names.append(utils.join_with_I(inherit.names))
             else:
                 inherit_names.append(inherit.getText())
-
+        inherit_names.append( f"IEquatable<{name}>")
+        
         buffer = io.StringIO()
         # Add documentation lines for the composite
         buffer.write(self.documentLines(element, indent))
         # Write the data class declaration with indentation
-        buffer.write(f"{utils.tab(indent)}public partial class {name}")
-        # Write inherits if any
-        if (len(inherit_names)):
-            buffer.write(" : ")
-            buffer.write(", ".join(inherit_names))
-        buffer.write(f"\n{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent)}public partial class {name} : {", ".join(inherit_names)}\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
 
         # flush current text
         code.content += buffer.getvalue()
@@ -354,8 +351,11 @@ class DotnetEmitter:
             buffer.write(self.documentLines(member, indent+1))
             buffer.write(self.propertyText(member, code, indent+1))
 
-        # clone and copy
-        buffer.write(self.dataClassCloneAndCopyText(element, inherits, name, members, code, indent+1))
+        # clone
+        buffer.write(self.dataClassCloneText(element, inherits, name, members, code, indent+1))
+
+        # Equal and HashCode
+        buffer.write(self.dataClassEqualsAndHashCodeText(element, inherits, name, members, code, indent+1))
 
         if ( utils.isPublishedOn(element.getInterface(), "grpc" ) == True and isinstance(element,dto)):
             buffer.write(self.dtoGrpcMappingText(element, code, indent+1))
@@ -366,7 +366,68 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
 
-    def dataClassCloneAndCopyText(self, element: internal_scoped_base_element, inherits: List[qualified_name], name: str, members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> str:
+    def dataClassEqualsAndHashCodeText(self, element: internal_scoped_base_element, inherits: List[qualified_name], name: str, members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> str:
+        bases: List[internal_scoped_base_element] = []
+        for inherit in inherits:
+            base = Engine.get_referenced_element(element.parent, inherit)
+            if (base != None):
+                utils.collectBaseRecursive(base, bases)
+
+        buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}#region Equals & HashCode \n")
+
+        buffer.write(f"{utils.tab(indent)}public bool Equals( {name} other )\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}if (other is null) return false;\n\n")
+        # Loop through each base members and generate code for each
+        for base in bases:
+            buffer.write(f"{utils.tab(indent+1)}// begin: {base.name}\n")
+            # Write each base member
+            for member in base.members:
+                if( member.find_decorator("system_field") != None ):
+                    continue
+                buffer.write(self.dataClassMemberEqualsText(member.name, member.type, code, dst="", src="other.", indent=indent+1))
+                pass
+            buffer.write(f"{utils.tab(indent+1)}// end: {base.name}\n\n")
+        # Write each own member
+        for member in element.members:
+            if( member.find_decorator("system_field") != None ):
+                continue
+            buffer.write(self.dataClassMemberEqualsText(member.name, member.type, code, dst="", src="other.", indent=indent+1))
+            pass
+
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent+1)}return true;\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        buffer.write(f"\n")
+
+        buffer.write(f"{utils.tab(indent)}public override bool Equals(object obj) => Equals(obj as {name});\n")
+        buffer.write(f"\n")
+
+        buffer.write(f"{utils.tab(indent)}public override int GetHashCode()\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}var hash = new HashCode();\n")
+        # Loop through each base members and generate code for each
+        for base in bases:
+            buffer.write(f"{utils.tab(indent+1)}// begin: {base.name}\n")
+            # Write each base member
+            for member in base.members:
+                buffer.write(self.dataClassMemberHashText(member.name, member.type, code, dst="hash", src="", indent=indent+1))
+                pass
+            buffer.write(f"{utils.tab(indent+1)}// end: {base.name}\n\n")
+        # Write each own member
+        for member in element.members:
+            buffer.write(self.dataClassMemberHashText(member.name, member.type, code, dst="hash", src="", indent=indent+1))
+            pass
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent+1)}return hash.ToHashCode();\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}#endregion Equals & HashCode \n")
+
+        return buffer.getvalue()
+
+    def dataClassCloneText(self, element: internal_scoped_base_element, inherits: List[qualified_name], name: str, members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> str:
         bases: List[internal_scoped_base_element] = []
         for inherit in inherits:
             base = Engine.get_referenced_element(element.parent, inherit)
@@ -378,36 +439,134 @@ class DotnetEmitter:
             if(isinstance(base,composite) == False ):
                 hasBaseClass = True
 
-        buffer = io.StringIO()
-        buffer.write(f"\n")
-        buffer.write(f"{utils.tab(indent)}#region Clone & Copy \n")
         if(hasBaseClass == True ):
             method_modifier = "override"
         else:
             method_modifier = "virtual"
 
-        buffer.write(f"{utils.tab(indent)}{method_modifier} public {name} Clone()\n")
+        buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}#region Clone \n")
+        buffer.write(f"{utils.tab(indent)}public {method_modifier} {name} Clone()\n")
         buffer.write(f"{utils.tab(indent)}{{\n")
         buffer.write(f"{utils.tab(indent+1)}{name} clone = new();\n\n")
 
         # Loop through each base members and generate code for each
         for base in bases:
-            buffer.write(f"{utils.tab(indent+1)}// unfold begin: {base.name}\n")
+            buffer.write(f"{utils.tab(indent+1)}// begin: {base.name}\n")
             # Write each base member
             for member in base.members:
+                if( member.find_decorator("system_field") != None ):
+                    continue
                 buffer.write(self.dataClassMemberCloneText(member.name, member.type, code, dst="clone.", src="", indent=indent+1))
                 pass
-            buffer.write(f"{utils.tab(indent+1)}// unfold end {base.name}\n\n")
+            buffer.write(f"{utils.tab(indent+1)}// end: {base.name}\n\n")
         # Write each own member
         for member in element.members:
+            if( member.find_decorator("system_field") != None ):
+                continue
             buffer.write(self.dataClassMemberCloneText(member.name, member.type, code, dst="clone.", src="", indent=indent+1))
             pass
 
         buffer.write(f"\n")
         buffer.write(f"{utils.tab(indent+1)}return clone;\n")
         buffer.write(f"{utils.tab(indent)}}}\n")
-        buffer.write(f"{utils.tab(indent)}#endregion Clone & Copy \n")
+        buffer.write(f"{utils.tab(indent)}#endregion Clone \n")
 
+        return buffer.getvalue()
+
+    def dataClassMemberEqualsText(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
+        match memberType.kind:
+            case type.Kind.Primitive:
+                return self.dataClassMemberEqualsText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Reference:
+                return self.dataClassMemberEqualsText_Reference(memberName, memberType, code, dst, src, indent)
+            case type.Kind.List:
+                return self.dataClassMemberEqualsText_List(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Map:
+                return self.dataClassMemberEqualsText_Map(memberName, memberType, code, dst, src, indent)
+
+    def dataClassMemberHashText(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
+        match memberType.kind:
+            case type.Kind.Primitive:
+                return self.dataClassMemberHashText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Reference:
+                return self.dataClassMemberHashText_Reference(memberName, memberType, code, dst, src, indent)
+            case type.Kind.List:
+                return self.dataClassMemberHashText_List(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Map:
+                return self.dataClassMemberHashText_Map(memberName, memberType, code, dst, src, indent)
+    
+    def dataClassMemberHashText_Primitive(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
+        return f"{utils.tab(indent)}{dst}.Add({src}{memberName});\n"
+
+    def dataClassMemberHashText_Reference(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
+        referenced_element: base_element = Engine.get_referenced_element(memberType.parent, memberType.reference_name)
+        
+        if (isinstance(referenced_element, enum) == True):
+            return f"{utils.tab(indent)}{dst}.Add({src}{memberName});\n"
+        else:
+            buffer = io.StringIO()
+            buffer.write(f"\n")
+            buffer.write(f"{utils.tab(indent)}// hash of {memberName}\n")
+            buffer.write(f"{utils.tab(indent)}if({src}{memberName} != null ) {dst}.Add({src}{memberName});\n")
+            return buffer.getvalue()
+
+    def dataClassMemberHashText_List(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
+        buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}// hash of {memberName}\n")
+        buffer.write(f"{utils.tab(indent)}foreach( var element_{memberName} in {src}{memberName})\n")
+        buffer.write(f"{utils.tab(indent+1)}{dst}.Add(element_{memberName});\n")
+        
+        return buffer.getvalue()
+
+    def dataClassMemberHashText_Map(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
+        buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}// hash of {memberName}\n")
+        buffer.write(f"{utils.tab(indent)}foreach( var kvp_{memberName} in {src}{memberName})\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}{dst}.Add(kvp_{memberName}.Key);\n")
+        buffer.write(f"{utils.tab(indent+1)}{dst}.Add(kvp_{memberName}.Value);\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        
+        return buffer.getvalue()
+
+    def dataClassMemberEqualsText_Primitive(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
+        return f"{utils.tab(indent)}if({dst}{memberName} != {src}{memberName}) return false;\n"
+
+    def dataClassMemberEqualsText_Reference(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
+        referenced_element: base_element = Engine.get_referenced_element(memberType.parent, memberType.reference_name)
+        
+        if (isinstance(referenced_element, enum) == True):
+            return f"{utils.tab(indent)}if({dst}{memberName} != {src}{memberName}) return false;\n"
+        else:
+            buffer = io.StringIO()
+            buffer.write(f"\n")
+            buffer.write(f"{utils.tab(indent)}// equals of {memberName}\n")        
+            buffer.write(f"{utils.tab(indent)}if({dst}{memberName} == null && {src}{memberName} != null ) return false;\n")
+            buffer.write(f"{utils.tab(indent)}if({dst}{memberName} != null && {dst}{memberName}.Equals({src}{memberName}) == false ) return false;\n")
+            return buffer.getvalue()
+
+    def dataClassMemberEqualsText_List(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
+        buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}// equals of {memberName}\n")   
+        buffer.write(f"{utils.tab(indent)}if({dst}{memberName}.SequenceEqual({src}{memberName}) == false ) return false;\n" )
+        return buffer.getvalue()
+
+    def dataClassMemberEqualsText_Map(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
+        buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}// equals of {memberName}\n")        
+        buffer.write(f"{utils.tab(indent)}if({dst}{memberName}.Count != {src}{memberName}.Count ) return false;\n")
+        buffer.write(f"{utils.tab(indent)}foreach( var kvp_{memberName} in {dst}{memberName})\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}if({src}{memberName}.TryGetValue(kvp_{memberName}.Key, out var otherValue) == false ) return false;\n")
+        buffer.write(f"{utils.tab(indent+1)}if(kvp_{memberName}.Value.Equals(otherValue) == false ) return false;\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        
         return buffer.getvalue()
 
     def dataClassMemberCloneText(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
@@ -451,16 +610,21 @@ class DotnetEmitter:
         referenced_element: base_element = Engine.get_referenced_element(memberType.parent, memberType.reference_name)
 
         buffer = io.StringIO()
-        buffer.write(f"{utils.tab(indent)}{dst}{memberName} = ")
         if (isinstance(referenced_element, enum) == True):
+            buffer.write(f"{utils.tab(indent)}{dst}{memberName} = ")
             buffer.write(f"{src}{memberName};\n")
         else:
+            buffer.write(f"\n")
+            buffer.write(f"{utils.tab(indent)}// clone of {memberName}\n")        
+            buffer.write(f"{utils.tab(indent)}{dst}{memberName} = ")
             buffer.write(f"{src}{memberName}?.Clone();\n")
 
         return buffer.getvalue()
     
     def dataClassMemberCloneText_List(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
         buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}// clone of {memberName}\n")        
 
         match memberType.item_type.kind:
             case type.Kind.Primitive:
@@ -484,9 +648,13 @@ class DotnetEmitter:
 
         match memberType.value_type.kind:
             case type.Kind.Primitive:
+                buffer.write(f"\n")
+                buffer.write(f"{utils.tab(indent)}// clone of {memberName}\n")        
                 buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{memberName})\n")
                 buffer.write( f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.dataClassMemberCloneExpression("kvp.Value", memberType.value_type, code)};\n")
             case type.Kind.Reference:
+                buffer.write(f"\n")
+                buffer.write(f"{utils.tab(indent)}// clone of {memberName}\n")        
                 buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{memberName})\n")
 
                 reference_type: reference_type = memberType.value_type
@@ -530,12 +698,12 @@ class DotnetEmitter:
 
         # Loop through each base members and generate code for each
         for base in bases:
-            buffer.write(f"{utils.tab(indent+1)}// unfold begin: {base.name}\n")
+            buffer.write(f"{utils.tab(indent+1)}// begin: {base.name}\n")
             # Write each base member
             for member in base.members:
                 buffer.write(self.dataClassMemberToGrpcMappingText(member.name, member.type, code, dst="result.", src="@this.", indent=indent+1))
                 pass
-            buffer.write(f"{utils.tab(indent+1)}// unfold end {base.name}\n\n")
+            buffer.write(f"{utils.tab(indent+1)}// end: {base.name}\n\n")
         # Write each own member
         for member in dto.members:
             buffer.write(self.dataClassMemberToGrpcMappingText(member.name, member.type, code, dst="result.", src="@this.", indent=indent+1))
@@ -551,12 +719,12 @@ class DotnetEmitter:
         buffer.write(f"\n")
         # Loop through each base members and generate code for each
         for base in bases:
-            buffer.write(f"{utils.tab(indent+1)}// unfold begin: {base.name}\n")
+            buffer.write(f"{utils.tab(indent+1)}// begin: {base.name}\n")
             # Write each own member
             for member in base.members:
                 buffer.write(self.dataClassMemberFromGrpcMappingText(member.name, member.type, code, dst="result.", src="@from.", indent=indent+1))
                 pass
-            buffer.write(f"{utils.tab(indent+1)}// unfold end {base.name}\n\n")
+            buffer.write(f"{utils.tab(indent+1)}// end: {base.name}\n\n")
 
         for member in dto.members:
             # Write each member
@@ -752,10 +920,14 @@ class DotnetEmitter:
 
         match memberType.value_type.kind:
             case type.Kind.Primitive:
+                buffer.write(f"\n")
+                buffer.write(f"{utils.tab(indent)}// mapping of {memberName}\n")        
                 buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{utils.camel_to_pascal(memberName)})\n")
                 buffer.write(
                     f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.convertExpressionFromGrpcRepresentation("kvp.Value", memberType.value_type, code)};\n")
             case type.Kind.Reference:
+                buffer.write(f"\n")
+                buffer.write(f"{utils.tab(indent)}// mapping of {memberName}\n")        
                 buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{utils.camel_to_pascal(memberName)})\n")
                 buffer.write(f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.typeText(memberType.value_type, code)}.FromGrpc(kvp.Value);\n")
                 pass
@@ -888,14 +1060,14 @@ class DotnetEmitter:
         # Add return value
         buffer.write(f"{utils.tab(indent)}public Task<Response")
         if (operation.operation_return != None ):
-            buffer.write(f"<{self.typeText(operation.operation_return.type, code)}>")
+            buffer.write(f"<{self.typeText(operation.operation_return.type, code )}>")
         buffer.write(f">")
         # Add function name
         buffer.write(f" {operation.name}(CallingContext ctx")
         # Add parameters
         if (len(operation.operation_params) > 0):
             buffer.write(f", ")
-        buffer.write(", ".join([self.typeText(param.type, code) + " " + param.name for param in operation.operation_params]))
+        buffer.write(", ".join([self.typeText(param.type, code, isInFunctionParam=True) + " " + param.name for param in operation.operation_params]))
         buffer.write(");\n")
 
         return buffer.getvalue()
@@ -1511,18 +1683,18 @@ class DotnetEmitter:
 
         return buffer.getvalue()
 
-    def typeText(self, type: type, code: dotnet_code, fullName: bool = False) -> str:
+    def typeText(self, type: type, code: dotnet_code, *, fullName: bool = False, isInFunctionParam: bool = False) -> str:
         match type.kind:
             case type.Kind.Primitive:
-                return self.typeTextPrimitive(type)
+                return self.typeTextPrimitive(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
             case type.Kind.Reference:
-                return self.typeTextReference(type, code, fullName)
+                return self.typeTextReference(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
             case type.Kind.List:
-                return self.typeTextList(type, code, fullName)
+                return self.typeTextList(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
             case type.Kind.Map:
-                return self.typeTextMap(type, code, fullName)
+                return self.typeTextMap(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
 
-    def typeTextPrimitive(self, type: primitive_type) -> str:
+    def typeTextPrimitive(self, type: primitive_type, code: dotnet_code, *, fullName: bool = False, isInFunctionParam: bool = False) -> str:
         """
         Converts a primitive type to its .NET representation.
         """
@@ -1552,7 +1724,7 @@ class DotnetEmitter:
             case primitive_type.PrimtiveKind.Stream:
                 return "Stream"
 
-    def typeTextReference(self, type: reference_type, code: dotnet_code, fullName: bool = False) -> str:
+    def typeTextReference(self, type: reference_type, code: dotnet_code, fullName: bool = False, isInFunctionParam: bool = False) -> str:
         referenced_element: base_element = Engine.get_referenced_element(type.parent, type.reference_name)
         if (referenced_element != None):
             code.usings.add(f"{referenced_element.getDomain().name}.{referenced_element.getContext().name}")
@@ -1562,10 +1734,13 @@ class DotnetEmitter:
         else:
             return type.reference_name.getText()
 
-    def typeTextList(self, type: list_type, code: dotnet_code, fullName: bool = False) -> str:
-        return f"List<{self.typeText(type.item_type, code, fullName)}>"
+    def typeTextList(self, type: list_type, code: dotnet_code, fullName: bool = False, isInFunctionParam: bool = False) -> str:
+        if(isInFunctionParam == True ):
+            return f"IList<{self.typeText(type.item_type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)}>"
+        else:
+            return f"List<{self.typeText(type.item_type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)}>"
 
-    def typeTextMap(self, type: map_type, code, fullName: bool = False) -> str:
+    def typeTextMap(self, type: map_type, code, fullName: bool = False, isInFunctionParam: bool = False) -> str:
         return f"Dictionary<{self.typeText(type.key_type, code, fullName)},{self.typeText(type.value_type, code, fullName)}>"
 
     def documentLines(self, hinted_element: hinted_base_element, indent: int = 1) -> str:
