@@ -58,11 +58,34 @@ class utils:
     @staticmethod
     def isPublishedOn(interface: interface, protocol: str) -> bool:
         if (interface != None):
-            published = interface.find_decorator("publish")
+            if (utils.isPublishedOnInternal( interface, protocol ) == True ):
+                return True
+            if (utils.isPublishedOnPublic( interface, protocol ) != None ):
+                return True
+
+        return False
+
+    @staticmethod
+    def isPublishedOnInternal(interface: interface, protocol: str) -> bool:
+        if (interface != None):
+            published = interface.find_decorator("internal_api")
             if (published != None):
                 param = published.find_param(protocol)
                 if (param != None):
                     return True
+
+    @staticmethod
+    def isPublishedOnPublic(interface: interface, protocol: str) -> bool:
+        if (interface != None):
+            published = interface.find_decorator("public_api")
+            if (published != None):
+                param = published.find_param(protocol)
+                if (param != None):
+                    collection = published.find_param("collection")
+                    if(collection != None):
+                        return collection.value
+                    else:
+                        return ""
 
         return False
 

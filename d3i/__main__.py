@@ -16,6 +16,11 @@ def __add_known_arguments(arg_parser: argparse.ArgumentParser):
     Parameters:
         arg_parser (argparse.ArgumentParser): The argument parser instance to configure.
     """
+    arg_parser.add_argument("-p",
+                            "--project-name",
+                            help="optional project name",
+                            required=False,
+                            default=None)
     arg_parser.add_argument("-i",
                             "--input",
                             help="input d3 file",
@@ -53,7 +58,6 @@ def __add_known_arguments(arg_parser: argparse.ArgumentParser):
     arg_parser.add_argument("-c",
                             "--config-file",
                             help="define the configuration in json format. If the option is ont present, then the default ./configuration.json will be used" )
-
 
 # Reads the configuration file and returns it as a dictionary
 def __read_config_file(args, unknown_args) -> Dict[str, str]:
@@ -113,7 +117,7 @@ def __parse_unknown_args(unknown_args: list[str]) -> Dict[str, object]:
     return config
 
 # Parses the input files, creates a session, and returns it
-def __parse_input_files(args, configuration: Dict[str, str]) -> Session:
+def __parse_input_file(args, configuration: Dict[str, str]) -> Session:
     """
     Parses the input D3 file, creates an engine and session, and builds the AST.
 
@@ -131,7 +135,7 @@ def __parse_input_files(args, configuration: Dict[str, str]) -> Session:
         exit(f"'{input}' file does not exist")
 
     # Create a session from the input file
-    session = Session(Source.CreateFromFile(args.input))
+    session = Session(Source.CreateFromFile(args.input), args.project_name)
 
     # Print info if verbose flag is set
     if (args.verbose):
@@ -246,7 +250,7 @@ def main():
 
     # Read configuration file and parse input files
     configuration = __read_config_file(args, unknown_args)
-    session: Session = __parse_input_files(args, configuration)
+    session: Session = __parse_input_file(args, configuration)
     __check_errors(session, args, "parsing")
 
     # Run linters on the session

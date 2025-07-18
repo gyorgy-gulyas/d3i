@@ -51,7 +51,7 @@ class Session:
     Manages the state of a d3 processing session, including diagnostics and syntax trees.
     """
 
-    def __init__(self, source: Source):
+    def __init__(self, source: Source, projectName:str=None):
         self.source: Source = source
         self.syntaxTree: d3iGrammar.D3Context = []
         self.diagnostics: List[Diagnostic] = []
@@ -63,6 +63,7 @@ class Session:
         self.elementTrees: List[d3] = []
         self.diagnostics: List[Diagnostic] = []
         self.main: d3 = None
+        self.projectName:str = projectName
 
     def HasDiagnostic(self):
         """
