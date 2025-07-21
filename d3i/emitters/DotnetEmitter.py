@@ -129,6 +129,12 @@ class DotnetEmitter:
                         code = self.interfaceGrpcInternalClientText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
+                    apiCollectionName: str = utils.isPublishedOnPublic( interface, "grpc" )
+                    if( apiCollectionName != None ):
+                        code = self.beginFile(os.path.join(output_path, apiCollectionName, "ApiClientKit/"), interface, "", postfix=f"_v{interface.version}.GrpcClient", current_namespace=f"{apiCollectionName}.ApiClientKit")
+                        code = self.interfaceGrpcPublicClientText(interface, code)
+                        code = self.endFile(code)
+                        result.append(code)
                     if( utils.isPublishedOn( interface, "rest" ) == True):
                         code = self.beginFile(output_path, interface, "Service/Controllers", postfix=f"_v{interface.version}.RestController")
                         code = self.interfaceRestControllerText(interface, code)
@@ -141,7 +147,7 @@ class DotnetEmitter:
                         result.append(code)
                     apiCollectionName: str = utils.isPublishedOnPublic( interface, "rest" )
                     if( apiCollectionName != None ):
-                        code = self.beginFile(os.path.join(output_path, apiCollectionName, "ApiClient/"), interface, "", postfix=f"_v{interface.version}.RestClient", current_namespace=f"{apiCollectionName}.ApiClient")
+                        code = self.beginFile(os.path.join(output_path, apiCollectionName, "ApiClientKit/"), interface, "", postfix=f"_v{interface.version}.RestClient", current_namespace=f"{apiCollectionName}.ApiClientKit")
                         code = self.interfaceRestPublicClientText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
@@ -1082,6 +1088,138 @@ class DotnetEmitter:
 
         return buffer.getvalue()
     
+    def interfaceGrpcPublicClientText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        Generates the .NET GRPC Public client code for interface
+        """
+        buffer = io.StringIO()
+        domain: domain = interface.getDomain()
+        context: context = interface.getContext()
+        versionedName: str = f"{interface.name}_v{interface.version}"
+
+        code.usings.add("Google.Protobuf.WellKnownTypes")
+        code.usings.add("Grpc.Core")
+        code.usings.add("Grpc.Net.Client")
+        code.usings.add("ServiceKit.Net")
+        code.usings.add(f"{domain.name}.{context.name}.Protos.{versionedName}")
+
+        # client class declaration
+        buffer.write(f"{utils.tab(indent)}static class Grpc \n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(self.documentLines(interface, indent+1))
+        buffer.write(f"{utils.tab(indent+1)}static class {interface.name}\n")
+        buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}static class V{interface.version} \n")
+        buffer.write(f"{utils.tab(indent+2)}{{\n")
+        buffer.write(f"{utils.tab(indent+3)}private static {versionedName}.{versionedName}Client _client;\n")
+
+        # Add functions based on operations
+        for operation in interface.operations:
+            buffer.write(self.documentLines(operation, indent+2))
+            # Add return value
+            buffer.write(f"{utils.tab(indent+3)}public static async Task<Response")
+            if (operation.operation_return != None ):
+                buffer.write(f"<{self.typeText(operation.operation_return.type, code,fullName=True)}>")
+            buffer.write(f"> ")
+            # Add function name
+            buffer.write(f"{operation.name}(")
+            # Add parameters
+            buffer.write(", ".join([self.typeText(param.type, code,fullName=True) + " " + param.name for param in operation.operation_params]))
+            buffer.write(")\n")
+            buffer.write(f"{utils.tab(indent+3)}{{\n")
+            buffer.write(f"{utils.tab(indent+4)}try\n")
+            buffer.write(f"{utils.tab(indent+4)}{{\n")
+            
+            buffer.write(f"{utils.tab(indent+5)}// fill grpc request\n")
+            if(len(operation.operation_params)):
+                requestType = f"{versionedName}_{operation.name}Request"
+            else:
+                requestType = f"Empty"
+            buffer.write(f"{utils.tab(indent+5)}var request = new {requestType}();\n")
+            for param in operation.operation_params:
+                buffer.write(f"{utils.tab(indent+5)}{self.dataClassMemberToGrpcMappingText( param.name, param.type, code, dst="request.", src="", indent=0)}")
+            buffer.write("\n")
+            buffer.write(f"{utils.tab(indent+5)}// calling grpc client\n")
+            buffer.write(f"{utils.tab(indent+5)}_client ??= new ProjectIF_v1.ProjectIF_v1Client(GrpClient._channel);\n")
+            buffer.write(f"{utils.tab(indent+5)}var grpc_response = await _client.{operation.name}Async( request, new CallOptions(GrpClient.GetMetadata( \"{domain.name}.{context.name}.{versionedName}.{operation.name}\" ))).ResponseAsync;\n")
+            buffer.write("\n")
+            buffer.write(f"{utils.tab(indent+5)}// fill response\n")
+            buffer.write(f"{utils.tab(indent+5)}switch( grpc_response.ResultCase )\n")
+            buffer.write(f"{utils.tab(indent+5)}{{\n")
+            # sucess
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+6)}case {versionedName}_{operation.name}Response.ResultOneofCase.Value:\n")
+                if( operation.operation_return.type.kind == type.Kind.List or operation.operation_return.type.kind == type.Kind.Map ):
+                    buffer.write(f"{utils.tab(indent+7)}{self.typeText( operation.operation_return.type, code, fullName=True)} value = new();\n")
+                    buffer.write(f"{utils.tab(indent+7)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.Value.", indent=0)}")
+                else:
+                    buffer.write(f"{utils.tab(indent+7)}{self.typeText( operation.operation_return.type, code, fullName=True)} value;\n")
+                    buffer.write(f"{utils.tab(indent+7)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.", indent=0)}")
+                buffer.write(f"{utils.tab(indent+7)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Success( value );\n\n")
+            else:
+                buffer.write(f"{utils.tab(indent+6)}case {versionedName}_{operation.name}Response.ResultOneofCase.Success:\n")
+                buffer.write(f"{utils.tab(indent+7)}return Response.Success();\n\n")
+
+            # error
+            buffer.write(f"{utils.tab(indent+6)}case {versionedName}_{operation.name}Response.ResultOneofCase.Error:\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+7)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+7)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+8)}Status = grpc_response.Error.Status.FromGrpc(),\n")
+            buffer.write(f"{utils.tab(indent+8)}MessageText = grpc_response.Error.MessageText,\n")
+            buffer.write(f"{utils.tab(indent+8)}AdditionalInformation = grpc_response.Error.AdditionalInformation,\n")
+            buffer.write(f"{utils.tab(indent+7)}}} );\n\n")
+
+            # None result and default
+            buffer.write(f"{utils.tab(indent+6)}case {versionedName}_{operation.name}Response.ResultOneofCase.None:\n")
+            buffer.write(f"{utils.tab(indent+6)}default:\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+7)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+7)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+8)}Status = grpc_response.Error.Status.FromGrpc(),\n")
+            buffer.write(f"{utils.tab(indent+8)}MessageText = \"Not handled reponse in GRPC client when calling '{versionedName}_{operation.name}'\",\n")
+            buffer.write(f"{utils.tab(indent+7)}}} );\n")
+
+            buffer.write(f"{utils.tab(indent+5)}}}\n") # switch
+            buffer.write(f"{utils.tab(indent+4)}}}\n") # try
+            buffer.write(f"{utils.tab(indent+4)}catch (RpcException ex)\n")
+            buffer.write(f"{utils.tab(indent+4)}{{\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+6)}Status = ex.StatusCode.FromGrpc(),\n")
+            buffer.write(f"{utils.tab(indent+6)}MessageText = ex.Message,\n")
+            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = ex.ToString(),\n")
+            buffer.write(f"{utils.tab(indent+5)}}} );\n")
+            buffer.write(f"{utils.tab(indent+4)}}}\n") # catch RpcException
+            buffer.write(f"{utils.tab(indent+4)}catch (Exception ex)\n")
+            buffer.write(f"{utils.tab(indent+4)}{{\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+6)}Status = Statuses.InternalError,\n")
+            buffer.write(f"{utils.tab(indent+6)}MessageText = ex.Message,\n")
+            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = ex.ToString(),\n")
+            buffer.write(f"{utils.tab(indent+5)}}} );\n")
+            buffer.write(f"{utils.tab(indent+4)}}}\n") # catch Exception
+            buffer.write(f"{utils.tab(indent+3)}}}\n") # function
+            buffer.write(f"\n")
+
+        buffer.write(f"{utils.tab(indent+2)}}}\n")
+        buffer.write(f"{utils.tab(indent+1)}}}\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+
+        code.content += buffer.getvalue()
+        return code
+
     def interfaceGrpcInternalClientText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET GRPC INTERNAL client code for interface
@@ -1143,7 +1281,7 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent+3)}{self.dataClassMemberToGrpcMappingText( param.name, param.type, code, dst="request.", src="", indent=0)}")
             buffer.write("\n")
             buffer.write(f"{utils.tab(indent+3)}// calling grpc client\n")
-            buffer.write(f"{utils.tab(indent+3)}var grpc_response = await _client.{operation.name}Async( request, new CallOptions(ctx.ToGrpcMetadata( \"{domain.name}{context.name}{versionedName}\", \"{operation.name}\" ))).ResponseAsync;\n")
+            buffer.write(f"{utils.tab(indent+3)}var grpc_response = await _client.{operation.name}Async( request, new CallOptions(ctx.ToGrpcMetadata( \"{domain.name}.{context.name}{versionedName}\", \"{operation.name}\" ))).ResponseAsync;\n")
             buffer.write("\n")
             buffer.write(f"{utils.tab(indent+3)}// fill response\n")
             buffer.write(f"{utils.tab(indent+3)}switch( grpc_response.ResultCase )\n")
@@ -1400,11 +1538,7 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+1)}{{\n")
             buffer.write(f"{utils.tab(indent+2)}try\n")
             buffer.write(f"{utils.tab(indent+2)}{{\n")
-            buffer.write(f"{utils.tab(indent+3)}_httpClient.DefaultRequestHeaders.Remove(\"x-request-id\");\n")
-            buffer.write(f"{utils.tab(indent+3)}_httpClient.DefaultRequestHeaders.Add(\"x-request-id\", Guid.NewGuid().ToString());\n")
-
             http_operation:rest_operation = rest_operation(operation)
-            buffer.write("\n")
             buffer.write(f"{utils.tab(indent+3)}// build request\n")
 
             # build route with FromRoute and Query params
@@ -1534,17 +1668,20 @@ class DotnetEmitter:
         # Add documentation lines for the interface
         buffer.write(self.documentLines(interface, indent))
         # client class declaration
-        buffer.write(f"{utils.tab(indent)}static class {interface.name}\n")
+        buffer.write(f"{utils.tab(indent)}static class Rest \n")
         buffer.write(f"{utils.tab(indent)}{{\n")
-        buffer.write(f"{utils.tab(indent+1)}static class V{interface.version} \n")
+        buffer.write(self.documentLines(interface, indent+1))
+        buffer.write(f"{utils.tab(indent+1)}static class {interface.name}\n")
         buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}static class V{interface.version} \n")
+        buffer.write(f"{utils.tab(indent+2)}{{\n")
 
        
         # Add functions based on operations
         for operation in interface.operations:
             buffer.write(self.documentLines(operation, indent+2))
             # Add return value
-            buffer.write(f"{utils.tab(indent+2)}public static async Task<Response")
+            buffer.write(f"{utils.tab(indent+3)}public static async Task<Response")
             if (operation.operation_return != None ):
                 buffer.write(f"<{self.typeText(operation.operation_return.type, code,fullName=True)}>")
             buffer.write(f"> ")
@@ -1553,15 +1690,12 @@ class DotnetEmitter:
             # Add parameters
             buffer.write(", ".join([self.typeText(param.type, code,fullName=True) + " " + param.name for param in operation.operation_params]))
             buffer.write(")\n")
-            buffer.write(f"{utils.tab(indent+2)}{{\n")
-            buffer.write(f"{utils.tab(indent+3)}try\n")
             buffer.write(f"{utils.tab(indent+3)}{{\n")
-            buffer.write(f"{utils.tab(indent+4)}Rest.HttpClient.DefaultRequestHeaders.Remove(\"x-request-id\");\n")
-            buffer.write(f"{utils.tab(indent+4)}Rest.HttpClient.DefaultRequestHeaders.Add(\"x-request-id\", Guid.NewGuid().ToString());\n")
+            buffer.write(f"{utils.tab(indent+4)}try\n")
+            buffer.write(f"{utils.tab(indent+4)}{{\n")
 
             http_operation:rest_operation = rest_operation(operation)
-            buffer.write("\n")
-            buffer.write(f"{utils.tab(indent+4)}// build request\n")
+            buffer.write(f"{utils.tab(indent+5)}// build request\n")
 
             # build route with FromRoute and Query params
             base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{http_operation.route}"
@@ -1572,103 +1706,104 @@ class DotnetEmitter:
             ]
             query_string = f"?{'&'.join(query_params)}" if query_params else ""
 
-            buffer.write(f"{utils.tab(indent+4)}HttpRequestMessage request = new HttpRequestMessage( HttpMethod.{http_operation.verb.name}, WebUtility.UrlEncode( $\"{base_route}{query_string}\" ) );\n")
+            buffer.write(f"{utils.tab(indent+5)}HttpRequestMessage request = new HttpRequestMessage( HttpMethod.{http_operation.verb.name}, WebUtility.UrlEncode( $\"{base_route}{query_string}\" ) );\n")
             buffer.write("\n")
 
             if(http_operation.isMultiPartFormData()):
-                buffer.write(f"{utils.tab(indent+4)}// build multi part content\n")
-                buffer.write(f"{utils.tab(indent+4)}MultipartFormDataContent multipartContent = new();\n")
+                buffer.write(f"{utils.tab(indent+5)}// build multi part content\n")
+                buffer.write(f"{utils.tab(indent+5)}MultipartFormDataContent multipartContent = new();\n")
                 for http_param in http_operation.params.values():
                     match http_param.bindingSource:
                         case rest_param.BindingSource.FromRoute | rest_param.BindingSource.FromQuery | rest_param.BindingSource.FromBody:
                             pass
                         case rest_param.BindingSource.FromForm:
                             if( rest_utils.is_stream_type_param( http_param.param ) == True ):
-                                buffer.write(f"{utils.tab(indent+4)}if(content.CanSeek)\n")
-                                buffer.write(f"{utils.tab(indent+5)}content.Seek( 0, SeekOrigin.Begin );\n")
-                                buffer.write(f"{utils.tab(indent+5)}multipartContent.Add(new StreamContent(stream), {http_param.httpName}, \"__temp\");\n")
+                                buffer.write(f"{utils.tab(indent+5)}if(content.CanSeek)\n")
+                                buffer.write(f"{utils.tab(indent+6)}content.Seek( 0, SeekOrigin.Begin );\n")
+                                buffer.write(f"{utils.tab(indent+6)}multipartContent.Add(new StreamContent(stream), {http_param.httpName}, \"__temp\");\n")
                             elif( rest_utils.is_body_type_param( http_param.param ) == True ):
                                 code.usings.add("System.Text")
                                 code.usings.add("System.Text.Json")
-                                buffer.write(f"{utils.tab(indent+4)}multipartContent.Add( new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name} ), Encoding.UTF8, \"application/json\" ), \"{http_param.httpName}\", \"{http_param.httpName}.json\" );\n")
+                                buffer.write(f"{utils.tab(indent+5)}multipartContent.Add( new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name} ), Encoding.UTF8, \"application/json\" ), \"{http_param.httpName}\", \"{http_param.httpName}.json\" );\n")
                 buffer.write(f"{utils.tab(indent+4)}request.Content = multipartContent;\n")
                 buffer.write("\n")
             else:
                 count_body = rest_utils.count_body_param(operation)
                 if( count_body > 0 ):
-                    buffer.write(f"{utils.tab(indent+4)}// build content\n")
+                    buffer.write(f"{utils.tab(indent+5)}// build content\n")
                     for http_param in http_operation.params.values():
                         match http_param.bindingSource:
                             case rest_param.BindingSource.FromRoute | rest_param.BindingSource.FromQuery | rest_param.BindingSource.FromForm:
                                 pass
                             case rest_param.BindingSource.FromBody:
                                 code.usings.add("System.Text.Json")
-                                buffer.write(f"{utils.tab(indent+4)}request.Content = new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name} ));\n")
+                                buffer.write(f"{utils.tab(indent+5)}request.Content = new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name} ));\n")
                     buffer.write("\n")
             
             # call hhtp
-            buffer.write(f"{utils.tab(indent+4)}// call http client \n")
-            buffer.write(f"{utils.tab(indent+4)}HttpResponseMessage response = await Rest.HttpClient.SendAsync( request );\n")
+            buffer.write(f"{utils.tab(indent+5)}// call rest client \n")
+            buffer.write(f"{utils.tab(indent+5)}HttpResponseMessage response = await RestClient.Request( request, \"{domain.name}.{context.name}.{interface.name}.V{interface.version}.{operation.name}\" );\n")
 
             # process result
             buffer.write("\n")
-            buffer.write(f"{utils.tab(indent+4)}if (response.IsSuccessStatusCode)\n")
-            buffer.write(f"{utils.tab(indent+4)}{{\n")
+            buffer.write(f"{utils.tab(indent+5)}if (response.IsSuccessStatusCode)\n")
+            buffer.write(f"{utils.tab(indent+5)}{{\n")
             if( operation.operation_return != None ):
                 code.usings.add( "System.Net.Http.Json")
-                buffer.write(f"{utils.tab(indent+5)}var value = await response.Content.ReadFromJsonAsync<{self.typeText( operation.operation_return.type, code, fullName=True)}>();\n")
-                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText( operation.operation_return.type, code, fullName=True)}>.Success( value );\n")
+                buffer.write(f"{utils.tab(indent+6)}var value = await response.Content.ReadFromJsonAsync<{self.typeText( operation.operation_return.type, code, fullName=True)}>();\n")
+                buffer.write(f"{utils.tab(indent+6)}return Response<{self.typeText( operation.operation_return.type, code, fullName=True)}>.Success( value );\n")
             else:
-                buffer.write(f"{utils.tab(indent+5)}return Response.Success();\n")
+                buffer.write(f"{utils.tab(indent+6)}return Response.Success();\n")
                 pass
-            buffer.write(f"{utils.tab(indent+4)}}}\n")
-            buffer.write(f"{utils.tab(indent+4)}else if( response.Content != null )\n")
-            buffer.write(f"{utils.tab(indent+4)}{{\n")
-            buffer.write(f"{utils.tab(indent+4)}var error = await response.Content.ReadFromJsonAsync<Error>();\n")
+            buffer.write(f"{utils.tab(indent+5)}}}\n")
+            buffer.write(f"{utils.tab(indent+5)}else if( response.Content != null )\n")
+            buffer.write(f"{utils.tab(indent+5)}{{\n")
+            buffer.write(f"{utils.tab(indent+6)}var error = await response.Content.ReadFromJsonAsync<Error>();\n")
             if( operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText( operation.operation_return.type, code, fullName=True)}>.Failure( error );\n")
+                buffer.write(f"{utils.tab(indent+6)}return Response<{self.typeText( operation.operation_return.type, code, fullName=True)}>.Failure( error );\n")
             else:
-                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( error );\n")
-            buffer.write(f"{utils.tab(indent+4)}}}\n")
-            buffer.write(f"{utils.tab(indent+4)}else\n")
+                buffer.write(f"{utils.tab(indent+6)}return Response.Failure( error );\n")
+            buffer.write(f"{utils.tab(indent+5)}}}\n")
+            buffer.write(f"{utils.tab(indent+5)}else\n")
+            buffer.write(f"{utils.tab(indent+5)}{{\n")
+            if (operation.operation_return != None ):
+                buffer.write(f"{utils.tab(indent+6)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+            else:
+                buffer.write(f"{utils.tab(indent+6)}return Response.Failure( ")
+            buffer.write(f"new ServiceKit.Net.Error() {{\n")
+            buffer.write(f"{utils.tab(indent+7)}Status = response.StatusCode.FromHttp(),\n")
+            buffer.write(f"{utils.tab(indent+7)}MessageText = \"Not handled reponse in REST client when calling '{versionedName}_{operation.name}'\",\n")
+            buffer.write(f"{utils.tab(indent+6)}}} );\n")
+            buffer.write(f"{utils.tab(indent+5)}}}\n")
+            buffer.write(f"{utils.tab(indent+4)}}}\n") # try
+            buffer.write(f"{utils.tab(indent+4)}catch (HttpRequestException ex)\n")
             buffer.write(f"{utils.tab(indent+4)}{{\n")
             if (operation.operation_return != None ):
                 buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
             else:
                 buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
             buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+6)}Status = response.StatusCode.FromHttp(),\n")
-            buffer.write(f"{utils.tab(indent+6)}MessageText = \"Not handled reponse in REST client when calling '{versionedName}_{operation.name}'\",\n")
+            buffer.write(f"{utils.tab(indent+6)}Status = ex.StatusCode.HasValue ? ex.StatusCode.Value.FromHttp() : Statuses.InternalError,\n")
+            buffer.write(f"{utils.tab(indent+6)}MessageText = ex.Message,\n")
+            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = ex.ToString(),\n")
             buffer.write(f"{utils.tab(indent+5)}}} );\n")
-            buffer.write(f"{utils.tab(indent+4)}}}\n")
-            buffer.write(f"{utils.tab(indent+3)}}}\n") # try
-            buffer.write(f"{utils.tab(indent+3)}catch (HttpRequestException ex)\n")
-            buffer.write(f"{utils.tab(indent+3)}{{\n")
+            buffer.write(f"{utils.tab(indent+4)}}}\n") # catch RpcException
+            buffer.write(f"{utils.tab(indent+4)}catch (Exception ex)\n")
+            buffer.write(f"{utils.tab(indent+4)}{{\n")
             if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+4)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
+                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
             else:
-                buffer.write(f"{utils.tab(indent+4)}return Response.Failure( ")
+                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
             buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+5)}Status = ex.StatusCode.HasValue ? ex.StatusCode.Value.FromHttp() : Statuses.InternalError,\n")
-            buffer.write(f"{utils.tab(indent+5)}MessageText = ex.Message,\n")
-            buffer.write(f"{utils.tab(indent+5)}AdditionalInformation = ex.ToString(),\n")
-            buffer.write(f"{utils.tab(indent+4)}}} );\n")
-            buffer.write(f"{utils.tab(indent+3)}}}\n") # catch RpcException
-            buffer.write(f"{utils.tab(indent+3)}catch (Exception ex)\n")
-            buffer.write(f"{utils.tab(indent+3)}{{\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+4)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+4)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+5)}Status = Statuses.InternalError,\n")
-            buffer.write(f"{utils.tab(indent+5)}MessageText = ex.Message,\n")
-            buffer.write(f"{utils.tab(indent+5)}AdditionalInformation = ex.ToString(),\n")
-            buffer.write(f"{utils.tab(indent+4)}}} );\n")
-            buffer.write(f"{utils.tab(indent+3)}}}\n") # catch Exception
-            buffer.write(f"{utils.tab(indent+2)}}}\n") # function
+            buffer.write(f"{utils.tab(indent+6)}Status = Statuses.InternalError,\n")
+            buffer.write(f"{utils.tab(indent+6)}MessageText = ex.Message,\n")
+            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = ex.ToString(),\n")
+            buffer.write(f"{utils.tab(indent+5)}}} );\n")
+            buffer.write(f"{utils.tab(indent+4)}}}\n") # catch Exception
+            buffer.write(f"{utils.tab(indent+3)}}}\n") # function
             buffer.write(f"\n")
 
+        buffer.write(f"{utils.tab(indent+2)}}}\n")
         buffer.write(f"{utils.tab(indent+1)}}}\n")
         buffer.write(f"{utils.tab(indent)}}}\n")
 
