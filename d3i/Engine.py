@@ -51,7 +51,7 @@ class Session:
     Manages the state of a d3 processing session, including diagnostics and syntax trees.
     """
 
-    def __init__(self, source: Source, projectName:str=None):
+    def __init__(self, source: Source, projectName: str = None):
         self.source: Source = source
         self.syntaxTree: d3iGrammar.D3Context = []
         self.diagnostics: List[Diagnostic] = []
@@ -63,7 +63,7 @@ class Session:
         self.elementTrees: List[d3] = []
         self.diagnostics: List[Diagnostic] = []
         self.main: d3 = None
-        self.projectName:str = projectName
+        self.projectName: str = projectName
 
     def HasDiagnostic(self):
         """
@@ -269,7 +269,7 @@ class Engine:
                                 context_already.interfaces.append(imported_interface)
 
         return session.main
-    
+
     @staticmethod
     def get_current_scope(element: base_element) -> IScope:
         current_scope = element
@@ -288,7 +288,7 @@ class Engine:
 
     @staticmethod
     def get_referenced_element(parent: base_element, name: qualified_name) -> IScope:
-        element, message = Engine.get_referenced_element_with_message(parent,name)
+        element, message = Engine.get_referenced_element_with_message(parent, name)
         return element
 
     @staticmethod
@@ -299,12 +299,12 @@ class Engine:
         version_candidate: str = None
         if (len(name.names) > 1):
             version_candidate = name.names[1]
-        
+
         rest_name_index = 1
         # go up until we find the element for the first part of the name vit version is has it
         element = None
         while True:
-            if (scope == None):
+            if (scope == None ):
                 break
 
             # is the scope that has a child with the name we are looking for
@@ -313,7 +313,7 @@ class Engine:
                     if (Engine.has_version_int_member(child) == True):
                         if (f"v{child.version}" == version_candidate):
                             element = child
-                            rest_name_index = rest_name_index + 1 # skip version
+                            rest_name_index = rest_name_index + 1  # skip version
                             break
                     elif (child.name == name.names[0]):
                         element = child
@@ -344,23 +344,23 @@ class Engine:
                 if (Engine.has_version_int_member(child)):
                     if (f"v{child.version}" == version_candidate):
                         element = child
-                        i = i + 1 # skip version
+                        i = i + 1  # skip version
                         break
                 elif (child.name == name_part):
                     element = child
                     break
 
             if (element == None):
-                if( Engine.has_version_int_member(scope)):
+                if (Engine.has_version_int_member(scope)):
                     name = f"{scope.name} version {scope.version}"
                 else:
                     name = scope.name
                 return None, f"The referenced name '{name}' does not have an expected child: '{name_part}'."
-            
+
             i = i + 1
 
         return element, "ok"
-    
+
     @staticmethod
     def __find_domain_by_name(session: Session, name):
         for domain in session.main.domains:

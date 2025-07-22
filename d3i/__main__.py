@@ -213,12 +213,14 @@ def __call_emiters(session: Session, args, configuration: Dict[str, str]):
             print(f"information: calling emitter:'{emitter_name}'")
         
         match emitter_name:
-            case "dotnet":
-                spec = importlib.util.spec_from_file_location("dotnet", os.path.join(Path(__file__).parent, "emitters/DotnetEmitter.py"))
             case "protobuf":
                 spec = importlib.util.spec_from_file_location("protobuf", os.path.join(Path(__file__).parent, "emitters/ProtoEmitter.py"))
+            case "dotnet":
+                spec = importlib.util.spec_from_file_location("dotnet", os.path.join(Path(__file__).parent, "emitters/DotnetEmitter.py"))
             case "json":
                 spec = importlib.util.spec_from_file_location("json", os.path.join(Path(__file__).parent, "emitters/JsonEmitter.py"))
+            case "ts-client":
+                spec = importlib.util.spec_from_file_location("ts", os.path.join(Path(__file__).parent, "emitters/TypeScriptEmitter.py"))
             case "java":
                 spec = importlib.util.spec_from_file_location("java", os.path.join(Path(__file__).parent, "emitters/JavaEmitter.py"))
             case "rust":

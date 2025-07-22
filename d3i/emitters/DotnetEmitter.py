@@ -114,37 +114,43 @@ class DotnetEmitter:
 
                 # Process all inerface in the context
                 for interface in context.interfaces:
-                    # interface
+                    # Service interface for DTOs, for controllers, for the expected implementation
                     code = self.beginFile(output_path, interface, "Interfaces", prefix="I", postfix=f"_v{interface.version}")
                     code = self.interfaceInterfaceText(interface, code)
                     code = self.endFile(code)
                     result.append(code)
+                    # Service: GRPC controller
                     if( utils.isPublishedOn( interface, "grpc" ) == True):
                         code = self.beginFile(output_path, interface, "Service/Controllers", postfix=f"_v{interface.version}.GrpcController")
                         code = self.interfaceGrpcControllerText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
+                    # Service: GRPC InternalClient for service-service communication
                     if( utils.isPublishedOnInternal( interface, "grpc" ) == True):
                         code = self.beginFile(output_path, interface, "InternalClient", postfix=f"_v{interface.version}.GrpcClient")
                         code = self.interfaceGrpcInternalClientText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
+                    # Client: GRPC public client for client-service communication
                     apiCollectionName: str = utils.isPublishedOnPublic( interface, "grpc" )
                     if( apiCollectionName != None ):
                         code = self.beginFile(os.path.join(output_path, apiCollectionName, "ApiClientKit/"), interface, "", postfix=f"_v{interface.version}.GrpcClient", current_namespace=f"{apiCollectionName}.ApiClientKit")
                         code = self.interfaceGrpcPublicClientText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
+                    # Service: REST controller
                     if( utils.isPublishedOn( interface, "rest" ) == True):
                         code = self.beginFile(output_path, interface, "Service/Controllers", postfix=f"_v{interface.version}.RestController")
                         code = self.interfaceRestControllerText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
+                    # Service: REST InternalClient for service-service communication
                     if( utils.isPublishedOnInternal( interface, "rest" ) == True):
                         code = self.beginFile(output_path, interface, "InternalClient", postfix=f"_v{interface.version}.RestClient")
                         code = self.interfaceRestInternalClientText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
+                    # Client: REST public client for client-service communication
                     apiCollectionName: str = utils.isPublishedOnPublic( interface, "rest" )
                     if( apiCollectionName != None ):
                         code = self.beginFile(os.path.join(output_path, apiCollectionName, "ApiClientKit/"), interface, "", postfix=f"_v{interface.version}.RestClient", current_namespace=f"{apiCollectionName}.ApiClientKit")
@@ -230,7 +236,7 @@ class DotnetEmitter:
         buffer.write(f"{utils.tab(indent)}}}\n")
 
         # if the enum is defined under the interface and the grpc mapping is enable, then generate the mapping code
-        if (enum.getInterface() != None):
+        if (enum.getInterface() != None and utils.isPublishedOn( enum.getInterface(), "grpc" ) == True):
             buffer.write(self.enumGrpcMappingText(enum, code, indent))
 
         code.content += buffer.getvalue()
@@ -356,7 +362,7 @@ class DotnetEmitter:
             for child_valueobject in element.value_objects:
                 code = self.valueobjectText(child_valueobject, code, indent+1)
 
-        # write internal valueobjects if Any
+        # write internal dto if Any
         if (element.withDto == True):
             for child_dto in element.dtos:
                 code = self.dtoText(child_dto, code, indent+1)
@@ -1675,7 +1681,6 @@ class DotnetEmitter:
         buffer.write(f"{utils.tab(indent+1)}{{\n")
         buffer.write(f"{utils.tab(indent+2)}static class V{interface.version} \n")
         buffer.write(f"{utils.tab(indent+2)}{{\n")
-
        
         # Add functions based on operations
         for operation in interface.operations:
