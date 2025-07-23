@@ -1548,9 +1548,9 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+3)}// build request\n")
 
             # build route with FromRoute and Query params
-            base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{http_operation.route}"
+            base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{http_operation.full_route}"
             query_params = [
-                f"{param.httpName}={rest_utils.convertToQueryValue(param.param.name, param.param.type, code.usings)}"
+                f"{param.httpName}={self.convertToQueryValue(param.param.name, param.param.type, code.usings)}"
                 for param in http_operation.params.values()
                 if param.bindingSource == rest_param.BindingSource.FromQuery
             ]
@@ -1569,9 +1569,9 @@ class DotnetEmitter:
                             pass
                         case rest_param.BindingSource.FromForm:
                             if( rest_utils.is_stream_type_param( http_param.param ) == True ):
-                                buffer.write(f"{utils.tab(indent+3)}if(content.CanSeek)\n")
-                                buffer.write(f"{utils.tab(indent+4)}content.Seek( 0, SeekOrigin.Begin );\n")
-                                buffer.write(f"{utils.tab(indent+3)}multipartContent.Add(new StreamContent(stream), {http_param.httpName}, \"__temp\");\n")
+                                buffer.write(f"{utils.tab(indent+3)}if({http_param.param.name}.CanSeek)\n")
+                                buffer.write(f"{utils.tab(indent+4)}{http_param.param.name}.Seek( 0, SeekOrigin.Begin );\n")
+                                buffer.write(f"{utils.tab(indent+3)}multipartContent.Add(new StreamContent({http_param.param.name}), {http_param.httpName}, \"__temp\");\n")
                             elif( rest_utils.is_body_type_param( http_param.param ) == True ):
                                 code.usings.add("System.Text")
                                 code.usings.add("System.Text.Json")
@@ -1703,9 +1703,9 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+5)}// build request\n")
 
             # build route with FromRoute and Query params
-            base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{http_operation.route}"
+            base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{http_operation.full_route}"
             query_params = [
-                f"{param.httpName}={rest_utils.convertToQueryValue(param.param.name, param.param.type, code.usings)}"
+                f"{param.httpName}={self.convertToQueryValue(param.param.name, param.param.type, code.usings)}"
                 for param in http_operation.params.values()
                 if param.bindingSource == rest_param.BindingSource.FromQuery
             ]
@@ -1861,9 +1861,9 @@ class DotnetEmitter:
             http_operation:rest_operation = rest_operation(operation)
             match http_operation.verb:
                 case rest_operation.Verb.Get:
-                    buffer.write(f"{utils.tab(indent+1)}[HttpGet( \"{http_operation.route}\" )] \n")        
+                    buffer.write(f"{utils.tab(indent+1)}[HttpGet( \"{http_operation.full_route}\" )] \n")        
                 case rest_operation.Verb.Post:
-                    buffer.write(f"{utils.tab(indent+1)}[HttpPost( \"{http_operation.route}\" )] \n")        
+                    buffer.write(f"{utils.tab(indent+1)}[HttpPost( \"{http_operation.full_route}\" )] \n")        
             buffer.write(f"{utils.tab(indent+1)}[Produces( MediaTypeNames.Application.Json )]\n")
             if( http_operation.isMultiPartFormData() == True ):
                 buffer.write(f"{utils.tab(indent+1)}[Consumes( \"multipart/form-data\" )]\n")
@@ -2045,7 +2045,7 @@ class DotnetEmitter:
             return f"List<{self.typeText(type.item_type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)}>"
 
     def typeTextMap(self, type: map_type, code, fullName: bool = False, isInFunctionParam: bool = False) -> str:
-        return f"Dictionary<{self.typeText(type.key_type, code, fullName)},{self.typeText(type.value_type, code, fullName)}>"
+        return f"Dictionary<{self.typeText(type.key_type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)},{self.typeText(type.value_type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)}>"
 
     def documentLines(self, hinted_element: hinted_base_element, indent: int = 1) -> str:
         """
@@ -2059,6 +2059,33 @@ class DotnetEmitter:
             buffer.write("\n")
         return buffer.getvalue()
 
+    def convertToQueryValue(self, name: str, _type: type, usings: set[str]) -> str:
+        if (_type.kind == type.Kind.Primitive):
+            primitive_type: primitive_type = _type
+            match primitive_type.primtiveKind:
+                case primitive_type.PrimtiveKind.I18NString | primitive_type.PrimtiveKind.Any | primitive_type.PrimtiveKind.Bytes | primitive_type.PrimtiveKind.Stream:
+                    return f"{{{name}}}"
+                case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Number | primitive_type.PrimtiveKind.Float:
+                    usings.add("System.Globalization")
+                    return f"{{{name}.ToString(CultureInfo.InvariantCulture)}}"
+                case primitive_type.PrimtiveKind.Date:
+                    usings.add("System.Globalization")
+                    return f"{{{name}.ToString(\"yyyy-MM-dd\" CultureInfo.InvariantCulture)}}"
+                case primitive_type.PrimtiveKind.Time:
+                    usings.add("System.Globalization")
+                    return f"{{{name}.ToString(\"HH:mm:ss\" CultureInfo.InvariantCulture)}}"
+                case primitive_type.PrimtiveKind.DateTime:
+                    usings.add("System.Globalization")
+                    return f"{{{name}.ToString(\"o\" CultureInfo.InvariantCulture)}}"
+                case primitive_type.PrimtiveKind.String:
+                    return f"{{{name}}}"
+                case primitive_type.PrimtiveKind.Boolean:
+                    return f"{{{name}.ToString().ToLowerInvariant()}}"
+        elif (_type.kind == type.Kind.Reference):
+            reference_type: reference_type = _type
+            referenced_element: base_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
+            if (isinstance(referenced_element, enum) == True):
+                return f"{{{name}.ToString()}}"
 
 class dotnet_configuration:
     def __init__(self, configuration: Dict[str, str], output_dir: str):

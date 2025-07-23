@@ -85,11 +85,6 @@ class TypeScriptEmitter:
 
                 # Process all inerface in the context
                 for interface in context.interfaces:
-                    # Service interface for DTOs
-                    code = self.beginFile(output_path, interface, "types", postfix=f"_v{interface.version}")
-                    code = self.interfaceTypesText(interface, code)
-                    code = self.endFile(code)
-                    result.append(code)
                     # Service: GRPC controller
                     if (utils.isPublishedOn(interface, "grpc") == True):
                         pass  # no client code emmited
@@ -109,7 +104,13 @@ class TypeScriptEmitter:
                     # Client: REST public client for client-service communication
                     apiCollectionName: str = utils.isPublishedOnPublic(interface, "rest")
                     if (apiCollectionName != None):
-                        code = self.beginFile(output_path, interface, "api", postfix=f"_v{interface.version}.RestClient")
+                        # Service interface for DTOs
+                        code = self.beginFile(output_path + "/" + apiCollectionName + "/", interface, "types", postfix=f"_v{interface.version}")
+                        code = self.interfaceTypesText(interface, code)
+                        code = self.endFile(code)
+                        result.append(code)
+                        # Rest client for apis
+                        code = self.beginFile(output_path + "/" + apiCollectionName + "/", interface, "api", postfix=f"_v{interface.version}.RestClient")
                         code = self.interfaceRestPublicClientText(interface, code, apiCollectionName)
                         code = self.endFile(code)
                         result.append(code)
@@ -171,9 +172,6 @@ class TypeScriptEmitter:
         Generates the TypeScript rest Public client code for interface
         """
         buffer = io.StringIO()
-        domain: domain = interface.getDomain()
-        context: context = interface.getContext()
-        versionedName: str = f"{interface.name}_v{interface.version}"
 
         for enum in interface.enums:
             code = self.enumText(enum, code, indent)
@@ -196,6 +194,7 @@ class TypeScriptEmitter:
         # add imports
         code.imports.add( f"{{ {apiCollectionName}RestClient }} from \"../../{apiCollectionName}RestClient\"")
         code.imports.add( f"* as {versionedName} from \"../../../types/{interface.getDomain().name}/{interface.getContext().name}/{versionedName}\"")
+        code.imports.add( "{ AxiosError } from 'axios'")
 
         buffer = io.StringIO()
         buffer.write(f"const apiClient = {apiCollectionName.upper()}RestClient.getInstance().apiClient\n");
@@ -203,23 +202,87 @@ class TypeScriptEmitter:
         buffer.write(f"{utils.tab(indent)}export const {interface.name} = {{\n")
         buffer.write(f"{utils.tab(indent+1)}V{interface.version}: {{\n")
 
-        
-
         # Add functions based on operations
         for operation in interface.operations:
             buffer.write(self.documentLines(operation, indent+2))
-            buffer.write(f"{utils.tab(indent+1)}async {operation.name}(\n{utils.tab(indent+2)}")
-            buffer.write(f",\n{utils.tab(indent+2)}".join([param.name + ":" + self.typeText(param.type, code,fullName=True) for param in operation.operation_params]))
-            buffer.write(f"{utils.tab(indent+1)}) : ")
+            buffer.write(f"{utils.tab(indent+2)}async {operation.name}(")
+            buffer.write(f", ".join([param.name + ": " + self.typeText(param.type, code,fullName=True) for param in operation.operation_params]))
+            buffer.write(f"): ")
             if (operation.operation_return != None ):
-                buffer.write(f"Promise<{self.typeText(operation.operation_return.type, code,fullName=True)}>\n")
+                buffer.write(f"Promise<{self.typeText(operation.operation_return.type, code,fullName=True)}> {{\n")
             else:
-                buffer.write("Promise<{}>\n")
-            buffer.write(f"{utils.tab(indent+1)}{{\n")
-            buffer.write(f"{utils.tab(indent+1)}}}\n")
-            buffer.write(f"{utils.tab(indent+1)},\n")
+                buffer.write("Promise<{}> {{\n")
+            buffer.write(f"{utils.tab(indent+3)}try {{\n")
+            http_operation:rest_operation = rest_operation(operation)
+            
+            # build route with FromRoute and Query params
+            base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{http_operation.route}"
+            route_params = [
+                f"${{encodeURIComponent({param.httpName})}}"
+                for param in http_operation.params.values()
+                if param.bindingSource == rest_param.BindingSource.FromRoute
+            ]
+            ruoute_param_string = f"/{'/'.join(route_params)}" if route_params else ""
 
-        buffer.write(f"{utils.tab(indent+1)}}}\n")
+            query_params = [
+                f"{param.httpName}={self.convertToQueryValue(param.param.name, param.param.type, code.imports)}"
+                for param in http_operation.params.values()
+                if param.bindingSource == rest_param.BindingSource.FromQuery
+            ]
+            query_string = f"?{'&'.join(query_params)}" if query_params else ""
+
+            buffer.write(f"{utils.tab(indent+4)}const extraHeaders = apiClient.getRequestHeaders(\"{domain.name}.{context.name}.{operation.name}\");\n")
+
+            requestParams:List[str] = []
+            requestParams.append( f"`{base_route}{ruoute_param_string}{query_string}`")
+
+            if(http_operation.isMultiPartFormData()):
+                buffer.write(f"{utils.tab(indent+4)}// build multi part content\n")
+                buffer.write(f"{utils.tab(indent+4)}const formData = new FormData();\n")
+                requestParams.append( "formData")
+                for http_param in http_operation.params.values():
+                    match http_param.bindingSource:
+                        case rest_param.BindingSource.FromRoute | rest_param.BindingSource.FromQuery | rest_param.BindingSource.FromBody:
+                            pass
+                        case rest_param.BindingSource.FromForm:
+                            if( rest_utils.is_stream_type_param( http_param.param ) == True ):
+                                buffer.write(f"{utils.tab(indent+4)}{http_param.param.name} = {{http_param.param.name}}.slice(0, {{http_param.param.name}}.size, {{http_param.param.name}}.type);\n")
+                                buffer.write(f"{utils.tab(indent+4)}formData.append( \"{http_param.httpName}\", {http_param.param.name}, \"__temp\");\n")
+                            elif( rest_utils.is_body_type_param( http_param.param ) == True ):
+                                buffer.write(f"{utils.tab(indent+4)}formData.append( \"{http_param.httpName}\", JSON.stringify({http_param.param.name}), \"{http_param.httpName}.json\");\n")
+                buffer.write(f"{utils.tab(indent+4)}headers.append( 'Content-Type': 'multipart/form-data' ); \n")
+                requestParams.append( "{ headers: { ...extraHeaders, 'Content-Type': 'multipart/form-data' } }" )
+            else:
+                count_body = rest_utils.count_body_param(operation)
+                if( count_body > 0 ):
+                    for http_param in http_operation.params.values():
+                        match http_param.bindingSource:
+                            case rest_param.BindingSource.FromRoute | rest_param.BindingSource.FromQuery | rest_param.BindingSource.FromForm:
+                                pass
+                            case rest_param.BindingSource.FromBody:
+                                requestParams.append( f"{http_param.param.name}")
+                    requestParams.append( f"{{ headers: {{ ...extraHeaders, 'Content-Type': 'application/json' }} }}" )
+                else:
+                    requestParams.append( f"{{ headers: extraHeaders }}" )
+
+            
+            buffer.write(f"\n")
+            buffer.write(f"{utils.tab(indent+4)}const response = await apiClient.{http_operation.verb.name.lower()}")
+            if (operation.operation_return != None ):
+                buffer.write(f"<{self.typeText(operation.operation_return.type, code,fullName=True)}>")
+            buffer.write(f"(\n{utils.tab(indent+5)}")
+            buffer.write(f",\n{utils.tab(indent+5)}".join(requestParams))
+            buffer.write(f"\n{utils.tab(indent+4)});\n")
+            buffer.write(f"\n")
+            buffer.write(f"{utils.tab(indent+4)}return response.value;\n")
+            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(f"{utils.tab(indent+3)}catch (error: AxiosError) {{\n")
+            buffer.write(f"{utils.tab(indent+4)}throw apiClient.mapApiError(error, \"{operation.name}\");\n")
+            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(f"{utils.tab(indent+2)}}}\n")
+            buffer.write(f"{utils.tab(indent+2)},\n")
+
+        buffer.write(f"{utils.tab(indent+2)}}}\n")
         buffer.write(f"{utils.tab(indent)}}}\n")
 
         code.content += buffer.getvalue()
@@ -345,9 +408,7 @@ class TypeScriptEmitter:
                 return "Decimal"
             case primitive_type.PrimtiveKind.Float:
                 return "double"
-            case primitive_type.PrimtiveKind.Date:
-                return "string"
-            case primitive_type.PrimtiveKind.Time:
+            case primitive_type.PrimtiveKind.Date | primitive_type.PrimtiveKind.Time:
                 return "string"
             case primitive_type.PrimtiveKind.DateTime:
                 return "Date"
@@ -390,6 +451,27 @@ class TypeScriptEmitter:
             buffer.write("\n")
         return buffer.getvalue()
 
+    def convertToQueryValue(self, name: str, _type: type, usings: set[str]) -> str:
+        if (_type.kind == type.Kind.Primitive):
+            primitive_type: primitive_type = _type
+            match primitive_type.primtiveKind:
+                case primitive_type.PrimtiveKind.I18NString | primitive_type.PrimtiveKind.Any | primitive_type.PrimtiveKind.Bytes | primitive_type.PrimtiveKind.Stream:
+                    return f"${{{name}}}"
+                case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Number | primitive_type.PrimtiveKind.Float:
+                    return f"${{${name}.toString()}}"
+                case primitive_type.PrimtiveKind.Date | primitive_type.PrimtiveKind.Time:
+                    return f"${{{name}}}"
+                case primitive_type.PrimtiveKind.DateTime:
+                    return f"${{{name}.toISOString()}}"
+                case primitive_type.PrimtiveKind.String:
+                    return f"${{{name}}}"
+                case primitive_type.PrimtiveKind.Boolean:
+                    return f"{{{name}.toString()}}"
+        elif (_type.kind == type.Kind.Reference):
+            reference_type: reference_type = _type
+            referenced_element: base_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
+            if (isinstance(referenced_element, enum) == True):
+                return f"${{{name}}}"
 
 class ts_configuration:
     def __init__(self, configuration: Dict[str, str], output_dir: str):

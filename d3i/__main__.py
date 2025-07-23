@@ -219,7 +219,7 @@ def __call_emiters(session: Session, args, configuration: Dict[str, str]):
                 spec = importlib.util.spec_from_file_location("dotnet", os.path.join(Path(__file__).parent, "emitters/DotnetEmitter.py"))
             case "json":
                 spec = importlib.util.spec_from_file_location("json", os.path.join(Path(__file__).parent, "emitters/JsonEmitter.py"))
-            case "ts-client":
+            case "typescript":
                 spec = importlib.util.spec_from_file_location("ts", os.path.join(Path(__file__).parent, "emitters/TypeScriptEmitter.py"))
             case "java":
                 spec = importlib.util.spec_from_file_location("java", os.path.join(Path(__file__).parent, "emitters/JavaEmitter.py"))
@@ -262,47 +262,4 @@ def main():
     # Run emitters on the session
     __call_emiters(session, args, configuration)
     __check_errors(session, args, "emitting")
-
-from pygls.server import LanguageServer
-from lsprotocol.types import (
-    InitializeParams,
-    InitializeResult,
-    TextDocumentSyncKind,
-    TextDocumentItem,
-    Diagnostic as LspDiagnostic,
-    DiagnosticSeverity,
-    Position,
-    Range
-)
-
-def lsp_initialize(ls: LanguageServer, params: InitializeParams):
-    return InitializeResult(
-        capabilities={
-            'textDocumentSync': TextDocumentSyncKind.FULL,
-            'diagnosticProvider': True,
-        }
-    )
-
-def lsp_did_open_text(ls: LanguageServer, params):
-    doc: TextDocumentItem = params.textDocument
-
-    # Create a session from the input file
-    session = Session(Source.CreateFromText(doc.text))
-
-
-    # Build the engine with the session
-    engine = Engine()
-    root = engine.Build(session)
-
-    errors = []
-    for diag in session.diagnostics:
-        errors.append(LspDiagnostic(
-            range=Range(
-                start=Position(diag.line-1, diag.column),
-                end=Position(diag.line-1, diag.column+1)
-            ),
-            severity=DiagnosticSeverity.Error,
-            message=diag.message
-        ))
-    ls.publish_diagnostics(doc.uri, errors)
 

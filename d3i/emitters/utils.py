@@ -87,8 +87,7 @@ class utils:
                     else:
                         return ""
 
-        return False
-
+        return None
     @staticmethod
     def isEnumType(type: type):
         if (type.kind == type.Kind.Reference):
@@ -236,34 +235,7 @@ class rest_utils:
 
         return count
 
-    @staticmethod
-    def convertToQueryValue(name: str, _type: type, usings: set[str]) -> str:
-        if (_type.kind == type.Kind.Primitive):
-            primitive_type: primitive_type = _type
-            match primitive_type.primtiveKind:
-                case primitive_type.PrimtiveKind.I18NString | primitive_type.PrimtiveKind.Any | primitive_type.PrimtiveKind.Bytes | primitive_type.PrimtiveKind.Stream:
-                    return f"{{{name}}}"
-                case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Number | primitive_type.PrimtiveKind.Float:
-                    usings.add("System.Globalization")
-                    return f"{{{name}.ToString(CultureInfo.InvariantCulture)}}"
-                case primitive_type.PrimtiveKind.Date:
-                    usings.add("System.Globalization")
-                    return f"{{{name}.ToString(\"yyyy-MM-dd\" CultureInfo.InvariantCulture)}}"
-                case primitive_type.PrimtiveKind.Time:
-                    usings.add("System.Globalization")
-                    return f"{{{name}.ToString(\"HH:mm:ss\" CultureInfo.InvariantCulture)}}"
-                case primitive_type.PrimtiveKind.DateTime:
-                    usings.add("System.Globalization")
-                    return f"{{{name}.ToString(\"o\" CultureInfo.InvariantCulture)}}"
-                case primitive_type.PrimtiveKind.String:
-                    return f"{{{name}}}"
-                case primitive_type.PrimtiveKind.Boolean:
-                    return f"{{{name}.ToString().ToLowerInvariant()}}"
-        elif (_type.kind == type.Kind.Reference):
-            reference_type: reference_type = _type
-            referenced_element: base_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
-            if (isinstance(referenced_element, enum) == True):
-                return f"{{{name}.ToString()}}"
+    
 
 
 class rest_operation:
@@ -276,7 +248,7 @@ class rest_operation:
         self.operation: operation = _operation
         self.verb: rest_operation.Verb = None
         self.params: Dict[str, rest_param] = {}
-        self.route: str = None
+        self.full_route: str = None
         self.__setVerb()
         self.__setParams()
         self.__setRoute()
@@ -348,7 +320,7 @@ class rest_operation:
 
         routeParams: List[rest_param] = [param for param in self.params.values() if param.bindingSource == rest_param.BindingSource.FromRoute]
         if (len(routeParams) > 0):
-            self.route = self.route + "/" + "/".join([f"{{{param.param.name}}}" for param in routeParams])
+            self.full_route = self.route + "/" + "/".join([f"{{{param.param.name}}}" for param in routeParams])
 
 
 class rest_param:
