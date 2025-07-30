@@ -192,12 +192,12 @@ class TypeScriptEmitter:
         versionedName: str = f"{interface.name}_v{interface.version}"
 
         # add imports
-        code.imports.add( f"{{ {apiCollectionName}RestClient }} from \"../../{apiCollectionName}RestClient\"")
-        code.imports.add( f"* as {versionedName} from \"../../../types/{interface.getDomain().name}/{interface.getContext().name}/{versionedName}\"")
         code.imports.add( "{ AxiosError } from 'axios'")
+        code.imports.add( f"* as {versionedName} from \"../../../types/{interface.getDomain().name}/{interface.getContext().name}/{versionedName}\"")
+        code.imports.add( f"{{ {apiCollectionName}RestClient }} from \"../../../api/{apiCollectionName}RestClient\"")
 
         buffer = io.StringIO()
-        buffer.write(f"const apiClient = {apiCollectionName.upper()}RestClient.getInstance().apiClient\n");
+        buffer.write(f"const rest = {apiCollectionName.upper()}RestClient.getInstance()\n");
         buffer.write("\n")
         buffer.write(f"{utils.tab(indent)}export const {interface.name} = {{\n")
         buffer.write(f"{utils.tab(indent+1)}V{interface.version}: {{\n")
@@ -231,7 +231,7 @@ class TypeScriptEmitter:
             ]
             query_string = f"?{'&'.join(query_params)}" if query_params else ""
 
-            buffer.write(f"{utils.tab(indent+4)}const extraHeaders = apiClient.getRequestHeaders(\"{domain.name}.{context.name}.{operation.name}\");\n")
+            buffer.write(f"{utils.tab(indent+4)}const extraHeaders = rest.getRequestHeaders(\"{domain.name}.{context.name}.{operation.name}\");\n")
 
             requestParams:List[str] = []
             requestParams.append( f"`{base_route}{ruoute_param_string}{query_string}`")
@@ -267,17 +267,17 @@ class TypeScriptEmitter:
 
             
             buffer.write(f"\n")
-            buffer.write(f"{utils.tab(indent+4)}const response = await apiClient.{http_operation.verb.name.lower()}")
+            buffer.write(f"{utils.tab(indent+4)}const response = await rest.axios.{http_operation.verb.name.lower()}")
             if (operation.operation_return != None ):
                 buffer.write(f"<{self.typeText(operation.operation_return.type, code,fullName=True)}>")
             buffer.write(f"(\n{utils.tab(indent+5)}")
             buffer.write(f",\n{utils.tab(indent+5)}".join(requestParams))
             buffer.write(f"\n{utils.tab(indent+4)});\n")
             buffer.write(f"\n")
-            buffer.write(f"{utils.tab(indent+4)}return response.value;\n")
+            buffer.write(f"{utils.tab(indent+4)}return response.data;\n")
             buffer.write(f"{utils.tab(indent+3)}}}\n")
-            buffer.write(f"{utils.tab(indent+3)}catch (error: AxiosError) {{\n")
-            buffer.write(f"{utils.tab(indent+4)}throw apiClient.mapApiError(error, \"{operation.name}\");\n")
+            buffer.write(f"{utils.tab(indent+3)}catch (error: unknown) {{\n")
+            buffer.write(f"{utils.tab(indent+4)}throw rest.mapApiError(error as AxiosError, \"{operation.name}\");\n")
             buffer.write(f"{utils.tab(indent+3)}}}\n")
             buffer.write(f"{utils.tab(indent+2)}}}\n")
             buffer.write(f"{utils.tab(indent+2)},\n")
