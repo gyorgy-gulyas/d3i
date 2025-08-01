@@ -210,10 +210,12 @@ class Engine:
                 continue
 
             for imported_domain in imported_d3.domains:
-                # Find or create the domein in the main d3
+                # set parent, regadless will be merged or not
+                imported_domain.parent = session.main
+
+                # Find or create the domain in the main d3
                 domain_already: domain = self.__find_domain_by_name(session, imported_domain.name)
                 if domain_already is None:
-                    imported_domain.parent = session.main
                     session.main.domains.append(imported_domain)
                 else:
                     # merge to merged
@@ -300,6 +302,12 @@ class Engine:
         if (len(name.names) > 1):
             version_candidate = name.names[1]
 
+        if( name.getText() == "Core.Base.BaseEntity" ):
+            pass
+
+        if( name.getText() == "Core.Auditing.AuditTrail" ):
+            pass
+
         rest_name_index = 1
         # go up until we find the element for the first part of the name vit version is has it
         element = None
@@ -322,7 +330,10 @@ class Engine:
                 if (element != None):
                     break
 
-            scope = scope.parent
+            if( hasattr(scope, 'parent') == True):
+                scope = scope.parent
+            else:
+                scope = None
 
         if (element == None):
             return None, f"The first part of the referenced name '{name.names[0]}' cannot be resolved."

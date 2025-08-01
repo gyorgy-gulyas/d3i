@@ -7,7 +7,6 @@ from pathlib import Path
 from d3i.Engine import *
 from d3i.linters.SemanticChecker import *
 
-
 # Adds CLI arguments to the parser
 def __add_known_arguments(arg_parser: argparse.ArgumentParser):
     """

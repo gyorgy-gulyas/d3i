@@ -71,6 +71,7 @@ STRING_LITERAL: '"' .*? '"';
 // syntax controllers
 IDENTIFIER: [a-z][a-z_0-9]* ;
 WS: [ \t\n\r\f]+ -> skip ;
+BOM : '\uFEFF' -> skip ;
 
 DOCUMENT_LINE: '#' ~[\r\n]*;
 LINE_COMMENT : '//' ~[\r\n]* -> channel(COMMENT_CHANNEL);
