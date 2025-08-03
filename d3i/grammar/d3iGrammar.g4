@@ -249,7 +249,7 @@ decorator
         : IDENTIFIER ('=' ( qualifiedName | INTEGER_CONSTANS | NUMBER_CONSTANS | STRING_LITERAL ))?;
 
 enum
-    : DOCUMENT_LINE* decorator* 'enum' IDENTIFIER '{' enum_element? (',' enum_element)* '}'
+    : DOCUMENT_LINE* decorator* 'enum' IDENTIFIER '{' enum_element? (',' enum_element)* ','? '}'
     ;
 
     enum_element

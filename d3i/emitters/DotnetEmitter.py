@@ -1077,12 +1077,12 @@ class DotnetEmitter:
                     buffer.write(f"{utils.tab(indent)}/// {line}\n")
                 buffer.write(f"{utils.tab(indent)}/// </return>\n")
             else:
-                buffer.write(f"{utils.tab(indent)}/// <return>{self.typeText( operation.operation_return.type, code )}</return>\n")
+                buffer.write(f"{utils.tab(indent)}/// <return>{self.typeText( operation.operation_return.type, code, fullName=True )}</return>\n")
 
         # Add return value
         buffer.write(f"{utils.tab(indent)}public Task<Response")
         if (operation.operation_return != None ):
-            buffer.write(f"<{self.typeText(operation.operation_return.type, code )}>")
+            buffer.write(f"<{self.typeText(operation.operation_return.type, code, fullName=True )}>")
         buffer.write(f">")
         # Add function name
         buffer.write(f" {operation.name}(CallingContext ctx")
@@ -1110,7 +1110,7 @@ class DotnetEmitter:
         code.usings.add(f"{domain.name}.{context.name}.Protos.{versionedName}")
 
         # client class declaration
-        buffer.write(f"{utils.tab(indent)}static class Grpc \n")
+        buffer.write(f"{utils.tab(indent)}static partial class Grpc \n")
         buffer.write(f"{utils.tab(indent)}{{\n")
         buffer.write(self.documentLines(interface, indent+1))
         buffer.write(f"{utils.tab(indent+1)}static class {interface.name}\n")
@@ -1146,7 +1146,7 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent+5)}{self.dataClassMemberToGrpcMappingText( param.name, param.type, code, dst="request.", src="", indent=0)}")
             buffer.write("\n")
             buffer.write(f"{utils.tab(indent+5)}// calling grpc client\n")
-            buffer.write(f"{utils.tab(indent+5)}_client ??= new ProjectIF_v1.ProjectIF_v1Client(GrpClient._channel);\n")
+            buffer.write(f"{utils.tab(indent+5)}_client ??= new {versionedName}.{versionedName}Client(GrpClient._channel);\n")
             buffer.write(f"{utils.tab(indent+5)}var grpc_response = await _client.{operation.name}Async( request, new CallOptions(GrpClient.GetMetadata( \"{domain.name}.{context.name}.{versionedName}.{operation.name}\" ))).ResponseAsync;\n")
             buffer.write("\n")
             buffer.write(f"{utils.tab(indent+5)}// fill response\n")
@@ -1674,7 +1674,7 @@ class DotnetEmitter:
         # Add documentation lines for the interface
         buffer.write(self.documentLines(interface, indent))
         # client class declaration
-        buffer.write(f"{utils.tab(indent)}static class Rest \n")
+        buffer.write(f"{utils.tab(indent)}static partial class Rest \n")
         buffer.write(f"{utils.tab(indent)}{{\n")
         buffer.write(self.documentLines(interface, indent+1))
         buffer.write(f"{utils.tab(indent+1)}static class {interface.name}\n")
@@ -2131,11 +2131,15 @@ class dotnet_code:
         while True:
             if (element == None or isinstance( element, d3 )):
                 break
+
             if (Engine.has_version_int_member(element)):
                 if (isinstance(element, interface)):
                     dotnetNames.insert(0, f"I{element.name}_v{element.version}")
                 else:
                     dotnetNames.insert(0, f"{element.name}_v{element.version}")
+            elif( isinstance( element, aggregate_entity )):
+                # skip 
+                pass
             else:
                 dotnetNames.insert(0, element.name)
 
