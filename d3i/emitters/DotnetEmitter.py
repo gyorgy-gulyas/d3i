@@ -261,7 +261,7 @@ class DotnetEmitter:
         buffer.write(f"{utils.tab(indent+2)}{{\n")
         # Loop through each enum element and generate code for each mapping
         for enum_element in enum.enum_elements:
-            buffer.write(f"{utils.tab(indent+3)}{dotnetFullName}.{enum_element.value} => Protos.{protosFullName}.{enum_element.value},\n")
+            buffer.write(f"{utils.tab(indent+3)}{dotnetFullName}.{enum_element.value} => Protos.{protosFullName}.{grpc_utils.to_grpc_enum_style(enum_element.value)},\n")
         buffer.write(f"{utils.tab(indent+3)}_ => throw new NotImplementedException(), \n")
         buffer.write(f"{utils.tab(indent+2)}}};\n")
         buffer.write(f"{utils.tab(indent+1)}}}\n")
@@ -274,7 +274,7 @@ class DotnetEmitter:
         buffer.write(f"{utils.tab(indent+2)}{{\n")
         # Loop through each enum element and generate code for each mapping
         for enum_element in enum.enum_elements:
-            buffer.write(f"{utils.tab(indent+3)}Protos.{protosFullName}.{enum_element.value} => {dotnetFullName}.{enum_element.value},\n")
+            buffer.write(f"{utils.tab(indent+3)}Protos.{protosFullName}.{grpc_utils.to_grpc_enum_style(enum_element.value)} => {dotnetFullName}.{enum_element.value},\n")
         buffer.write(f"{utils.tab(indent+3)}_ => throw new NotImplementedException(), \n")
         buffer.write(f"{utils.tab(indent+2)}}};\n")
         buffer.write(f"{utils.tab(indent+1)}}}\n")
@@ -1980,7 +1980,7 @@ class DotnetEmitter:
             value = dotnet_code.find_param("code")
             if( value != None ):
                 buffer.write(f"{utils.tab(indent)}{value.value}\n")
-        buffer.write(f"{utils.tab(indent)}public {self.typeText(member.type, code)} {member.name} {{ get; set; }}")
+        buffer.write(f"{utils.tab(indent)}public {self.typeText(member.type, code,fullName=True)} {member.name} {{ get; set; }}")
         if(member.type.kind == type.Kind.List or member.type.kind == type.Kind.Map ):
             buffer.write(f" = new();")
         buffer.write(f"\n")
@@ -2133,10 +2133,12 @@ class dotnet_code:
                 break
 
             if (Engine.has_version_int_member(element)):
-                if (isinstance(element, interface)):
+                if (isinstance(element, interface) ):
                     dotnetNames.insert(0, f"I{element.name}_v{element.version}")
                 else:
                     dotnetNames.insert(0, f"{element.name}_v{element.version}")
+            elif( isinstance( element, service ) or isinstance( element, acl )):
+                    dotnetNames.insert(0, f"I{element.name}")
             elif( isinstance( element, aggregate_entity )):
                 # skip 
                 pass
@@ -2144,7 +2146,6 @@ class dotnet_code:
                 dotnetNames.insert(0, element.name)
 
             element = element.parent
-
 
         current_namespaces = self.current_namespace.split(".")
 

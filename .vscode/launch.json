@@ -16,8 +16,8 @@
             // "args": ["-i", "d:/Projects.OWN/samplewebshop/src/webshop.d3", "--output-dir", "d:/Projects.OWN/samplewebshop/src/", "--verbose", "--emitter", "dotnet", "protobuf", "typescript" ]
             // "args": ["-i", "c:/2/samplewebshop/src/webshop.d3", "--output-dir", "c:/2/samplewebshop/src/", "--verbose", "--emitter", "dotnet", "protobuf" ]
             
-            //"args": ["-i", "c:/2/doctratis/src/doctratis.d3", "--output-dir", "c:/2/doctratis/src/", "--verbose", "--emitter", "dotnet", "protobuf" ]
-            "args": ["-i", "d:/Projects.OWN/doctratis/src/doctratis.d3", "--output-dir", "d:/Projects.OWN/doctratis/src/", "--verbose", "--emitter", "dotnet", "protobuf" ]
+            "args": ["-i", "c:/2/doctratis/src/doctratis.d3", "--output-dir", "c:/2/doctratis/src/", "--verbose", "--emitter", "dotnet", "protobuf" ]
+            //"args": ["-i", "d:/Projects.OWN/doctratis/src/doctratis.d3", "--output-dir", "d:/Projects.OWN/doctratis/src/", "--verbose", "--emitter", "dotnet", "protobuf" ]
 
             // "args": ["-i", "c:/2/doctratis/src/doctratis.d3", "--output-dir", "c:/2/doctratis/src/Client/docratis.ts.api/", "--verbose", "--emitter", "typescript" ]
             // "args": ["-i", "d:/Projects.OWN/doctratis/src/doctratis.d3", "--output-dir", "d:/Projects.OWN/doctratis/src/Client/docratis.ts.api/", "--verbose", "--emitter", "typescript" ]

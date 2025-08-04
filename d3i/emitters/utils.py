@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import re
 from d3i.Engine import *
 from d3i.elements.Elements import *
 
@@ -36,7 +37,7 @@ class utils:
         if not name:
             return name
         return name[0].upper() + name[1:]
-
+    
     @staticmethod
     def collectBaseRecursive(base: composite, bases: List[base_element]):
         bases.append(base)
@@ -139,6 +140,20 @@ class grpc_utils:
             case primitive_type.PrimtiveKind.Bytes | primitive_type.PrimtiveKind.Stream:
                 return "bytes"
 
+    @staticmethod
+    def to_grpc_enum_style(name: str) -> str:
+        if not name:
+            return name
+
+        # Regex: talál minden csoportot, ami egy vagy több nagybetűből áll,
+        # amit 0 vagy több kisbetű követ
+        parts = re.findall(r'[A-Z]+[a-z]*', name)
+
+        # PascalCase-re alakítás: első betű nagy, többi kis
+        transformed = [part[0] + part[1:].lower() for part in parts if part]
+
+        return ''.join(transformed)
+        
     @staticmethod
     def d3iTypeToGrpcRepresentation_Reference(type: reference_type) -> str:
         return f"Protos.{type.reference_name.getText()}"
