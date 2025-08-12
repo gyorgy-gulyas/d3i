@@ -112,6 +112,14 @@ class DotnetEmitter:
                     code = self.endFile(code)
                     result.append(code)
 
+                # Process all repository in the context
+                for service in context.repositories:
+                    # interface
+                    code = self.beginFile(output_path, service, "Service/Interfaces", prefix="I")
+                    code = self.repositoryInterfaceText(service, code)
+                    code = self.endFile(code)
+                    result.append(code)
+
                 # Process all inerface in the context
                 for interface in context.interfaces:
                     # Service interface for DTOs, for controllers, for the expected implementation
@@ -989,6 +997,9 @@ class DotnetEmitter:
 
     def serviceInterfaceText(self, service: service, code: dotnet_code, indent: int = 1) -> dotnet_code:
         return self.interfaceClassText(service, service.name,code=code, indent=indent)
+
+    def repositoryInterfaceText(self, repository: repository, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        return self.interfaceClassText(repository, repository.name,code=code, indent=indent)
 
     def interfaceInterfaceText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
         return self.interfaceClassText(interface, interface.name + f"_v{interface.version}",code=code, indent=indent)

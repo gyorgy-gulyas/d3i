@@ -250,19 +250,6 @@ class SemanticChecker(ElementVisitor):
             if (neighbour.name == repository.name):
                 self.__error(repository, f"A repository '{repository.name}' with same name is already exists in {neighbour.locationText()}.")
 
-        isFound: bool = False
-        parent_context: context = repository.parent
-        for aggregate in parent_context.aggregates:
-            if (aggregate.name == repository.referenced_name):
-                isFound = True
-
-        for view in parent_context.views:
-            if (view.name == repository.referenced_name):
-                isFound = True
-
-        if (isFound == False):
-            self.__error(repository, f"Unknown refrenced name: {repository.referenced_name}, in repository {repository.name}")
-
     def visitAcl(self, acl: acl, parentData: Any) -> Any:
         scope = Engine.get_current_scope(acl.parent)
         for neighbour in scope.getChildren():

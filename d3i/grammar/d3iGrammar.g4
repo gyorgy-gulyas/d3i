@@ -154,7 +154,7 @@ view
         ;
 
 repository
-    : DOCUMENT_LINE* decorator* 'repository' IDENTIFIER ':' IDENTIFIER
+    : DOCUMENT_LINE* decorator* 'repository' IDENTIFIER '{' operation*  '}'
     ;
 
 service

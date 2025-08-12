@@ -773,10 +773,8 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#repository.
     def visitRepository(self, ctx: d3iGrammar.RepositoryContext):
         result = repository(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER(0) != None):
-            result.name = ctx.IDENTIFIER(0).getText()
-        if (ctx.IDENTIFIER(1) != None):
-            result.referenced_name = ctx.IDENTIFIER(1).getText()
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
 
         counter = 0
         while True:
@@ -796,9 +794,18 @@ class ElementBuilder(d3iGrammarVisitor):
             child.parent = result
             result.decorators.append(child)
 
-        result.kind = repository.Kind.RelationalSQL
+        counter = 0
+        while True:
+            operation: d3iGrammar.OperationContext = ctx.operation((counter))
+            if (operation == None):
+                break
+            counter = counter + 1
+            child = self.visit(operation)
+            child.parent = result
+            result.operations.append(child)
 
         return result
+   
 
     # Visit a parse tree produced by d3iGrammar#service.
     def visitService(self, ctx: d3iGrammar.ServiceContext):
@@ -826,8 +833,7 @@ class ElementBuilder(d3iGrammarVisitor):
 
         counter = 0
         while True:
-            service_element: d3iGrammar.Service_elementContext = ctx.service_element(
-                (counter))
+            service_element: d3iGrammar.Service_elementContext = ctx.service_element((counter))
             if (service_element == None):
                 break
             elif (service_element.operation() != None):
