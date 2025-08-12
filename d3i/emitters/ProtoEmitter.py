@@ -107,7 +107,7 @@ class ProtoEmitter:
         buffer.write("<ADDITIONAL_IMPORTS>")
         buffer.write("\n")
 
-        code: proto_code = proto_code(output_path, [domain.name, context.name, subDirectoryName], interface.name+f"v{interface.version}")
+        code: proto_code = proto_code(output_path, [domain.name, context.name, subDirectoryName], interface.name+f"_v{interface.version}")
         code.content = buffer.getvalue()
         return code
 
@@ -205,7 +205,7 @@ class ProtoEmitter:
         """
         Generates the proto service file, with rpc functions and request response messages text for element
         """
-        code.imports.add("servicekit_error.proto")
+        code.imports.add("srvkit/error.proto")
 
         fullname: str = f"{interface.name}_v{interface.version}"
 
@@ -290,7 +290,7 @@ class ProtoEmitter:
             case primitive_type.PrimtiveKind.Any:
                 return "object"
             case primitive_type.PrimtiveKind.Integer:
-                return "int"
+                return "int32"
             case primitive_type.PrimtiveKind.Number:
                 return "string"
             case primitive_type.PrimtiveKind.Float:

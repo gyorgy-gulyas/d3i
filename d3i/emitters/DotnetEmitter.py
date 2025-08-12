@@ -134,7 +134,7 @@ class DotnetEmitter:
                     # Client: GRPC public client for client-service communication
                     apiCollectionName: str = utils.isPublishedOnPublic( interface, "grpc" )
                     if( apiCollectionName != None ):
-                        code = self.beginFile(os.path.join(output_path, apiCollectionName, "ApiClientKit/"), interface, "", postfix=f"_v{interface.version}.GrpcClient", current_namespace=f"{apiCollectionName}.ApiClientKit")
+                        code = self.beginFile(os.path.join(output_path, "ApiClientKit/", apiCollectionName ), interface, "", postfix=f"_v{interface.version}.GrpcClient", current_namespace=f"{apiCollectionName}.ApiClientKit")
                         code = self.interfaceGrpcPublicClientText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
@@ -153,7 +153,7 @@ class DotnetEmitter:
                     # Client: REST public client for client-service communication
                     apiCollectionName: str = utils.isPublishedOnPublic( interface, "rest" )
                     if( apiCollectionName != None ):
-                        code = self.beginFile(os.path.join(output_path, apiCollectionName, "ApiClientKit/"), interface, "", postfix=f"_v{interface.version}.RestClient", current_namespace=f"{apiCollectionName}.ApiClientKit")
+                        code = self.beginFile(os.path.join(output_path, "ApiClientKit/", apiCollectionName ), interface, "", postfix=f"_v{interface.version}.RestClient", current_namespace=f"{apiCollectionName}.ApiClientKit")
                         code = self.interfaceRestPublicClientText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
@@ -198,6 +198,7 @@ class DotnetEmitter:
         buffer.write(f"namespace {current_namespace}\n")
         buffer.write("{\n")
 
+        output_path = output_path if output_path.endswith('/') else output_path + '/'
         code: dotnet_code = dotnet_code(output_path, [domain.name, context.name, subDirectoryName], prefix + element.name + postfix, current_namespace )
         code.content = buffer.getvalue()
         return code

@@ -302,10 +302,7 @@ class Engine:
         if (len(name.names) > 1):
             version_candidate = name.names[1]
 
-        if( name.getText() == "Core.Base.BaseEntity" ):
-            pass
-
-        if( name.getText() == "Core.Auditing.AuditTrail" ):
+        if( name.getText() == "LoginIF.v1.LoginResultDTO" ):
             pass
 
         rest_name_index = 1
@@ -319,7 +316,7 @@ class Engine:
             if (isinstance(scope, IScope)):
                 for child in scope.getChildren():
                     if (Engine.has_version_int_member(child) == True):
-                        if (f"v{child.version}" == version_candidate):
+                        if (child.name == name.names[0] and f"v{child.version}" == version_candidate):
                             element = child
                             rest_name_index = rest_name_index + 1  # skip version
                             break
