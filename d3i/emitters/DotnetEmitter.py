@@ -1389,6 +1389,7 @@ class DotnetEmitter:
         code.usings.add("Grpc.Core")
         code.usings.add("ServiceKit.Net")
         code.usings.add("Serilog.Context")
+        code.usings.add("Microsoft.Extensions.Logging")
         code.usings.add(f"{domain.name}.{context.name}.Protos.{versionedName}")
 
         # Add documentation lines for the interface
@@ -1841,6 +1842,7 @@ class DotnetEmitter:
         code.usings.add("Microsoft.AspNetCore.Http")
         code.usings.add("Microsoft.AspNetCore.Mvc")
         code.usings.add("Microsoft.AspNetCore.RateLimiting")
+        code.usings.add("Microsoft.Extensions.Logging")
         code.usings.add("Swashbuckle.AspNetCore.Annotations")
         code.usings.add("Swashbuckle.AspNetCore.Swagger")
         code.usings.add("ServiceKit.Net")

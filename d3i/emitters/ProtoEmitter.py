@@ -205,7 +205,7 @@ class ProtoEmitter:
         """
         Generates the proto service file, with rpc functions and request response messages text for element
         """
-        code.imports.add("srvkit/error.proto")
+        code.imports.add("servicekit/error.proto")
 
         fullname: str = f"{interface.name}_v{interface.version}"
 

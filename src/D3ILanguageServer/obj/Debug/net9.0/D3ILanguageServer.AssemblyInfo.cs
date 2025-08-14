@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("D3ILanguageServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dbd820bd5fcb74953c21a2ccad0d62d013c3bfa0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+65cec284635be766f7886d6175b5fabf7878fe9e")]
 [assembly: System.Reflection.AssemblyProductAttribute("D3ILanguageServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("D3ILanguageServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
