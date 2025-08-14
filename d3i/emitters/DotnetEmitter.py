@@ -99,7 +99,7 @@ class DotnetEmitter:
                 # Process all acl in the context
                 for acl in context.acls:
                     # interface
-                    code = self.beginFile(output_path, acl, "Service/Interfaces", prefix="I")
+                    code = self.beginFile(output_path, acl, "Context/Interfaces", prefix="I")
                     code = self.aclInterfaceText(acl, code)
                     code = self.endFile(code)
                     result.append(code)
@@ -107,7 +107,7 @@ class DotnetEmitter:
                 # Process all service in the context
                 for service in context.services:
                     # interface
-                    code = self.beginFile(output_path, service, "Service/Interfaces", prefix="I")
+                    code = self.beginFile(output_path, service, "Context/Interfaces", prefix="I")
                     code = self.serviceInterfaceText(service, code)
                     code = self.endFile(code)
                     result.append(code)
@@ -115,7 +115,7 @@ class DotnetEmitter:
                 # Process all repository in the context
                 for service in context.repositories:
                     # interface
-                    code = self.beginFile(output_path, service, "Service/Interfaces", prefix="I")
+                    code = self.beginFile(output_path, service, "Context/Interfaces", prefix="I")
                     code = self.repositoryInterfaceText(service, code)
                     code = self.endFile(code)
                     result.append(code)
@@ -129,7 +129,7 @@ class DotnetEmitter:
                     result.append(code)
                     # Service: GRPC controller
                     if( utils.isPublishedOn( interface, "grpc" ) == True):
-                        code = self.beginFile(output_path, interface, "Service/Controllers", postfix=f"_v{interface.version}.GrpcController")
+                        code = self.beginFile(output_path, interface, "Context/Controllers", postfix=f"_v{interface.version}.GrpcController")
                         code = self.interfaceGrpcControllerText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
@@ -148,7 +148,7 @@ class DotnetEmitter:
                         result.append(code)
                     # Service: REST controller
                     if( utils.isPublishedOn( interface, "rest" ) == True):
-                        code = self.beginFile(output_path, interface, "Service/Controllers", postfix=f"_v{interface.version}.RestController")
+                        code = self.beginFile(output_path, interface, "Context/Controllers", postfix=f"_v{interface.version}.RestController")
                         code = self.interfaceRestControllerText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
