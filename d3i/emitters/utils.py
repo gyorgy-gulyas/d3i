@@ -336,6 +336,9 @@ class rest_operation:
         routeParams: List[rest_param] = [param for param in self.params.values() if param.bindingSource == rest_param.BindingSource.FromRoute]
         if (len(routeParams) > 0):
             self.full_route = self.route + "/" + "/".join([f"{{{param.param.name}}}" for param in routeParams])
+        else:
+            self.full_route = self.route
+
 
 
 class rest_param:

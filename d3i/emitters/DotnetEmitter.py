@@ -1870,6 +1870,9 @@ class DotnetEmitter:
 
         # Add functions based on operations
         for operation in interface.operations:
+
+            if(operation.name=="updateProject"):
+                pass
             buffer.write(f"\n")
             buffer.write(self.documentLines(operation, indent+1))
             http_operation:rest_operation = rest_operation(operation)
