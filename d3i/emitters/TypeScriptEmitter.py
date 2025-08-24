@@ -85,35 +85,21 @@ class TypeScriptEmitter:
 
                 # Process all inerface in the context
                 for interface in context.interfaces:
-                    # Service: GRPC controller
-                    if (utils.isPublishedOn(interface, "grpc") == True):
-                        pass  # no client code emmited
-                    # Service: GRPC InternalClient for service-service communication
-                    if (utils.isPublishedOnInternal(interface, "grpc") == True):
-                        pass  # no client code emmited
-                    # Client: GRPC public client for client-service communication
-                    apiCollectionName: str = utils.isPublishedOnPublic(interface, "grpc")
-                    if (apiCollectionName != None):
-                        pass  # no client code emmited
                     # Service: REST controller
                     if (utils.isPublishedOn(interface, "rest") == True):
-                        pass  # no client code emmited
-                    # Service: REST InternalClient for service-service communication
-                    if (utils.isPublishedOnInternal(interface, "rest") == True):
-                        pass  # no client code emmited
-                    # Client: REST public client for client-service communication
-                    apiCollectionName: str = utils.isPublishedOnPublic(interface, "rest")
-                    if (apiCollectionName != None):
-                        # Service interface for DTOs
-                        code = self.beginFile(output_path + "/" + apiCollectionName + "/", interface, "types", postfix=f"_v{interface.version}")
-                        code = self.interfaceTypesText(interface, code)
-                        code = self.endFile(code)
-                        result.append(code)
-                        # Rest client for apis
-                        code = self.beginFile(output_path + "/" + apiCollectionName + "/", interface, "api", postfix=f"_v{interface.version}.RestClient")
-                        code = self.interfaceRestPublicClientText(interface, code, apiCollectionName)
-                        code = self.endFile(code)
-                        result.append(code)
+                        # Client: REST public client for client-service communication
+                        apiCollectionName: str = utils.isPublishedOnPublic(interface, "rest")
+                        if (apiCollectionName != None and self.configuration.is_collection_filtered_out(apiCollectionName) == False):
+                            # Service interface for DTOs
+                            code = self.beginFile(output_path + "/" + apiCollectionName + "/", interface, "types", postfix=f"_v{interface.version}")
+                            code = self.interfaceTypesText(interface, code)
+                            code = self.endFile(code)
+                            result.append(code)
+                            # Rest client for apis
+                            code = self.beginFile(output_path + "/" + apiCollectionName + "/", interface, "api", postfix=f"_v{interface.version}.RestClient")
+                            code = self.interfaceRestPublicClientText(interface, code, apiCollectionName)
+                            code = self.endFile(code)
+                            result.append(code)
 
         return result
 
@@ -197,7 +183,7 @@ class TypeScriptEmitter:
         code.imports.add( f"{{ {apiCollectionName}RestClient }} from \"../../../api/{apiCollectionName}RestClient\"")
 
         buffer = io.StringIO()
-        buffer.write(f"const rest = {apiCollectionName.upper()}RestClient.getInstance()\n");
+        buffer.write(f"const rest = {apiCollectionName}RestClient.getInstance()\n");
         buffer.write("\n")
         buffer.write(f"{utils.tab(indent)}export const {interface.name} = {{\n")
         buffer.write(f"{utils.tab(indent+1)}V{interface.version}: {{\n")
@@ -211,7 +197,7 @@ class TypeScriptEmitter:
             if (operation.operation_return != None ):
                 buffer.write(f"Promise<{self.typeText(operation.operation_return.type, code,fullName=True)}> {{\n")
             else:
-                buffer.write("Promise<{}> {{\n")
+                buffer.write("Promise<{}> {\n")
             buffer.write(f"{utils.tab(indent+3)}try {{\n")
             http_operation:rest_operation = rest_operation(operation)
             
@@ -302,7 +288,7 @@ class TypeScriptEmitter:
         for enum_element in enum.enum_elements:
             buffer.write(self.documentLines(enum_element, indent+1))
             # Write each enum element value
-            buffer.write(f"{utils.tab(indent+1)}{enum_element.value},\n")
+            buffer.write(f"{utils.tab(indent+1)}{enum_element.value} = \"{enum_element.value}\",\n")
             if (len(enum_element.document_lines) > 0):
                 buffer.write("\n")
 
@@ -402,7 +388,7 @@ class TypeScriptEmitter:
             case primitive_type.PrimtiveKind.Any:
                 return "object"
             case primitive_type.PrimtiveKind.Integer:
-                return "int"
+                return "number"
             case primitive_type.PrimtiveKind.Number:
                 code.imports.add("Decimal from \"decimal.js\"")
                 return "Decimal"
@@ -417,7 +403,7 @@ class TypeScriptEmitter:
             case primitive_type.PrimtiveKind.I18NString:
                 return "i18nstring"
             case primitive_type.PrimtiveKind.Boolean:
-                return "bool"
+                return "boolean"
             case primitive_type.PrimtiveKind.Bytes:
                 return "byte[]"
             case primitive_type.PrimtiveKind.Stream:
@@ -466,7 +452,7 @@ class TypeScriptEmitter:
                 case primitive_type.PrimtiveKind.String:
                     return f"${{{name}}}"
                 case primitive_type.PrimtiveKind.Boolean:
-                    return f"{{{name}.toString()}}"
+                    return f"${{{name}.toString()}}"
         elif (_type.kind == type.Kind.Reference):
             reference_type: reference_type = _type
             referenced_element: base_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
@@ -479,6 +465,16 @@ class ts_configuration:
 
         self.__read_fileHeader(configuration)
         self.__read_defaultImports(configuration)
+        self.__read_api_collection_filters(configuration)
+
+    def is_collection_filtered_out( self, apiCollectionName:str ) -> str:
+        if( len(self.api_collection_filters) == 0 ):
+            return False
+
+        if( apiCollectionName in self.api_collection_filters ):
+            return False
+        
+        return True
 
     def __read_fileHeader(self, configuration: Dict[str, str]):
         self.fileHeader: str = """
@@ -500,6 +496,14 @@ class ts_configuration:
             if (isinstance(value, list) and all(isinstance(item, str) for item in value)):
                 self.defaultImports = value
 
+    def __read_api_collection_filters(self, configuration: Dict[str, str]):
+        self.api_collection_filters: List[str] = []
+        if "typescript.api_collections_filters" in configuration:
+            value = configuration["typescript.api_collections_filters"]
+            if (isinstance(value, list) and all(isinstance(item, str) for item in value)):
+                self.api_collection_filters = value
+            elif (isinstance(value, str)):
+                self.api_collection_filters = value.split(",")
 
 class ts_code:
     def __init__(self, output_path: str, subdirs: List[str], name: str, current_namespace: str):
