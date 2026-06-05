@@ -1,11 +1,13 @@
 from __future__ import annotations
 from typing import List
 from enum import Enum
-from d3i.elements.ElementVisitor import *
+from .ElementVisitor import *
+
 
 class IScope:
     def getChildren(self) -> List[base_element]:
         return []
+
 
 class base_element:
     def __init__(self, fileName, pos):
@@ -21,28 +23,113 @@ class base_element:
     def locationText(self):
         return f"'{self.fileName}({self.line},{self.column})'"
 
+    def getDomain(self) -> domain:
+        if (isinstance(self, domain)):
+            return self
 
-class decorated_base_element(base_element):
+        if (self.parent != None and isinstance( self.parent, base_element)):
+            return self.parent.getDomain()
+
+        return None
+
+    def getContext(self) -> context:
+        if (isinstance(self, context)):
+            return self
+
+        if (self.parent != None and isinstance( self.parent, base_element)):
+            return self.parent.getContext()
+
+        return None
+
+    def getAggregate(self) -> aggregate:
+        if (isinstance(self, aggregate)):
+            return self
+
+        if (self.parent != None and isinstance( self.parent, base_element)):
+            return self.parent.getAggregate()
+
+        return None
+
+    def getInterface(self) -> interface:
+        if (isinstance(self, interface)):
+            return self
+
+        if (self.parent != None and isinstance( self.parent, base_element)):
+            return self.parent.getInterface()
+
+        return None
+
+
+class hinted_base_element(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
+        self.document_lines: List[str] = []
         self.decorators: List[decorator] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
-        data = visitor.visitDecoratedElement(self, parentData)
+        data = visitor.visitHintedBaseElement(self, parentData)
         super().visit(visitor, parentData)
+        for document_line in self.document_lines:
+            visitor.visitDocumentLine(document_line, parentData)
         for decorator in self.decorators:
             decorator.visit(visitor, data)
         return data
+    
+    def find_decorator(self, name:str ) -> decorator:
+        for decorator in self.decorators:
+            if( decorator.name == name ):
+                return decorator
+
+        return None
 
 
-class internal_scoped_base_element(decorated_base_element,IScope):
-    def __init__(self, fileName, pos):
+class internal_scoped_base_element(hinted_base_element, IScope):
+    def __init__(self, fileName, pos, withEnum: bool, withValueObject: bool, withDto: bool):
         super().__init__(fileName, pos)
-        self.enums: List[enum] = []
-        self.value_objects: List[value_object] = []
+        self.withEnum = withEnum
+        if (withEnum == True):
+            self.enums: List[enum] = []
+
+        self.withValueObject = withValueObject
+        if (withValueObject == True):
+            self.value_objects: List[value_object] = []
+
+        self.withDto = withDto
+        if (withDto == True):
+            self.dtos: List[dto] = []
 
     def getChildren(self) -> List[base_element]:
-        return self.enums + self.value_objects
+        children: List[base_element] = []
+
+        if (self.withEnum == True):
+            children = children + self.enums
+
+        if (self.withValueObject == True):
+            children = children + self.value_objects
+
+        if (self.withDto == True):
+            children = children + self.dtos
+
+        return children
+
+    def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
+        data = visitor.visitInternalScopedBaseElement(self, parentData)
+        super().visit(visitor, data)
+
+        if (self.withEnum == True):
+            for internal_enum in self.enums:
+                internal_enum.visit(visitor, data)
+
+        if (self.withValueObject == True):
+            for internal_value_object in self.value_objects:
+                internal_value_object.visit(visitor, data)
+
+        if (self.withDto == True):
+            for internal_dto in self.dtos:
+                internal_dto.visit(visitor, data)
+
+        return data
+
 
 class qualified_name(base_element):
     def __init__(self, fileName, pos):
@@ -66,39 +153,67 @@ class decorator(base_element):
             param.visit(visitor, data)
         return data
 
+    def find_param(self, name:str ) -> decorator_param:
+        for param in self.params:
+            if( param.name == name ):
+                return param
+
+        return None
+
+    def get_param_value(self, name:str ) -> decorator:
+        for param in self.params:
+            if( param.name == name ):
+                return param.value
+
+        return None
 
 class decorator_param(base_element):
-    def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
-        self.kind = None
-        self.value = None
-
-    def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
-        data = visitor.visitDecoratorParam(self, parentData)
-        super().visit(visitor, data)
-
     class Kind(Enum):
         QualifiedName = 1
         Integer = 2
         Number = 3
         String = 4
 
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = None
+        self.kind: decorator_param.Kind = None
+        self.value = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
+        data = visitor.visitDecoratorParam(self, parentData)
+        super().visit(visitor, data)
+
 
 class d3(IScope):
     def __init__(self):
+        self.imports: List[import_] = []
         self.domains: List[domain] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
         data = visitor.visitd3(self, parentData)
+        for _import in self.imports:
+            _import.visit(visitor, data)
         for domain in self.domains:
             domain.visit(visitor, data)
         return data
-    
+
     def getChildren(self) -> List[base_element]:
         return self.domains
 
 
-class domain(decorated_base_element,IScope):
+class import_(hinted_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = ""
+        self.d3: d3 = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitImport(self, parentData)
+        super().visit(visitor, data)
+
+
+class domain(hinted_base_element, IScope):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -130,8 +245,9 @@ class directive(base_element):
 
 class context(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.name: str = None
+        self.composites: List[composite] = []
         self.aggregates: List[aggregate] = []
         self.views: List[view] = []
         self.repositories: List[repository] = []
@@ -142,10 +258,8 @@ class context(internal_scoped_base_element):
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitContext(self, parentData)
         super().visit(visitor, data)
-        for enum in self.enums:
-            enum.visit(visitor, data)
-        for value_object in self.value_objects:
-            value_object.visit(visitor, data)
+        for composit in self.composites:
+            composit.visit(visitor, data)
         for aggregate in self.aggregates:
             aggregate.visit(visitor, data)
         for view in self.views:
@@ -160,10 +274,10 @@ class context(internal_scoped_base_element):
             interface.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return super().getChildren() + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces
+        return super().getChildren() + self.composites + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces
 
 
-class enum(decorated_base_element):
+class enum(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -176,7 +290,7 @@ class enum(decorated_base_element):
             enum_element.visit(visitor, data)
 
 
-class enum_element(decorated_base_element):
+class enum_element(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.value = None
@@ -188,7 +302,7 @@ class enum_element(decorated_base_element):
 
 class value_object(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[value_object_member] = []
@@ -198,13 +312,9 @@ class value_object(internal_scoped_base_element):
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
-        for internal_enum in self.enums:
-            internal_enum.visit(visitor, data)
-        for internal_value_object in self.value_objects:
-            internal_value_object.visit(visitor, data)
 
 
-class value_object_member(decorated_base_element):
+class value_object_member(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -217,11 +327,66 @@ class value_object_member(decorated_base_element):
         super().visit(visitor, data)
 
 
-class event(internal_scoped_base_element):
+class dto(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=True)
         self.inherits: List[qualified_name] = []
         self.name: str = None
+        self.members: List[dto_member] = []
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitDto(self, parentData)
+        super().visit(visitor, data)
+        for member in self.members:
+            member.visit(visitor, data)
+
+
+class dto_member(hinted_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = None
+        self.type: type = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitDtoMember(self, parentData)
+        if (self.type != None):
+            self.type.visit(visitor, data, "type")
+        super().visit(visitor, data)
+
+
+class composite(internal_scoped_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
+        self.inherits: List[qualified_name] = []
+        self.name: str = None
+        self.members: List[composite_member] = []
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitComposite(self, parentData)
+        super().visit(visitor, data)
+        for member in self.members:
+            member.visit(visitor, data)
+
+
+class composite_member(hinted_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = None
+        self.type: type = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitCompositeMember(self, parentData)
+        if (self.type != None):
+            self.type.visit(visitor, data, "type")
+        super().visit(visitor, data)
+
+
+class event(internal_scoped_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=False)
+        self.inherits: List[qualified_name] = []
+        self.name: str = None
+        self.version: int = None
         self.members: List[event_member] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
@@ -229,13 +394,9 @@ class event(internal_scoped_base_element):
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
-        for internal_enum in self.enums:
-            internal_enum.visit(visitor, data)
-        for internal_value_object in self.value_objects:
-            internal_value_object.visit(visitor, data)
 
 
-class event_member(decorated_base_element):
+class event_member(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -248,9 +409,19 @@ class event_member(decorated_base_element):
         super().visit(visitor, data)
 
 
-class entity(internal_scoped_base_element):
+class eventhandler(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
+        self.name: str = None
+        self.handledEvent: qualified_name = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitEventHandler(self, parentData)
+        super().visit(visitor, data)
+
+class entity(internal_scoped_base_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[entity_member] = []
@@ -260,13 +431,9 @@ class entity(internal_scoped_base_element):
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
-        for internal_enum in self.enums:
-            internal_enum.visit(visitor, data)
-        for internal_value_object in self.value_objects:
-            internal_value_object.visit(visitor, data)
 
 
-class entity_member(decorated_base_element):
+class entity_member(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -281,7 +448,7 @@ class entity_member(decorated_base_element):
 
 class aggregate(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.name: str = None
         self.internal_entities: List[aggregate_entity] = []
 
@@ -290,10 +457,6 @@ class aggregate(internal_scoped_base_element):
         super().visit(visitor, data)
         for aggregate_entity in self.internal_entities:
             aggregate_entity.visit(visitor, data)
-        for internal_enum in self.enums:
-            internal_enum.visit(visitor, data)
-        for internal_value_object in self.value_objects:
-            internal_value_object.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
         return super().getChildren() + [ae.entity for ae in self.internal_entities]
@@ -313,7 +476,8 @@ class aggregate_entity(base_element):
 
 class view(internal_scoped_base_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=False)
+        self.view_projections: List[qualified_name] = []
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[view_member] = []
@@ -323,13 +487,9 @@ class view(internal_scoped_base_element):
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
-        for internal_enum in self.enums:
-            internal_enum.visit(visitor, data)
-        for internal_value_object in self.value_objects:
-            internal_value_object.visit(visitor, data)
 
 
-class view_member(decorated_base_element):
+class view_member(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -341,78 +501,106 @@ class view_member(decorated_base_element):
             self.type.visit(visitor, data, "type")
         super().visit(visitor, data)
 
-class repository(decorated_base_element):
-    def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+class functional_element(internal_scoped_base_element):
+    def __init__(self, fileName, pos, withEnum: bool, withValueObject: bool, withDto: bool, withEvent: bool, withEventHandler: bool):
+        super().__init__(fileName, pos, withEnum, withValueObject, withDto)
         self.name: str = None
-        self.referenced_name: str = None
+        self.operations: List[operation] = []
+
+        self.withEvent = withEvent
+        if (withEvent == True):
+            self.events: List[event] = []
+
+        self.withEventHandler = withEventHandler
+        if (withEventHandler == True):
+            self.eventhandlers: List[eventhandler] = []
+
+    def getChildren(self) -> List[base_element]:
+        children: List[base_element] = super().getChildren()
+
+        if (self.withEvent == True):
+            children = children + self.events
+
+        if (self.withEventHandler == True):
+            children = children + self.eventhandlers
+
+        return children
+
+    def visit(self, visitor: ElementVisitor, parentData: Any) -> Any:
+        data = visitor.visitFunctionalElement(self, parentData)
+        super().visit(visitor, data)
+
+        for operation in self.operations:
+            operation.visit(visitor, data)
+
+        if (self.withEvent == True):
+            for internal_event in self.events:
+                internal_event.visit(visitor, data)
+
+        if (self.withEventHandler == True):
+            for internal_eventhandler in self.eventhandlers:
+                internal_eventhandler.visit(visitor, data)
+
+        return data
+
+class repository(functional_element):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos, withEnum=False, withValueObject=False, withDto=False, withEvent=False, withEventHandler=False)
+        self.name: str = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitRepository(self, parentData)
         super().visit(visitor, data)
 
-
-class service(internal_scoped_base_element):
+class service(functional_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False, withEvent=True, withEventHandler=True)
         self.name: str = None
-        self.operations: List[operation] = []
-        self.events: List[event] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitService(self, parentData)
         super().visit(visitor, data)
-        for operation in self.operations:
-            operation.visit(visitor, data)
-        for event in self.events:
-            event.visit(visitor, data)
-        for internal_enum in self.enums:
-            internal_enum.visit(visitor, data)
-        for internal_value_object in self.value_objects:
-            internal_value_object.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return super().getChildren() + self.events
+        return super().getChildren()
 
-class interface(internal_scoped_base_element):
+
+class interface(functional_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=True, withEvent=True, withEventHandler=False)
         self.name: str = None
-        self.operations: List[operation] = []
-        self.events: List[event] = []
+        self.version: int = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitInterface(self, parentData)
         super().visit(visitor, data)
-        for operation in self.operations:
-            operation.visit(visitor, data)
-        for event in self.events:
-            event.visit(visitor, data)
-        for internal_enum in self.enums:
-            internal_enum.visit(visitor, data)
-        for internal_value_object in self.value_objects:
-            internal_value_object.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return super().getChildren() + self.events
+        return super().getChildren()
 
-class operation(decorated_base_element):
+
+class operation(hinted_base_element):
+    class Kind(Enum):
+        Command = 1
+        Query = 2
+
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
         self.operation_params: List[operation_param] = []
-        self.operation_returns: List[operation_return] = []
+        self.operation_return: operation_return = None
+        self.kind: operation.Kind = operation.Kind.Command
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitOperation(self, parentData)
         super().visit(visitor, data)
         for operation_param in self.operation_params:
             operation_param.visit(visitor, data)
-        for operation_return in self.operation_returns:
-            operation_return.visit(visitor, data)
+        if(self.operation_return != None ):
+            self.operation_return.visit(visitor, data)
 
 
-class operation_param(decorated_base_element):
+class operation_param(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -425,7 +613,7 @@ class operation_param(decorated_base_element):
         super().visit(visitor, data)
 
 
-class operation_return(decorated_base_element):
+class operation_return(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.type: type = None
@@ -437,33 +625,29 @@ class operation_return(decorated_base_element):
         super().visit(visitor, data)
 
 
-class acl(internal_scoped_base_element):
+class acl(functional_element):
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False, withEvent=False, withEventHandler=False)
         self.name: str = None
-        self.operations: List[operation] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitAcl(self, parentData)
         super().visit(visitor, data)
-        for operation in self.operations:
-            operation.visit(visitor, data)
-        for internal_enum in self.enums:
-            internal_enum.visit(visitor, data)
-        for internal_value_object in self.value_objects:
-            internal_value_object.visit(visitor, data)
+
+    def getChildren(self) -> List[base_element]:
+        return super().getChildren()
 
 
 class type(base_element):
-    def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
-        self.kind: type.Kind = None
-
     class Kind(Enum):
         Primitive = 1
         Reference = 2
         List = 3
         Map = 4
+
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.kind: type.Kind = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any, memberName: str):
         match self.kind:
@@ -491,32 +675,34 @@ class primitive_type(type):
         self.primtiveKind: primitive_type.PrimtiveKind = None
 
     class PrimtiveKind(Enum):
+        Any = 0
         Integer = 1
         Number = 2
-        Float = 2
-        Date = 3,
-        Time = 4,
-        DateTime = 5,
-        String = 6,
-        Boolean = 7,
-        Bytes = 8,
+        Float = 3
+        Date = 4,
+        Time = 5,
+        DateTime = 6,
+        String = 7,
+        I18NString = 8,
+        Boolean = 9,
+        Bytes = 10,
+        Stream = 11,
 
 
 class reference_type(type):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.isExternal = False
         self.reference_name: qualified_name = None
 
 
 class list_type(type):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.item_type = None
+        self.item_type: type = None
 
 
 class map_type(type):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.key_type = None
-        self.value_type = None
+        self.key_type: type = None
+        self.value_type: type = None

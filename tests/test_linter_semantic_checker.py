@@ -1,43 +1,43 @@
 import unittest
-import d3i
-from d3i.linters import *
+from d3i.Engine import *
+from d3i.linters.SemanticChecker import *
 
 
 class TestLinterSemanticChecker(unittest.TestCase):
 
     def test_empty_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText(""))
+        engine = Engine()
+        session = Session(Source.CreateFromText(""))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 0)
 
     def test_conflict_service_event_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
         service OrderService {
-            event TheEvent {
+            event TheEvent version 1 {
             }
-            event TheEvent {
+            event TheEvent version 1 {
             }
-            event OtherEvent {
+            event OtherEvent version 2{
             }
         }
     }
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEvent" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
@@ -45,27 +45,27 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,12):", "(5,12)"]))
 
     def test_conflict_interface_event_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        interface IOrderInterface {
-            event TheEvent {
+        interface IOrderInterface version 1 {
+            event TheEvent version 1 {
             }
-            event TheEvent {
+            event TheEvent version 1 {
             }
-            event OtherEvent {
+            event OtherEvent version 2 {
             }
         }
     }
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEvent" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
@@ -73,13 +73,12 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,12):", "(5,12)"]))
 
     def test_conflict_event_member_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
         service OrderService {
-            event TheEvent {
+            event TheEvent version 1 {
                 the_member:string
                 the_member:number
                 other_member:number
@@ -89,10 +88,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("the_member" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,16):", "(7,16)"]))
@@ -100,9 +100,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,16):", "(6,16)"]))
 
     def test_conflict_context_enum_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         enum TheEnum {
@@ -118,10 +117,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEnum" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(7,8)"]))
@@ -129,9 +129,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,8):", "(4,8)"]))
 
     def test_conflict_inner_enum_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         service OrderService { 
@@ -149,10 +148,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEnum" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(8,12)"]))
@@ -160,9 +160,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(8,12):", "(5,12)"]))
 
     def test_conflict_enum_element_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         enum SomeEnum {
@@ -174,10 +173,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheValue" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
@@ -185,9 +185,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,12):", "(5,12)"]))
 
     def test_conflict_context_valueobject_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         valueobject TheValueObject {
@@ -200,10 +199,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheValueObject" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
@@ -211,9 +211,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,8):", "(4,8)"]))
 
     def test_conflict_inner_valueobject_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         service OrderService { 
@@ -228,10 +227,10 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheValueObject" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
@@ -239,9 +238,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,12):", "(5,12)"]))
 
     def test_conflict_valueobject_member_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         valueobject SomeValueobject {
@@ -253,10 +251,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheMember" in session.diagnostics[0].toText())
         self.assertTrue("(5,12)" in session.diagnostics[0].toText())
@@ -264,9 +263,8 @@ domain SomeDomain {
         self.assertTrue("(6,12)" in session.diagnostics[1].toText())
 
     def test_conflict_entity_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         aggregate OrderAggregate {
@@ -285,10 +283,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 6)
         self.assertTrue("TheEntity" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,17):", "(7,12)"]))
@@ -301,9 +300,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[5].toText() for location in ["(13,17):", "(7,12)"]))
 
     def test_conflict_entity_member_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         aggregate OrderAggregate {
@@ -317,10 +315,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheMember" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,16):", "(7,16)"]))
@@ -328,9 +327,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,16):", "(7,16)"]))
 
     def test_conflict_aggregate_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         aggregate TheAggregate {
@@ -352,10 +350,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheAggregate" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(9,8)"]))
@@ -363,9 +362,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(9,8):", "(4,8)"]))
 
     def test_conflict_all_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         enum TheName { }
@@ -375,15 +373,16 @@ domain SomeDomain {
         repository TheName : TheName
         acl TheName {}
         service TheName {}
-        interface TheName {}
+        interface TheName version 1 {}
     }
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 56)
         messages = [diagnostic.toText() for diagnostic in session.diagnostics]
 
@@ -452,9 +451,8 @@ domain SomeDomain {
         self.assertTrue(any(all(x in s for x in ['TheName', '(11,8):', '(10,8)']) for s in messages))
 
     def test_aggregate_no_root_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         aggregate OrderAggregate {
@@ -467,18 +465,18 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("OrderAggregate" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "There is no root"]))
 
     def test_aggregate_more_root_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         aggregate OrderAggregate {
@@ -495,18 +493,18 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("OrderAggregate" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "More than one root"]))
 
     def test_repository_unknown_reference_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         repository TheRepository : NotDefined
@@ -514,18 +512,18 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("TheRepository" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "NotDefined"]))
 
     def test_conflict_acl_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         acl TheAcl {
@@ -538,10 +536,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheAcl" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
@@ -549,24 +548,24 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,8):", "(4,8)"]))
 
     def test_conflict_acl_operation_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         acl TheAcl {
-            TheOperation()
-            TheOperation()
-            OtherOperation()
+            command TheOperation()
+            command TheOperation()
+            command OtherOperation()
         }
     }
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheOperation" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
@@ -574,9 +573,8 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,12):", "(5,12)"]))
 
     def test_conflict_service_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         service TheService {
@@ -589,10 +587,11 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheService" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
@@ -600,24 +599,24 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,8):", "(4,8)"]))
 
     def test_conflict_service_operation_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
         acl TheService {
-            TheOperation()
-            TheOperation()
-            OtherOperation()
+            command TheOperation()
+            command TheOperation()
+            command OtherOperation()
         }
     }
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheOperation" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
@@ -625,25 +624,25 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,12):", "(5,12)"]))
 
     def test_conflict_interface_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        interface TheInterface {
+        interface TheInterface version 1 {
         }
-        interface TheInterface {
+        interface TheInterface version 1 {
         }
-        interface OtherInterface {
+        interface OtherInterface version 2 {
         }
     }
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheInterface" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
@@ -651,24 +650,24 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,8):", "(4,8)"]))
 
     def test_conflict_interface_operation_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        interface TheInterface {
-            TheOperation()
-            TheOperation()
-            OtherOperation()
+        interface TheInterface version 1 {
+            command TheOperation()
+            command TheOperation()
+            command OtherOperation()
         }
     }
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheOperation" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
@@ -676,49 +675,57 @@ domain SomeDomain {
         self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,12):", "(5,12)"]))
 
     def test_conflict_operation_param_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        interface TheInterface {
-            TheOperation1( param: string )
-            TheOperation2( already: string, already: string, other: integer)
+        interface TheInterface version 1 {
+            command TheOperation1( param: string )
+            command TheOperation2( already: string, already: string, other: integer)
         }
     }
 }
 """))
         root = engine.Build(session)
-
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("already" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,27):", "(6,44)"]))
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,35):", "(6,52)"]))
         self.assertTrue("already" in session.diagnostics[1].toText())
-        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,44):", "(6,27)"]))
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,52):", "(6,35)"]))
 
     def test_reference_type_ok(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
-        interface TheInterface {
-            valueobject vo_out{
-                valueobject vo_inner{
-                    valueobject enum_inner{
+        interface TheInterface version 1 {
+        }
+        interface TheInterface version 2 {
+            dto dto_out{
+                dto dto_inner{
+                    enum enum_inner{
                     }    
                 }    
             }    
             enum enum_out{
             }    
+            event event_out version 1 {
+            }    
+            event event_out version 2{
+                enum enum_inner {
+                }    
+            }    
         }
+
         service TheService {
             valueobject vo_out{
                 valueobject vo_inner{
-                    valueobject enum_inner{
+                    enum enum_inner{
                     }    
                 }    
             }    
@@ -728,15 +735,15 @@ domain SomeDomain {
         service OtherService {
             valueobject vo_out{
                 valueobject vo_inner{
-                    valueobject enum_inner{
+                    enum enum_inner{
                     }    
                 }
 
+                member_0: TheInterface.v2.event_out.v2.enum_inner
                 member_1: vo_inner
                 member_2: vo_inner.enum_inner
                 member_3: enum_out
                 member_4: TheService.vo_out.vo_inner.enum_inner
-                member_5: external["java.util.map.HashMap<Int>"]
             }    
             enum enum_out{
             }    
@@ -745,42 +752,17 @@ domain SomeDomain {
 }
 """))
         root = engine.Build(session)
-
+        session.PrintDiagnostics()
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 0)
 
-
-    def test_inheritence_not_exists_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
-domain SomeDomain {
-    context OrderContext{
-        interface TheInterface {
-            valueobject TheValueObject inherits NotExist{
-                valueobject vo_inner{
-                    valueobject enum_inner{
-                    }    
-                }    
-            }    
-        }
-    }
-}
-"""))
-        root = engine.Build(session)
-
-        self.assertFalse(session.HasAnyError())
-        checker = SemanticChecker(session)
-        data = root.visit(checker, None)
-        self.assertEqual(len(session.diagnostics), 1)
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["NotExist", "(5,48):"]))
-
     def test_inheritence_wrong_type_fail(self):
-        engine = d3i.Engine()
-        session = d3i.Session()
-        session.AddSource(d3i.Source.CreateFromText("""
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
             aggregate Order {
@@ -789,24 +771,26 @@ domain SomeDomain {
             }
             valueobject TheValueObject inherits Order.TheEntity{
             }                                                    
-            interface TheInterface {
-                event TheEvent inherits TheValueObject{
+            interface TheInterface version 1 {
+                event TheEvent version 1 inherits TheValueObject{
             }    
         }
     }
 }
 """))
         root = engine.Build(session)
-
+        session.PrintDiagnostics()
         self.assertFalse(session.HasAnyError())
+
         checker = SemanticChecker(session)
         data = root.visit(checker, None)
+        session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 3)
         messages = [diagnostic.toText() for diagnostic in session.diagnostics]
 
         self.assertTrue(any(all(x in s for x in ["TheInterface.TheEvent", "(5,47):"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ["Order.TheEntity", "(8,48):"]) for s in messages))
-        self.assertTrue(any(all(x in s for x in ["TheValueObject", "(11,40):"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ["TheValueObject", "(11,50):"]) for s in messages))
 
 if __name__ == "__main__":
     unittest.main()

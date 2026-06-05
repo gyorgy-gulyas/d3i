@@ -1,0 +1,27 @@
+{
+  "name": "d3i-extension",
+  "displayName": "d3i Language Support",
+  "description": "Language support for d3i using a Python language server.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Programming Languages"],
+  "activationEvents": [
+    "onLanguage:d3i"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "d3i",
+        "aliases": ["D3i", "D3I"],
+        "extensions": [".d3"],
+        "configuration": "./language-configuration.json"
+      }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.0"
+  }
+}

@@ -1,5 +1,5 @@
 {
-    "autopep8.args": ["--max-line-length=160"],
+    "autopep8.args": ["--max-line-length=254"],
     "python.testing.cwd": "${workspaceFolder}",
     "python.testing.unittestArgs": [
         "-v",

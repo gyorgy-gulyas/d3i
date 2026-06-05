@@ -1,36 +1,64 @@
 import json
 import os
-from typing import Any
-import d3i.elements.ElementVisitor
+from typing import Any, Dict
 from d3i.elements.Elements import *
-from d3i.Engine import Session
+from d3i.Engine import *
 
-def DoEmit( session:Session, output_dir:str):
+
+def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
     jsonEmmiter = JsonEmitter()
-    data = session.main.visit(jsonEmmiter, None)
-    json_result = json.dumps(data, indent=4)
+
+    indent = 4
+    if "json.indent" in configuration:
+        indent = int(configuration["indent"])
+
+    ensure_ascii = True
+    if "json.ensure_ascii" in configuration:
+        ensure_ascii = bool(configuration["ensure_ascii"])
+
+    sort_keys = False
+    if "json.sort_keys" in configuration:
+        sort_keys = bool(configuration["sort_keys"])
+
+    json_result = jsonEmmiter.Emit(session, indent, ensure_ascii, sort_keys)
     with open(os.path.join(output_dir, "main.json"), "w") as file:
         file.write(json_result)
     return json_result
 
 
-class JsonEmitter(d3i.elements.ElementVisitor):
+class JsonEmitter(ElementVisitor):
     def __init__(self, withLocation: bool = True):
         self.dict = {}
         self.withLocation = withLocation
 
+    def Emit(self, session: Session, indent=4, ensure_ascii=True, sort_keys=False) -> str:
+        data = session.main.visit(self, None)
+        json_result = json.dumps(data,
+                                 indent=indent,
+                                 ensure_ascii=ensure_ascii,
+                                 sort_keys=sort_keys)
+        return json_result
+
     def visitd3(self, d3: d3, parentData: Any) -> Any:
         self.dict = {
             "$type": "d3i.d3",
+            "imports": [],
             "domains": [],
         }
         return self.dict
+
+    def visitImport(self, _import: import_, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.import_",
+            "name": _import.name,
+        }
+        parentData['imports'].append(data)
+        return data
 
     def visitDomain(self, domain: domain, parentData: Any) -> Any:
         data = {
             "$type": "d3i.domain",
             "name": domain.name,
-            "decorators": [],
             "directives": [],
             "contexts": [],
             "domain_events": []
@@ -41,7 +69,6 @@ class JsonEmitter(d3i.elements.ElementVisitor):
     def visitDirective(self, directive: directive, parentData: Any) -> Any:
         data = {
             "$type": "d3i.directive",
-            "decorators": [],
             "keyword": directive.keyword,
             "value": directive.value.names,
         }
@@ -52,15 +79,12 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.context",
             "name": context.name,
-            "decorators": [],
-            "enums": [],
-            "value_objects": [],
             "entities": [],
+            "composites": [],
             "aggregates": [],
             "views": [],
             "repositories": [],
             "acls": [],
-            "context_events": [],
             "services": [],
             "interfaces": [],
         }
@@ -71,7 +95,8 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.event",
             "name": event.name,
-            "inherits" : [],
+            "version": str(event.version),
+            "inherits": [],
             "members": []
         }
         parentData["events"].append(data)
@@ -86,49 +111,67 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         parentData["members"].append(data)
         return data
 
-    def visitEnum(self, enum: enum, parentData: Any) -> Any:
-        if isinstance(enum.parent, context):
-            key = "enums"
-        else:
-            key = "enums"
+    def visitEventHandler(self, eventhandler: eventhandler, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.eventhandler",
+            "name": eventhandler.name,
+            "handled_event": eventhandler.handledEvent.getText(),
+        }
+        parentData["eventhandlers"].append(data)
+        return data
+    
 
+    def visitEnum(self, enum: enum, parentData: Any) -> Any:
         data = {
             "$type": "d3i.enum",
             "name": enum.name,
             "enum_elements": []
         }
-        parentData[key].append(data)
+        parentData["enums"].append(data)
         return data
 
     def visitEnumElement(self, enum_element: enum_element, parentData: Any) -> Any:
         data = {
             "$type": "d3i.enum_element",
-            "name": enum_element.value,
+            "value": enum_element.value,
         }
         parentData["enum_elements"].append(data)
         return data
 
     def visitValueObject(self, value_object: value_object, parentData: Any) -> Any:
-        if isinstance(value_object.parent, context):
-            key = "value_objects"
-        else:
-            key = "value_objects"
-
         data = {
             "$type": "d3i.value_object",
             "name": value_object.name,
-            "inherits" : [],
+            "inherits": [],
             "members": [],
-            "enums": [],
-            "value_objects": []
         }
-        parentData[key].append(data)
+        parentData["value_objects"].append(data)
         return data
 
     def visitValueObjectMember(self, value_object_member: value_object_member, parentData: Any) -> Any:
         data = {
             "$type": "d3i.value_object_member",
             "name": value_object_member.name,
+            "type": {},
+        }
+        parentData["members"].append(data)
+        return data
+
+    def visitDto(self, dto: dto, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.dto",
+            "name": dto.name,
+            "inherits": [],
+            "members": [],
+        }
+        parentData["dtos"].append(data)
+        return data
+
+    def visitDtoMember(self, dto_member: dto_member, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.dto_member",
+            "name": dto_member.name,
+            "type": {},
         }
         parentData["members"].append(data)
         return data
@@ -137,23 +180,22 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.entity",
             "name": entity.name,
-            "inherits" : [],
+            "inherits": [],
             "members": [],
-            "enums": [],
-            "value_objects": []
         }
 
         if isinstance(entity.parent, context):
             parentData["entities"].append(data)
         elif isinstance(entity.parent, aggregate_entity):
             parentData["entity"] = data
-        
+
         return data
 
     def visitEntityMember(self, entity_member: entity_member, parentData: Any) -> Any:
         data = {
             "$type": "d3i.entity_member",
             "name": entity_member.name,
+            "type": {},
         }
         parentData["members"].append(data)
         return data
@@ -162,9 +204,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.aggregate",
             "name": aggregate.name,
-            "internal_entities": [],
-            "enums": [],
-            "value_objects": []
+            "internal_entities": []
         }
         parentData["aggregates"].append(data)
         return data
@@ -181,14 +221,12 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.view",
             "name": view.name,
-            "inherits" : [],
+            "inherits": [],
             "members": [],
-            "enums": [],
-            "value_objects": []
         }
 
         parentData["views"].append(data)
-        
+
         return data
 
     def visitViewMember(self, view_member: view_member, parentData: Any) -> Any:
@@ -213,8 +251,6 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "$type": "d3i.acl",
             "name": acl.name,
             "operations": [],
-            "enums": [],
-            "value_objects": []
         }
         parentData["acls"].append(data)
         return data
@@ -225,8 +261,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "name": service.name,
             "operations": [],
             "events": [],
-            "enums": [],
-            "value_objects": []
+            "eventhandlers": [],
         }
         parentData["services"].append(data)
         return data
@@ -235,10 +270,9 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.interface",
             "name": interface.name,
+            "version": str(interface.version),
             "operations": [],
             "events": [],
-            "enums": [],
-            "value_objects": []
         }
         parentData["services"].append(data)
         return data
@@ -248,7 +282,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "$type": "d3i.operation",
             "name": operation.name,
             "operation_params": [],
-            "operation_returns": [],
+            "operation_return": None,
         }
         parentData["operations"].append(data)
         return data
@@ -267,7 +301,7 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             "$type": "d3i.operation_return",
             "type": {},
         }
-        parentData["operation_returns"].append(data)
+        parentData["operation_return"] = data
         return data
 
     def visitType(self, type: type, parentData: Any, memberName: str) -> Any:
@@ -290,7 +324,6 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         data = {
             "$type": "d3i.reference_type",
             "kind": str(reference_type.kind),
-            "isExternal": reference_type.isExternal,
             "reference_name": str(reference_type.reference_name.getText())
         }
         parentData[memberName] = data
@@ -315,18 +348,13 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         parentData[memberName] = data
         return data
 
-    def visitDecoratedElement(self, decorated_element: decorated_base_element, parentData: Any) -> Any:
-        data = []
-        parentData["decorators"] = data
-        return data
-
     def visitDecorator(self, decorator: decorator, parentData: Any) -> Any:
         data = {
             "$type": "d3i.decorator",
             "name": decorator.name,
             "params": [],
         }
-        parentData.append(data)
+        parentData["decorators"].append(data)
         return data
 
     def visitDecoratorParam(self, decorator_param: decorator_param, parentData: Any) -> Any:
@@ -341,6 +369,37 @@ class JsonEmitter(d3i.elements.ElementVisitor):
         parentData['params'].append(data)
         return data
 
+    def visitDocumentLine(self, document_line: str, parentData: Any) -> Any:
+        parentData["document_lines"].append(document_line)
+        return parentData
+
+    def visitInternalScopedBaseElement(self, internal_scoped_base_element: internal_scoped_base_element, parentData: Any) -> Any:
+        dict: Dict[str, Any] = parentData
+
+        if(internal_scoped_base_element.withEnum== True):
+            dict["enums"] = []
+        if(internal_scoped_base_element.withValueObject== True):
+            dict["value_objects"] = []
+        if(internal_scoped_base_element.withDto== True):
+            dict["dtos"] = []
+        return dict
+
+    def visitFunctionalElement(self, functional_element: functional_element, parentData: Any) -> Any:
+        dict: Dict[str, Any] = parentData
+
+        if(functional_element.withEvent== True):
+            dict["events"] = []
+        if(functional_element.withEventHandler== True):
+            dict["eventhandlers"] = []
+
+        return dict
+
+    def visitHintedBaseElement(self, hinted_base_element: hinted_base_element, parentData: Any) -> Any:
+        dict: Dict[str, Any] = parentData
+        dict["document_lines"] = []
+        dict["decorators"] = []
+        return dict
+
     def visitBaseElement(self, base_element: base_element, parentData: Any) -> Any:
         if (self.withLocation == True):
             data = {
@@ -352,4 +411,3 @@ class JsonEmitter(d3i.elements.ElementVisitor):
             return data
         else:
             return None
-
