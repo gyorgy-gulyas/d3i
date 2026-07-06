@@ -679,5 +679,34 @@ domain WebShop {
         self.assertIn("public Dictionary<string,int> mapField { get; set; }", content)
 
 
+    def test_emitter_deprecated_gdpr_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        @deprecated( "use NewAddress, since 2.3" )
+        valueobject Address {
+            city:string
+            @deprecated( "use zip" )
+            zipCode:integer
+            @gdpr
+            email:string
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertEqual(1, len(result))
+        content = result[0].content
+        # Q13: @deprecated -> [Obsolete] on both the class and the field
+        self.assertIn('[Obsolete("use NewAddress, since 2.3")]', content)
+        self.assertIn('[Obsolete("use zip")]', content)
+        # @gdpr is a marker only: it must not emit any attribute (exactly two [Obsolete]s)
+        self.assertEqual(content.count("[Obsolete"), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

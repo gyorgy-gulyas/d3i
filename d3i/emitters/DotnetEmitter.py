@@ -327,6 +327,7 @@ class DotnetEmitter:
         buffer = io.StringIO()
         # Add documentation lines for the composite
         buffer.write(self.documentLines(element, indent))
+        buffer.write(self.deprecatedText(element, indent))   # Q13: @deprecated -> [Obsolete]
         # Write the data class declaration with indentation
         buffer.write(f"{utils.tab(indent)}public partial class {name} : {", ".join(inherit_names)}\n")
         buffer.write(f"{utils.tab(indent)}{{\n")
@@ -1986,6 +1987,19 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
 
+    def deprecatedText(self, element: hinted_base_element, indent: int) -> str:
+        # Q13: @deprecated(...) -> C# [Obsolete("message")]. The optional first
+        # decorator param is the message (e.g. @deprecated("use X, since 2.3")).
+        deprecated = element.find_decorator("deprecated")
+        if (deprecated == None):
+            return ""
+        message = None
+        if (len(deprecated.params) > 0):
+            message = deprecated.params[0].value
+        if (message != None):
+            return f'{utils.tab(indent)}[Obsolete("{message}")]\n'
+        return f"{utils.tab(indent)}[Obsolete]\n"
+
     def propertyText(self, member: hinted_base_element, code: dotnet_code, indent: int) -> str:
         buffer = io.StringIO()
 
@@ -1997,6 +2011,7 @@ class DotnetEmitter:
             value = dotnet_code.find_param("code")
             if( value != None ):
                 buffer.write(f"{utils.tab(indent)}{value.value}\n")
+        buffer.write(self.deprecatedText(member, indent))
         buffer.write(f"{utils.tab(indent)}public {self.typeText(member.type, code,fullName=True)} {member.name} {{ get; set; }}")
         if(member.type.kind == type.Kind.List or member.type.kind == type.Kind.Map ):
             buffer.write(f" = new();")
