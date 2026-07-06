@@ -511,6 +511,8 @@ class DotnetEmitter:
         match memberType.kind:
             case type.Kind.Primitive:
                 return self.dataClassMemberEqualsText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Ref:
+                return self.dataClassMemberEqualsText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.Reference:
                 return self.dataClassMemberEqualsText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.List:
@@ -522,6 +524,8 @@ class DotnetEmitter:
         match memberType.kind:
             case type.Kind.Primitive:
                 return self.dataClassMemberHashText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Ref:
+                return self.dataClassMemberHashText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.Reference:
                 return self.dataClassMemberHashText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.List:
@@ -605,6 +609,8 @@ class DotnetEmitter:
         match memberType.kind:
             case type.Kind.Primitive:
                 return self.dataClassMemberCloneText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Ref:
+                return self.dataClassMemberCloneText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.Reference:
                 return self.dataClassMemberCloneText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.List:
@@ -661,6 +667,8 @@ class DotnetEmitter:
         match memberType.item_type.kind:
             case type.Kind.Primitive:
                 buffer.write(f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{memberName}.Select( v => {self.dataClassMemberCloneExpression( "v", memberType.item_type, code )} ));\n")
+            case type.Kind.Ref:
+                reference_type: reference_type = memberType.item_type
             case type.Kind.Reference:
                 reference_type: reference_type = memberType.item_type
                 referenced_element: base_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name )
@@ -684,6 +692,8 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent)}// clone of {memberName}\n")        
                 buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{memberName})\n")
                 buffer.write( f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.dataClassMemberCloneExpression("kvp.Value", memberType.value_type, code)};\n")
+            case type.Kind.Ref:
+                buffer.write(f"\n")
             case type.Kind.Reference:
                 buffer.write(f"\n")
                 buffer.write(f"{utils.tab(indent)}// clone of {memberName}\n")        
@@ -773,6 +783,8 @@ class DotnetEmitter:
         match memberType.kind:
             case type.Kind.Primitive:
                 return self.dataClassMemberToGrpcMappingText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Ref:
+                return self.dataClassMemberToGrpcMappingText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.Reference:
                 return self.dataClassMemberToGrpcMappingText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.List:
@@ -784,6 +796,8 @@ class DotnetEmitter:
         match memberType.kind:
             case type.Kind.Primitive:
                 return self.dataClassMemberFromGrpcMappingText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Ref:
+                return self.dataClassMemberFromGrpcMappingText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.Reference:
                 return self.dataClassMemberFromGrpcMappingText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.List:
@@ -889,6 +903,8 @@ class DotnetEmitter:
                 else:
                     buffer.write(
                         f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.AddRange( {src}{memberName}.Select( v => {self.convertExpressionToGrpcRepresentation("v", memberType.item_type, code)} ));\n")
+            case type.Kind.Ref:
+                reference_type: reference_type = memberType.item_type
             case type.Kind.Reference:
                 reference_type: reference_type = memberType.item_type
                 referenced_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
@@ -912,6 +928,8 @@ class DotnetEmitter:
                 else:
                     buffer.write(
                         f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{utils.camel_to_pascal(memberName)}.Select( v => {self.convertExpressionFromGrpcRepresentation("v", memberType.item_type, code)} ));\n")
+            case type.Kind.Ref:
+                reference_type: reference_type = memberType.item_type
             case type.Kind.Reference:
                 reference_type: reference_type = memberType.item_type
                 referenced_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
@@ -935,6 +953,8 @@ class DotnetEmitter:
                     buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add({src}{memberName});\n")
                 else:
                     buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add({src}{memberName}.ToDictionary( kvp => kvp.Key, kvp => {self.convertExpressionToGrpcRepresentation("kvp.Value", memberType.value_type, code)}));\n")
+            case type.Kind.Ref:
+                buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add( {src}{memberName}.ToDictionary( kvp => kvp.Key, kvp => {self.typeText(memberType.value_type, code)}.ToGrpc( kvp.Value ) ));\n")
             case type.Kind.Reference:
                 buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add( {src}{memberName}.ToDictionary( kvp => kvp.Key, kvp => {self.typeText(memberType.value_type, code)}.ToGrpc( kvp.Value ) ));\n")
             case type.Kind.List:
@@ -957,6 +977,8 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{utils.camel_to_pascal(memberName)})\n")
                 buffer.write(
                     f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.convertExpressionFromGrpcRepresentation("kvp.Value", memberType.value_type, code)};\n")
+            case type.Kind.Ref:
+                buffer.write(f"\n")
             case type.Kind.Reference:
                 buffer.write(f"\n")
                 buffer.write(f"{utils.tab(indent)}// mapping of {memberName}\n")        
@@ -2026,6 +2048,8 @@ class DotnetEmitter:
         match type.kind:
             case type.Kind.Primitive:
                 return self.typeTextPrimitive(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
+            case type.Kind.Ref:
+                return self.typeTextReference(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
             case type.Kind.Reference:
                 return self.typeTextReference(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
             case type.Kind.List:

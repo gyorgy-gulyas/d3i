@@ -679,6 +679,32 @@ domain WebShop {
         self.assertIn("public Dictionary<string,int> mapField { get; set; }", content)
 
 
+    def test_emitter_ref_ok(self):
+        # Q5: a ref member must emit without crashing. Typed-id codegen
+        # (ref Customer -> CustomerId) is deferred; for now ref delegates to the
+        # aggregate reference.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        aggregate Customer {
+            root entity CustomerRoot { id:string }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                customer: ref Customer
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        header = next(f for f in result if f.fileName == "OrderHeader.cs")
+        self.assertIn("public WebShop.Orders.Customer customer { get; set; }", header.content)
+
     def test_emitter_optional_nullable_ok(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""

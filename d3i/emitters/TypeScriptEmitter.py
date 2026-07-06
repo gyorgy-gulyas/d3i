@@ -375,6 +375,8 @@ class TypeScriptEmitter:
                 return self.typeTextPrimitive(type, code, fullName=fullName)
             case type.Kind.Reference:
                 return self.typeTextReference(type, code, fullName=fullName)
+            case type.Kind.Ref:   # Q5: ref -> reference (typed-id codegen deferred)
+                return self.typeTextReference(type, code, fullName=fullName)
             case type.Kind.List:
                 return self.typeTextList(type, code, fullName=fullName)
             case type.Kind.Map:

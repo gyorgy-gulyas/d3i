@@ -364,6 +364,8 @@ class ProtoEmitter:
                 return self.typeTextPrimitive(type,code)
             case type.Kind.Reference:
                 return self.typeTextReference(type, code)
+            case type.Kind.Ref:   # Q5: ref -> reference (typed-id codegen deferred)
+                return self.typeTextReference(type, code)
             case type.Kind.List:
                 return self.typeTextList(type, code, inOneOf)
             case type.Kind.Map:
