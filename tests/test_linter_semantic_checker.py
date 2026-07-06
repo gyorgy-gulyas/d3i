@@ -370,7 +370,7 @@ domain SomeDomain {
         valueobject TheName { }
         aggregate TheName { root entity TheEntity{}}
         view TheName { }
-        repository TheName : TheName
+        repository TheName {}
         acl TheName {}
         service TheName {}
         interface TheName version 1 {}
@@ -501,25 +501,6 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("OrderAggregate" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "More than one root"]))
-
-    def test_repository_unknown_reference_fail(self):
-        engine = Engine()
-        session = Session(Source.CreateFromText("""
-domain SomeDomain {
-    context OrderContext{
-        repository TheRepository : NotDefined
-    }
-}
-"""))
-        root = engine.Build(session)
-        self.assertFalse(session.HasAnyError())
-
-        checker = SemanticChecker(session)
-        data = root.visit(checker, None)
-        session.PrintDiagnostics()
-        self.assertEqual(len(session.diagnostics), 1)
-        self.assertTrue("TheRepository" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "NotDefined"]))
 
     def test_conflict_acl_fail(self):
         engine = Engine()
@@ -791,6 +772,216 @@ domain SomeDomain {
         self.assertTrue(any(all(x in s for x in ["TheInterface.TheEvent", "(5,47):"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ["Order.TheEntity", "(8,48):"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ["TheValueObject", "(11,50):"]) for s in messages))
+
+    def test_conflict_dto_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        interface TheInterface version 1 {
+            dto TheDto { }
+            dto TheDto { }
+            dto OtherDto { }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 2)
+        messages = [diagnostic.toText() for diagnostic in session.diagnostics]
+        self.assertTrue(all("TheDto" in s and "conflicts" in s for s in messages))
+
+    def test_conflict_dto_member_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        interface TheInterface version 1 {
+            dto TheDto {
+                member:string
+                member:integer
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 2)
+        messages = [diagnostic.toText() for diagnostic in session.diagnostics]
+        self.assertTrue(all("member" in s and "conflicts" in s for s in messages))
+
+    def test_conflict_composite_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        composite TheComposite { }
+        composite TheComposite { }
+        composite OtherComposite { }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 2)
+        messages = [diagnostic.toText() for diagnostic in session.diagnostics]
+        self.assertTrue(all("TheComposite" in s and "conflicts" in s for s in messages))
+
+    def test_conflict_composite_member_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        composite TheComposite {
+            member:string
+            member:integer
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 2)
+        messages = [diagnostic.toText() for diagnostic in session.diagnostics]
+        self.assertTrue(all("member" in s and "conflicts" in s for s in messages))
+
+    def test_conflict_repository_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        repository TheRepository { }
+        repository TheRepository { }
+        repository OtherRepository { }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 2)
+        messages = [diagnostic.toText() for diagnostic in session.diagnostics]
+        self.assertTrue(all("TheRepository" in s and "already exists" in s for s in messages))
+
+    def test_inheritance_not_found_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject TheValueObject inherits NotDefined { }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("NotDefined" in session.diagnostics[0].toText())
+        self.assertTrue("inheritance is not found" in session.diagnostics[0].toText())
+
+    def test_eventhandler_unknown_event_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        service TheService {
+            eventhandler TheHandler for event NotDefinedEvent
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("NotDefinedEvent" in session.diagnostics[0].toText())
+        self.assertTrue("handled event" in session.diagnostics[0].toText())
+
+    def test_view_projection_unknown_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        view TheView projected: NotDefined { }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("NotDefined" in session.diagnostics[0].toText())
+        self.assertTrue("projection is not found" in session.diagnostics[0].toText())
+
+    def test_invalid_list_type_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject TheValueObject {
+            data: list[ list[ string ] ]
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("list can only contain" in session.diagnostics[0].toText())
+
+    def test_invalid_map_type_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject TheValueObject {
+            data: map[ string, list[ string ] ]
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("Value of map can only contain" in session.diagnostics[0].toText())
 
 if __name__ == "__main__":
     unittest.main()

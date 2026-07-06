@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "d3i"
+version = "0.1.0"
+description = "d3i — DDD model compiler: parses a .d3 DDD DSL and emits backend skeletons (.NET/C#, JSON, Proto/gRPC, TypeScript)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Gulyás György Tamás" }]
+keywords = ["ddd", "code-generation", "dsl", "antlr", "domain-driven-design"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+# Runtime dependency. The only hard requirement is the ANTLR runtime used by the
+# generated parser/lexer and the Engine. Everything else is optional (see extras).
+dependencies = [
+    "antlr4-python3-runtime==4.13.2",
+]
+
+[project.optional-dependencies]
+# Language Server (language_server.py) — install with:  pip install d3i[lsp]
+lsp = ["pygls>=1.3.1"]
+# Test/dev tooling. pythonnet+clr-loader compile & verify generated C# in the
+# dotnet emitter tests; jsondiff compares emitter output in tests.
+dev = [
+    "jsondiff>=2.2.1",
+    "pythonnet>=3.0.4",
+    "clr-loader>=0.2.6",
+]
+
+[project.scripts]
+d3i = "d3i.__main__:main"
+
+[tool.setuptools.packages.find]
+# Ship only the d3i package; never package the test suite.
+include = ["d3i*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+# Non-.py runtime assets bundled inside the package.
+d3i = [
+    "configuration.json",
+    "grammar/*.g4",
+    "grammar/*.tokens",
+    "grammar/*.interp",
+]
+
+[tool.pytest.ini_options]
+# Tests are unittest-style but discoverable/runnable via pytest too.
+testpaths = ["tests"]
+python_files = ["test_*.py"]

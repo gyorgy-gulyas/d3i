@@ -691,7 +691,9 @@ domain somedomain {
                 price:decimal
             }
         }
-        repository orders:Order
+        repository orders {
+            query getById( id:string ) : string
+        }
     }
 }
 """))
@@ -699,8 +701,8 @@ domain somedomain {
         context: context = root.domains[0].contexts[0]
         repository: repository = context.repositories[0]
         self.assertEqual(repository.name, "orders")
-        self.assertEqual(repository.referenced_name, "Order")
-        self.assertEqual(repository.kind, repository.Kind.RelationalSQL)
+        self.assertEqual(len(repository.operations), 1)
+        self.assertEqual(repository.operations[0].name, "getById")
 
     def test_service_event_ok(self):
         engine = Engine()
@@ -934,6 +936,202 @@ domain somedomain {
         self.assertEqual(len(operation_return.decorators), 1)
         self.assertEqual(operation_return.type.kind, type.Kind.Reference)
         self.assertEqual(operation_return.type.reference_name.getText(), "OrderDTO")
+
+
+    def test_dto(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        interface TheInterface version 1 {
+            dto TheDto {
+                enum Kind {
+                    A,
+                    B
+                }
+                field:string
+                amount:integer
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        interface: interface = context.interfaces[0]
+        self.assertEqual(len(interface.dtos), 1)
+        dto: dto = interface.dtos[0]
+        self.assertEqual(dto.name, "TheDto")
+        self.assertEqual(len(dto.members), 2)
+        self.assertEqual(dto.members[0].name, "field")
+        self.assertEqual(dto.members[0].type.kind, type.Kind.Primitive)
+        self.assertEqual(dto.members[0].type.primtiveKind, primitive_type.PrimtiveKind.String)
+        self.assertEqual(dto.members[1].name, "amount")
+        self.assertEqual(dto.members[1].type.primtiveKind, primitive_type.PrimtiveKind.Integer)
+        self.assertEqual(len(dto.enums), 1)
+        self.assertEqual(dto.enums[0].name, "Kind")
+
+    def test_list_type(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject TheValueObject {
+            data: list[ string ]
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        member = context.value_objects[0].members[0]
+        self.assertEqual(member.name, "data")
+        self.assertEqual(member.type.kind, type.Kind.List)
+        self.assertEqual(member.type.item_type.kind, type.Kind.Primitive)
+        self.assertEqual(member.type.item_type.primtiveKind, primitive_type.PrimtiveKind.String)
+
+    def test_map_type(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject TheValueObject {
+            data: map[ string, integer ]
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        member = context.value_objects[0].members[0]
+        self.assertEqual(member.name, "data")
+        self.assertEqual(member.type.kind, type.Kind.Map)
+        self.assertEqual(member.type.key_type.kind, type.Kind.Primitive)
+        self.assertEqual(member.type.key_type.primtiveKind, primitive_type.PrimtiveKind.String)
+        self.assertEqual(member.type.value_type.kind, type.Kind.Primitive)
+        self.assertEqual(member.type.value_type.primtiveKind, primitive_type.PrimtiveKind.Integer)
+
+    def test_view_projection(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        view TheView projected: SomeEntity {
+            field:string
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        view: view = context.views[0]
+        self.assertEqual(view.name, "TheView")
+        self.assertEqual(len(view.view_projections), 1)
+        self.assertEqual(view.view_projections[0].getText(), "SomeEntity")
+
+    def test_value_object_inheritance(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Derived inherits Base {
+            field:string
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        value_object: value_object = context.value_objects[0]
+        self.assertEqual(value_object.name, "Derived")
+        self.assertEqual(len(value_object.inherits), 1)
+        self.assertEqual(value_object.inherits[0].getText(), "Base")
+
+    def test_composite_inheritance(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        composite Derived inherits Base {
+            field:string
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        composite: composite = context.composites[0]
+        self.assertEqual(composite.name, "Derived")
+        self.assertEqual(len(composite.inherits), 1)
+        self.assertEqual(composite.inherits[0].getText(), "Base")
+
+    def test_view_inheritance(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        view Derived inherits Base {
+            field:string
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        view: view = context.views[0]
+        self.assertEqual(view.name, "Derived")
+        self.assertEqual(len(view.inherits), 1)
+        self.assertEqual(view.inherits[0].getText(), "Base")
+
+    def test_eventhandler(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        service TheService {
+            eventhandler TheHandler for event SomeEvent
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        service: service = context.services[0]
+        self.assertEqual(len(service.eventhandlers), 1)
+        self.assertEqual(service.eventhandlers[0].name, "TheHandler")
+        self.assertEqual(service.eventhandlers[0].handledEvent.getText(), "SomeEvent")
+
+    def test_operation_command_query(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        service TheService {
+            command doIt( x:string ) : boolean
+            query getIt( id:integer ) : SomeType
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        service: service = context.services[0]
+        self.assertEqual(len(service.operations), 2)
+
+        command: operation = service.operations[0]
+        self.assertEqual(command.kind, operation.Kind.Command)
+        self.assertEqual(command.name, "doIt")
+        self.assertEqual(command.operation_params[0].name, "x")
+        self.assertEqual(command.operation_params[0].type.primtiveKind, primitive_type.PrimtiveKind.String)
+        self.assertEqual(command.operation_return.type.kind, type.Kind.Primitive)
+        self.assertEqual(command.operation_return.type.primtiveKind, primitive_type.PrimtiveKind.Boolean)
+
+        query: operation = service.operations[1]
+        self.assertEqual(query.kind, operation.Kind.Query)
+        self.assertEqual(query.name, "getIt")
+        self.assertEqual(query.operation_params[0].type.primtiveKind, primitive_type.PrimtiveKind.Integer)
+        self.assertEqual(query.operation_return.type.kind, type.Kind.Reference)
+        self.assertEqual(query.operation_return.type.reference_name.getText(), "SomeType")
 
 
 if __name__ == "__main__":

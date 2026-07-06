@@ -7,6 +7,33 @@ from pathlib import Path
 from d3i.Engine import *
 from d3i.linters.SemanticChecker import *
 
+# Emitter capability matrix. Each key is a qualified target:
+#   "<language>:<side>"  (side = backend | client), or a side-agnostic
+#   contract emitter ("proto", "json").
+# Value: (module, language, side, status, note)
+#   module: importable module exposing DoEmit(...), or None if not implemented
+#   status: "supported" (has an emitter) | "planned" (valid, not built yet)
+#           | "invalid" (never valid)
+#   note:   human-readable reason/hint (used in error messages)
+EMITTER_TARGETS = {
+    "dotnet:backend":     ("d3i.emitters.DotnetEmitter",     "dotnet",     "backend",  "supported", ""),
+    "dotnet:client":      (None,                             "dotnet",     "client",   "planned",   "Blazor"),
+    "typescript:client":  ("d3i.emitters.TypeScriptEmitter", "typescript", "client",   "supported", ""),
+    "typescript:backend": (None,                             "typescript", "backend",  "invalid",   "TypeScript is client-only; there is no server runtime (Node is not supported)"),
+    "java:backend":       (None,                             "java",       "backend",  "planned",   ""),
+    "java:client":        (None,                             "java",       "client",   "planned",   ""),
+    "rust:backend":       (None,                             "rust",       "backend",  "planned",   ""),
+    "rust:client":        (None,                             "rust",       "client",   "planned",   ""),
+    # Side-agnostic contract emitters (needed by every implementation).
+    "proto":              ("d3i.emitters.ProtoEmitter",      "proto",      "contract", "supported", ""),
+    "json":               ("d3i.emitters.JsonEmitter",       "json",       "contract", "supported", ""),
+}
+
+# Backward-compatible / convenience aliases for contract emitters.
+EMITTER_ALIASES = {
+    "protobuf": "proto",
+}
+
 # Adds CLI arguments to the parser
 def __add_known_arguments(arg_parser: argparse.ArgumentParser):
     """
@@ -22,9 +49,8 @@ def __add_known_arguments(arg_parser: argparse.ArgumentParser):
                             default=None)
     arg_parser.add_argument("-i",
                             "--input",
-                            help="input d3 file",
-                            required=True,
-                            default=[])
+                            help="input .d3 file",
+                            required=True)
     arg_parser.add_argument("-l",
                             "--linter",
                             help="used linter phyton file(s), if you specify multiple files, all liter will be called",
@@ -32,7 +58,7 @@ def __add_known_arguments(arg_parser: argparse.ArgumentParser):
                             default=[])
     arg_parser.add_argument("-e",
                             "--emitter",
-                            help="used emmitter file, if you specify multiple files, all emitter will be called. The emitter can a built-in emitter (json,dotnet,java,rust) or can a emitter pyton file",
+                            help="emitter target(s) to run; you may specify multiple. Each is a qualified 'language:side' target (e.g. dotnet:backend, typescript:client), a side-agnostic contract emitter (proto, json), or a path to an external emitter .py file",
                             nargs='+',
                             default=[])
     arg_parser.add_argument("-o",
@@ -46,17 +72,17 @@ def __add_known_arguments(arg_parser: argparse.ArgumentParser):
                             action="store_true")
     arg_parser.add_argument("-aoe",
                             "--abort-on-error",
-                            help="when any file has a any error, or any of the linter reports an error, then no emitter called and the executing is aborted. Default value is True",
-                            default="True",
-                            action="store_true")
+                            help="abort before emitting if any file or linter reports an error (default: enabled). Disable with --no-abort-on-error.",
+                            default=True,
+                            action=argparse.BooleanOptionalAction)
     arg_parser.add_argument("-aow",
                             "--abort-on-warning",
-                            help="when any file has a any warinig, or any of the linter reports a warining, then no emitter called and the executing is aborted. Default value is False",
-                            default="False",
-                            action="store_true")
+                            help="abort before emitting if any file or linter reports a warning (default: disabled). Enable with --abort-on-warning.",
+                            default=False,
+                            action=argparse.BooleanOptionalAction)
     arg_parser.add_argument("-c",
                             "--config-file",
-                            help="define the configuration in json format. If the option is ont present, then the default ./configuration.json will be used" )
+                            help="path to a JSON configuration file. If omitted, the default configuration.json bundled in the d3i package is used." )
 
 # Reads the configuration file and returns it as a dictionary
 def __read_config_file(args, unknown_args) -> Dict[str, str]:
@@ -130,8 +156,8 @@ def __parse_input_file(args, configuration: Dict[str, str]) -> Session:
     engine = Engine(configuration)
 
     # Check if the input file exists, otherwise exit
-    if os.path.exists(args.input) == False:
-        exit(f"'{input}' file does not exist")
+    if not os.path.exists(args.input):
+        exit(f"'{args.input}' file does not exist")
 
     # Create a session from the input file
     session = Session(Source.CreateFromFile(args.input), args.project_name)
@@ -164,7 +190,7 @@ def __check_errors(session: Session, args, action: str):
             exit("abort on error is enabled, process is aborted")
 
         # Abort if any warning occurs and abort-on-warning is set
-        if (session.HasAnyWarning() == True and args.abort_on_warinig):
+        if (session.HasAnyWarning() == True and args.abort_on_warning):
             exit("abort on warning is enabled, process is aborted")
     else:
         # Print info if verbose flag is set and no errors/warnings found
@@ -196,39 +222,70 @@ def __call_linters(session: Session, args, configuration: Dict[str, str]):
             print(f"information: calling linter:'{linter_file}'")
         module.DoLint(session, configuration)
 
+# Resolves a CLI emitter argument against the capability matrix.
+def __resolve_emitter(emitter_name: str):
+    """
+    Resolves a CLI emitter argument to (imported module, side), or exits with a
+    helpful message. Accepts a qualified "language:side" target, a side-agnostic
+    contract emitter (proto/json), or a path to an external emitter .py file.
+
+    Two distinct error classes are reported:
+      - invalid: the target can never exist (e.g. typescript:backend);
+      - planned: the target is valid but not implemented yet (e.g. dotnet:client).
+    """
+    key = EMITTER_ALIASES.get(emitter_name, emitter_name)
+
+    if key in EMITTER_TARGETS:
+        module_path, language, side, status, note = EMITTER_TARGETS[key]
+        if status == "supported":
+            return importlib.import_module(module_path), side
+        if status == "planned":
+            suffix = f" ({note})" if note else ""
+            exit(f"error: the {language} {side} emitter{suffix} is planned but not implemented yet.")
+        if status == "invalid":
+            exit(f"error: '{emitter_name}' is not a valid target - {note}.")
+
+    # A bare language name without a side: suggest the valid qualified forms.
+    suggestions = sorted(
+        k for k, v in EMITTER_TARGETS.items()
+        if k.startswith(emitter_name + ":") and v[3] != "invalid"
+    )
+    if suggestions:
+        exit(f"error: '{emitter_name}' needs a side - use one of: {', '.join(suggestions)}")
+
+    # An external emitter given as a path to a .py file.
+    if os.path.exists(emitter_name):
+        spec = importlib.util.spec_from_file_location(Path(emitter_name).stem, emitter_name)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module, "external"
+
+    known = ", ".join(sorted(EMITTER_TARGETS))
+    exit(f"unknown emitter '{emitter_name}': not a known target ({known}) and no such file")
+
+
 # Calls the emitters specified in the arguments
 def __call_emiters(session: Session, args, configuration: Dict[str, str]):
     """
-    Calls the emitter modules (built-in or external) to generate output based on the session.
-
-    Parameters:
-        session (Session): The session to emit from.
-        args: Parsed CLI arguments.
-        configuration (Dict[str, str]): Loaded configuration dictionary.
+    Resolves & validates every requested emitter up front (fail fast), then runs them.
     """
-    # Execute each emitter file provided in the arguments
+    if (len(args.emitter) == 0):
+        return
+
+    resolved = []  # list of (name, module, side)
     for emitter_name in args.emitter:
+        module, side = __resolve_emitter(emitter_name)
+        resolved.append((emitter_name, module, side))
+
+    # Warn if only the shared contract is being generated (no backend/client target).
+    if all(side == "contract" for (_name, _module, side) in resolved):
+        print("warning: only contract emitters (proto/json) were requested - these "
+              "generate the shared wire contract and are usually run alongside a "
+              "backend or client target.")
+
+    for emitter_name, module, side in resolved:
         if (args.verbose):
             print(f"information: calling emitter:'{emitter_name}'")
-        
-        match emitter_name:
-            case "protobuf":
-                spec = importlib.util.spec_from_file_location("protobuf", os.path.join(Path(__file__).parent, "emitters/ProtoEmitter.py"))
-            case "dotnet":
-                spec = importlib.util.spec_from_file_location("dotnet", os.path.join(Path(__file__).parent, "emitters/DotnetEmitter.py"))
-            case "json":
-                spec = importlib.util.spec_from_file_location("json", os.path.join(Path(__file__).parent, "emitters/JsonEmitter.py"))
-            case "typescript":
-                spec = importlib.util.spec_from_file_location("ts", os.path.join(Path(__file__).parent, "emitters/TypeScriptEmitter.py"))
-            case "java":
-                spec = importlib.util.spec_from_file_location("java", os.path.join(Path(__file__).parent, "emitters/JavaEmitter.py"))
-            case "rust":
-                spec = importlib.util.spec_from_file_location("rust", os.path.join(Path(__file__).parent, "emitters/RustEmitter.py"))
-            case _:
-                spec = importlib.util.spec_from_file_location(Path(emitter_name).stem, emitter_name)
-
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
         module.DoEmit(session, args.output_dir, configuration)
 
 # Main function to run the script
@@ -242,12 +299,8 @@ def main():
     arg_parser = argparse.ArgumentParser(description="This program processes d3i files and produces results according to the specified emitter.")
     __add_known_arguments(arg_parser)
 
-    # Parse known arguments and unknown arguments
+    # Parse known arguments and unknown arguments (-i/--input is required, argparse enforces it)
     args, unknown_args = arg_parser.parse_known_args()
-
-    # Check if at least one input file is specified, otherwise print error
-    if (len(args.input) == 0):
-        print("at least one input must be specified, use -h to see help.")
 
     # Read configuration file and parse input files
     configuration = __read_config_file(args, unknown_args)
@@ -261,4 +314,8 @@ def main():
     # Run emitters on the session
     __call_emiters(session, args, configuration)
     __check_errors(session, args, "emitting")
+
+
+if __name__ == "__main__":
+    main()
 

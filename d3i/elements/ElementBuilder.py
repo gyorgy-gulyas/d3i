@@ -1171,11 +1171,19 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#decorator_param.
     def visitDecorator_param(self, ctx: d3iGrammar.Decorator_paramContext):
         result = decorator_param(self.fileName, ctx.start)
-        result.name = ctx.IDENTIFIER().getText()
+        # A decorator param may be positional (a bare value with no name),
+        # so IDENTIFIER can be absent; leave name as None in that case.
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
         if (ctx.qualifiedName() != None):
             result.kind = decorator_param.Kind.QualifiedName
             result.value = self.visit(ctx.qualifiedName())
             result.value.parent = result
+            # Backward compat: a bare single-identifier positional param (e.g.
+            # `@public_api( rest )`) also acts as a named flag, so find_param()
+            # can still locate it by name. Dotted names stay purely positional.
+            if (result.name == None and len(ctx.qualifiedName().IDENTIFIER()) == 1):
+                result.name = ctx.qualifiedName().getText()
         elif (ctx.INTEGER_CONSTANS() != None):
             result.kind = decorator_param.Kind.Integer
             result.value = int(ctx.INTEGER_CONSTANS().getText())
