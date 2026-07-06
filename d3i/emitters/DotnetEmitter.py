@@ -2012,7 +2012,10 @@ class DotnetEmitter:
             if( value != None ):
                 buffer.write(f"{utils.tab(indent)}{value.value}\n")
         buffer.write(self.deprecatedText(member, indent))
-        buffer.write(f"{utils.tab(indent)}public {self.typeText(member.type, code,fullName=True)} {member.name} {{ get; set; }}")
+        type_text = self.typeText(member.type, code, fullName=True)
+        if (member.find_decorator("optional") != None):   # Q8: @optional -> nullable; unmarked = required
+            type_text = type_text + "?"
+        buffer.write(f"{utils.tab(indent)}public {type_text} {member.name} {{ get; set; }}")
         if(member.type.kind == type.Kind.List or member.type.kind == type.Kind.Map ):
             buffer.write(f" = new();")
         buffer.write(f"\n")

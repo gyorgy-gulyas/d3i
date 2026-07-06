@@ -679,6 +679,31 @@ domain WebShop {
         self.assertIn("public Dictionary<string,int> mapField { get; set; }", content)
 
 
+    def test_emitter_optional_nullable_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        valueobject Contact {
+            email:string
+            @optional
+            phone:string
+            @optional
+            age:integer
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        content = result[0].content
+        # Q8: unmarked = required (non-nullable); @optional -> nullable
+        self.assertIn("public string email { get; set; }", content)
+        self.assertIn("public string? phone { get; set; }", content)
+        self.assertIn("public int? age { get; set; }", content)
+
     def test_emitter_deprecated_gdpr_ok(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
