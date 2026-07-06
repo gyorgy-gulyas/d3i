@@ -1525,6 +1525,7 @@ domain SomeDomain {
     context OrderContext {
         @storage( "mongo" )
         repository orders {
+            query getById( id:string ) : string
         }
     }
 }
@@ -1553,6 +1554,62 @@ domain SomeDomain {
                         {
                             "$type": "d3i.repository",
                             "name": "orders",
+                            "operations": [
+                                {
+                                    "$type": "d3i.operation",
+                                    "name": "getById",
+                                    "operation_params": [
+                                        {
+                                            "$type": "d3i.operation_param",
+                                            "name": "id",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 6,
+                                                    "column": 30
+                                                }
+                                            },
+                                            "document_lines": [],
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 6,
+                                                "column": 27
+                                            }
+                                        }
+                                    ],
+                                    "operation_return": {
+                                        "$type": "d3i.operation_return",
+                                        "type": {
+                                            "$type": "d3i.primitive_type",
+                                            "kind": "Kind.Primitive",
+                                            "primtiveKind": "PrimtiveKind.String",
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 6,
+                                                "column": 41
+                                            }
+                                        },
+                                        "document_lines": [],
+                                        "decorators": [],
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 6,
+                                            "column": 41
+                                        }
+                                    },
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 6,
+                                        "column": 12
+                                    }
+                                }
+                            ],
                             "document_lines": [],
                             "decorators": [
                                 {

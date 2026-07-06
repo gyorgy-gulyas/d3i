@@ -692,6 +692,7 @@ domain somedomain {
             }
         }
         repository orders {
+            query getById( id:string ) : string
         }
     }
 }
@@ -700,7 +701,8 @@ domain somedomain {
         context: context = root.domains[0].contexts[0]
         repository: repository = context.repositories[0]
         self.assertEqual(repository.name, "orders")
-        self.assertEqual(len(repository.operations), 0)
+        self.assertEqual(len(repository.operations), 1)
+        self.assertEqual(repository.operations[0].name, "getById")
 
     def test_service_event_ok(self):
         engine = Engine()
