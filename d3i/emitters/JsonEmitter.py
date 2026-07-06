@@ -155,6 +155,7 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.value_object_member",
             "name": value_object_member.name,
+            "validate": value_object_member.validate,
             "type": {},
         }
         parentData["members"].append(data)
@@ -174,6 +175,7 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.composite_member",
             "name": composite_member.name,
+            "validate": composite_member.validate,
             "type": {},
         }
         parentData["members"].append(data)
@@ -218,6 +220,7 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.entity_member",
             "name": entity_member.name,
+            "validate": entity_member.validate,
             "type": {},
         }
         parentData["members"].append(data)

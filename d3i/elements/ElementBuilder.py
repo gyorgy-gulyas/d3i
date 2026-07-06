@@ -335,6 +335,8 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.type_() != None):
             result.type = self.visit(ctx.type_())
             result.type.parent = result
+        if (ctx.validate_expr() != None):
+            result.validate = ctx.validate_expr().getText()
 
         counter = 0
         while True:
@@ -417,6 +419,8 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.type_() != None):
             result.type = self.visit(ctx.type_())
             result.type.parent = result
+        if (ctx.validate_expr() != None):
+            result.validate = ctx.validate_expr().getText()
 
         counter = 0
         while True:
@@ -621,6 +625,8 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.type_() != None):
             result.type = self.visit(ctx.type_())
             result.type.parent = result
+        if (ctx.validate_expr() != None):
+            result.validate = ctx.validate_expr().getText()
 
         counter = 0
         while True:

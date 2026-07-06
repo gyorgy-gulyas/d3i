@@ -325,6 +325,7 @@ class value_object_member(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.type: type = None
+        self.validate: str = None   # Q4: validate expression text, or None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitValueObjectMember(self, parentData)
@@ -379,6 +380,7 @@ class composite_member(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.type: type = None
+        self.validate: str = None   # Q4: validate expression text, or None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitCompositeMember(self, parentData)
@@ -454,6 +456,7 @@ class entity_member(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.type: type = None
+        self.validate: str = None   # Q4: validate expression text, or None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEntityMember(self, parentData)

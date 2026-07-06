@@ -524,6 +524,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "country",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.reference_type",
                                         "kind": "Kind.Reference",
@@ -567,6 +568,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "address",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
@@ -610,6 +612,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "zipCode",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
@@ -676,6 +679,7 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "data_1",
+                                            "validate": null,
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -697,6 +701,7 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "data_2",
+                                            "validate": null,
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -860,6 +865,7 @@ domain SomeDomain {
                                             {
                                                 "$type": "d3i.entity_member",
                                                 "name": "id",
+                                                "validate": null,
                                                 "type": {
                                                     "$type": "d3i.primitive_type",
                                                     "kind": "Kind.Primitive",
@@ -881,6 +887,7 @@ domain SomeDomain {
                                             {
                                                 "$type": "d3i.entity_member",
                                                 "name": "address",
+                                                "validate": null,
                                                 "type": {
                                                     "$type": "d3i.reference_type",
                                                     "kind": "Kind.Reference",
@@ -902,6 +909,7 @@ domain SomeDomain {
                                             {
                                                 "$type": "d3i.entity_member",
                                                 "name": "partnerType",
+                                                "validate": null,
                                                 "type": {
                                                     "$type": "d3i.reference_type",
                                                     "kind": "Kind.Reference",
@@ -949,6 +957,7 @@ domain SomeDomain {
                                             {
                                                 "$type": "d3i.entity_member",
                                                 "name": "order_id",
+                                                "validate": null,
                                                 "type": {
                                                     "$type": "d3i.primitive_type",
                                                     "kind": "Kind.Primitive",
@@ -970,6 +979,7 @@ domain SomeDomain {
                                             {
                                                 "$type": "d3i.entity_member",
                                                 "name": "item",
+                                                "validate": null,
                                                 "type": {
                                                     "$type": "d3i.primitive_type",
                                                     "kind": "Kind.Primitive",
@@ -991,6 +1001,7 @@ domain SomeDomain {
                                             {
                                                 "$type": "d3i.entity_member",
                                                 "name": "quantity",
+                                                "validate": null,
                                                 "type": {
                                                     "$type": "d3i.primitive_type",
                                                     "kind": "Kind.Primitive",
@@ -1074,6 +1085,7 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "country",
+                                            "validate": null,
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
@@ -1095,6 +1107,7 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "address",
+                                            "validate": null,
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -1116,6 +1129,7 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "zipCode",
+                                            "validate": null,
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -1365,6 +1379,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "country",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.reference_type",
                                         "kind": "Kind.Reference",
@@ -1386,6 +1401,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "address",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
@@ -1407,6 +1423,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "zipCode",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
@@ -1778,6 +1795,7 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "address",
+                                            "validate": null,
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -1799,6 +1817,7 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "type",
+                                            "validate": null,
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
@@ -2074,6 +2093,7 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "address",
+                                            "validate": null,
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -2095,6 +2115,7 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "type",
+                                            "validate": null,
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
@@ -2491,6 +2512,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "address",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
@@ -2512,6 +2534,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "type",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.reference_type",
                                         "kind": "Kind.Reference",
@@ -2827,6 +2850,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.composite_member",
                                     "name": "common",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
@@ -2848,6 +2872,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.composite_member",
                                     "name": "count",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
@@ -2913,6 +2938,7 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.value_object_member",
                                             "name": "data",
+                                            "validate": null,
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
@@ -3307,6 +3333,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "listField",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.list_type",
                                         "kind": "Kind.List",
@@ -3337,6 +3364,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "mapField",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.map_type",
                                         "kind": "Kind.Map",
@@ -3377,6 +3405,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "refField",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.reference_type",
                                         "kind": "Kind.Reference",
@@ -3398,6 +3427,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.value_object_member",
                                     "name": "primitiveField",
+                                    "validate": null,
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",

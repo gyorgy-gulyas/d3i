@@ -62,7 +62,7 @@ value_object
         ;
         
         value_object_member
-            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   // Q4
             ;
 
 dto
@@ -90,7 +90,7 @@ composite
         ;
         
         composite_member
-            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   // Q4
             ;
 
 event
@@ -129,7 +129,7 @@ entity
         ;
 
         entity_member
-            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   // Q4
             ;
         
 aggregate
@@ -271,9 +271,52 @@ type
         : 'map' '[' type ',' type ']'
         ;
         
-qualifiedName 
-    : IDENTIFIER ('.' IDENTIFIER)* 
+qualifiedName
+    : IDENTIFIER ('.' IDENTIFIER)*
     ;
+
+// Q4: small, lintable validate expression sublanguage.
+// `value` is the field itself; a bare IDENTIFIER may reference a sibling field.
+validate_expr
+    : validate_or
+    ;
+
+    validate_or
+        : validate_and (OR validate_and)*
+        ;
+
+    validate_and
+        : validate_unary (AND validate_unary)*
+        ;
+
+    validate_unary
+        : NOT validate_unary
+        | validate_predicate
+        ;
+
+    validate_predicate
+        : validate_term (( LT | LE | GT | GE | EQ | NEQ ) validate_term)?
+        | validate_term IN validate_range
+        | validate_term IN validate_set
+        | validate_term BETWEEN validate_term AND validate_term
+        ;
+
+    validate_range
+        : validate_term DOTDOT validate_term
+        ;
+
+    validate_set
+        : '{' validate_term (',' validate_term)* '}'
+        ;
+
+    validate_term
+        : IDENTIFIER '(' (validate_term (',' validate_term)*)? ')'   // function call: len(...), matches(...)
+        | IDENTIFIER                                                 // 'value' or a sibling field
+        | INTEGER_CONSTANS
+        | NUMBER_CONSTANS
+        | STRING_LITERAL
+        | '(' validate_expr ')'
+        ;
 
 decorator
     : '@' IDENTIFIER

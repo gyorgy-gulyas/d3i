@@ -1274,5 +1274,32 @@ domain SomeDomain {
         self.assertEqual(wf.eventhandlers[0].name, "onPaid")
 
 
+    def test_validate_expression(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Range {
+            plain:number
+            start:number validate value >= 0
+            end:number validate value >= start and value <= 100
+            code:string validate len(value) > 3 and matches(value, "[A-Z]+")
+            kind:string validate value in { "A", "B", "C" }
+            score:number validate value between 1 and 10
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        vo = root.domains[0].contexts[0].value_objects[0]
+        members = {m.name: m for m in vo.members}
+        self.assertIsNone(members["plain"].validate)
+        self.assertEqual(members["start"].validate, "value>=0")
+        self.assertEqual(members["end"].validate, "value>=startandvalue<=100")
+        self.assertEqual(members["code"].validate, 'len(value)>3andmatches(value,"[A-Z]+")')
+        self.assertEqual(members["kind"].validate, 'valuein{"A","B","C"}')
+        self.assertEqual(members["score"].validate, "valuebetween1and10")
+
+
 if __name__ == "__main__":
     unittest.main()
