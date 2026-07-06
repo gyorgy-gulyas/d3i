@@ -81,7 +81,7 @@ domain WebShop {
     // context remarks
     context Main {
 
-        aggreagte Customer {
+        aggregate Customer {
             enum CustomerKind {
                 PrivatePerson,
                 Company
@@ -112,7 +112,7 @@ domain WebShop {
             }
         }
 
-        aggreagte Order {
+        aggregate Order {
             root entity OrderHeader {
                 @id
                 id:string
