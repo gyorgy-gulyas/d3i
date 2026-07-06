@@ -7,13 +7,31 @@ from pathlib import Path
 from d3i.Engine import *
 from d3i.linters.SemanticChecker import *
 
-# Built-in emitters: name -> importable module exposing DoEmit(session, output_dir, configuration).
-# Anything not listed here is treated as a path to an external emitter .py file.
-BUILTIN_EMITTERS = {
-    "json": "d3i.emitters.JsonEmitter",
-    "dotnet": "d3i.emitters.DotnetEmitter",
-    "protobuf": "d3i.emitters.ProtoEmitter",
-    "typescript": "d3i.emitters.TypeScriptEmitter",
+# Emitter capability matrix. Each key is a qualified target:
+#   "<language>:<side>"  (side = backend | client), or a side-agnostic
+#   contract emitter ("proto", "json").
+# Value: (module, language, side, status, note)
+#   module: importable module exposing DoEmit(...), or None if not implemented
+#   status: "supported" (has an emitter) | "planned" (valid, not built yet)
+#           | "invalid" (never valid)
+#   note:   human-readable reason/hint (used in error messages)
+EMITTER_TARGETS = {
+    "dotnet:backend":     ("d3i.emitters.DotnetEmitter",     "dotnet",     "backend",  "supported", ""),
+    "dotnet:client":      (None,                             "dotnet",     "client",   "planned",   "Blazor"),
+    "typescript:client":  ("d3i.emitters.TypeScriptEmitter", "typescript", "client",   "supported", ""),
+    "typescript:backend": (None,                             "typescript", "backend",  "invalid",   "TypeScript is client-only; there is no server runtime (Node is not supported)"),
+    "java:backend":       (None,                             "java",       "backend",  "planned",   ""),
+    "java:client":        (None,                             "java",       "client",   "planned",   ""),
+    "rust:backend":       (None,                             "rust",       "backend",  "planned",   ""),
+    "rust:client":        (None,                             "rust",       "client",   "planned",   ""),
+    # Side-agnostic contract emitters (needed by every implementation).
+    "proto":              ("d3i.emitters.ProtoEmitter",      "proto",      "contract", "supported", ""),
+    "json":               ("d3i.emitters.JsonEmitter",       "json",       "contract", "supported", ""),
+}
+
+# Backward-compatible / convenience aliases for contract emitters.
+EMITTER_ALIASES = {
+    "protobuf": "proto",
 }
 
 # Adds CLI arguments to the parser
@@ -40,7 +58,7 @@ def __add_known_arguments(arg_parser: argparse.ArgumentParser):
                             default=[])
     arg_parser.add_argument("-e",
                             "--emitter",
-                            help="emitter(s) to run; you may specify multiple. Each is a built-in emitter (json, dotnet, protobuf, typescript) or a path to an external emitter .py file",
+                            help="emitter target(s) to run; you may specify multiple. Each is a qualified 'language:side' target (e.g. dotnet:backend, typescript:client), a side-agnostic contract emitter (proto, json), or a path to an external emitter .py file",
                             nargs='+',
                             default=[])
     arg_parser.add_argument("-o",
@@ -204,32 +222,70 @@ def __call_linters(session: Session, args, configuration: Dict[str, str]):
             print(f"information: calling linter:'{linter_file}'")
         module.DoLint(session, configuration)
 
+# Resolves a CLI emitter argument against the capability matrix.
+def __resolve_emitter(emitter_name: str):
+    """
+    Resolves a CLI emitter argument to (imported module, side), or exits with a
+    helpful message. Accepts a qualified "language:side" target, a side-agnostic
+    contract emitter (proto/json), or a path to an external emitter .py file.
+
+    Two distinct error classes are reported:
+      - invalid: the target can never exist (e.g. typescript:backend);
+      - planned: the target is valid but not implemented yet (e.g. dotnet:client).
+    """
+    key = EMITTER_ALIASES.get(emitter_name, emitter_name)
+
+    if key in EMITTER_TARGETS:
+        module_path, language, side, status, note = EMITTER_TARGETS[key]
+        if status == "supported":
+            return importlib.import_module(module_path), side
+        if status == "planned":
+            suffix = f" ({note})" if note else ""
+            exit(f"error: the {language} {side} emitter{suffix} is planned but not implemented yet.")
+        if status == "invalid":
+            exit(f"error: '{emitter_name}' is not a valid target - {note}.")
+
+    # A bare language name without a side: suggest the valid qualified forms.
+    suggestions = sorted(
+        k for k, v in EMITTER_TARGETS.items()
+        if k.startswith(emitter_name + ":") and v[3] != "invalid"
+    )
+    if suggestions:
+        exit(f"error: '{emitter_name}' needs a side - use one of: {', '.join(suggestions)}")
+
+    # An external emitter given as a path to a .py file.
+    if os.path.exists(emitter_name):
+        spec = importlib.util.spec_from_file_location(Path(emitter_name).stem, emitter_name)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module, "external"
+
+    known = ", ".join(sorted(EMITTER_TARGETS))
+    exit(f"unknown emitter '{emitter_name}': not a known target ({known}) and no such file")
+
+
 # Calls the emitters specified in the arguments
 def __call_emiters(session: Session, args, configuration: Dict[str, str]):
     """
-    Calls the emitter modules (built-in or external) to generate output based on the session.
-
-    Parameters:
-        session (Session): The session to emit from.
-        args: Parsed CLI arguments.
-        configuration (Dict[str, str]): Loaded configuration dictionary.
+    Resolves & validates every requested emitter up front (fail fast), then runs them.
     """
-    # Execute each emitter file provided in the arguments
+    if (len(args.emitter) == 0):
+        return
+
+    resolved = []  # list of (name, module, side)
     for emitter_name in args.emitter:
+        module, side = __resolve_emitter(emitter_name)
+        resolved.append((emitter_name, module, side))
+
+    # Warn if only the shared contract is being generated (no backend/client target).
+    if all(side == "contract" for (_name, _module, side) in resolved):
+        print("warning: only contract emitters (proto/json) were requested - these "
+              "generate the shared wire contract and are usually run alongside a "
+              "backend or client target.")
+
+    for emitter_name, module, side in resolved:
         if (args.verbose):
             print(f"information: calling emitter:'{emitter_name}'")
-        
-        if emitter_name in BUILTIN_EMITTERS:
-            # Built-in emitter: import it as a normal package module.
-            module = importlib.import_module(BUILTIN_EMITTERS[emitter_name])
-        else:
-            # Otherwise treat the value as a path to an external emitter .py file.
-            if not os.path.exists(emitter_name):
-                exit(f"unknown emitter '{emitter_name}': not a built-in ({', '.join(BUILTIN_EMITTERS)}) and no such file")
-            spec = importlib.util.spec_from_file_location(Path(emitter_name).stem, emitter_name)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-
         module.DoEmit(session, args.output_dir, configuration)
 
 # Main function to run the script
