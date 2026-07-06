@@ -242,7 +242,7 @@ class SemanticChecker(ElementVisitor):
             if (neighbour is view_member):
                 continue
             if (neighbour.name == view_member.name):
-                self.__error__(view_member, f"A member '{view_member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                self.__error(view_member, f"A member '{view_member.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
     def visitRepository(self, repository: repository, parentData: Any) -> Any:
         scope = Engine.get_current_scope(repository.parent)
