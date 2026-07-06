@@ -963,6 +963,65 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("list can only contain" in session.diagnostics[0].toText())
 
+    def test_any_on_field_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Bag {
+            data: any
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'any' type is not allowed on a domain model field" in session.diagnostics[0].toText())
+
+    def test_stream_on_field_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Bag {
+            data: stream
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'stream' type is not allowed on a field" in session.diagnostics[0].toText())
+
+    def test_any_stream_in_operation_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        service TheService {
+            command send( payload:any ) : stream
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 0)
+
     def test_bare_aggregate_reference_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
