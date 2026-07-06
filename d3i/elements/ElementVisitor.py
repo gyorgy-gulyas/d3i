@@ -110,6 +110,14 @@ class ElementVisitor(ABC):
         pass
 
     @abstractmethod
+    def visitWorkflow(self, workflow: workflow, parentData: Any) -> Any:
+        pass
+
+    @abstractmethod
+    def visitStep(self, step: step, parentData: Any) -> Any:
+        pass
+
+    @abstractmethod
     def visitOperation(self, operation: operation, parentData: Any) -> Any:
         pass
 

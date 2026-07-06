@@ -47,6 +47,7 @@ context
         | acl
         | service
         | interface
+        | workflow
         ;
 
 value_object
@@ -176,6 +177,25 @@ service
         | value_object
         | event
         | eventhandler
+        ;
+
+// Q3: workflow — first-class now, Temporal implementation later.
+workflow
+    :  DOCUMENT_LINE* decorator* 'workflow' IDENTIFIER '{' workflow_element*  '}'
+    ;
+
+    workflow_element
+        : operation        // reuse command (start) / query (status)
+        | step
+        | eventhandler
+        | enum
+        | value_object
+        ;
+
+    // A step is a (Temporal) activity: a generated function that may declare the
+    // step which compensates it (declarative saga pairing).
+    step
+        : DOCUMENT_LINE* decorator* 'step' IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' (':' operation_return )? ('compensate' IDENTIFIER)?
         ;
 
 interface

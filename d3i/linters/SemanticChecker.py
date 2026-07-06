@@ -284,6 +284,28 @@ class SemanticChecker(ElementVisitor):
                     if (other_interface.version == the_interface.version):
                         self.__error(the_interface, f"An interface '{the_interface.name}' with same name and version is already exists in {neighbour.locationText()}.")
 
+    def visitWorkflow(self, the_workflow: workflow, parentData: Any) -> Any:
+        scope = Engine.get_current_scope(the_workflow.parent)
+        for neighbour in scope.getChildren():
+            if (neighbour is the_workflow):
+                continue
+            if (neighbour.name == the_workflow.name):
+                self.__error(the_workflow, f"A workflow '{the_workflow.name}' with same name is already exists in {neighbour.locationText()}.")
+
+    def visitStep(self, the_step: step, parentData: Any) -> Any:
+        the_workflow: workflow = the_step.parent
+        for neighbour in the_workflow.steps:
+            if (neighbour is the_step):
+                continue
+            if (neighbour.name == the_step.name):
+                self.__error(the_step, f"A step '{the_step.name}' with same name is already exists in {neighbour.locationText()}.")
+
+        # Q3: `compensate` must reference an existing step in the same workflow.
+        if (the_step.compensate != None):
+            step_names = [s.name for s in the_workflow.steps]
+            if (the_step.compensate not in step_names):
+                self.__error(the_step, f"The compensating step '{the_step.compensate}' referenced by step '{the_step.name}' is not found in workflow '{the_workflow.name}'.")
+
     def visitOperation(self, operation: operation, parentData: Any) -> Any:
         for neighbour in operation.parent.operations:
             if (neighbour is operation):

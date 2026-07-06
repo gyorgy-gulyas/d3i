@@ -179,6 +179,21 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by d3iGrammar#workflow.
+    def visitWorkflow(self, ctx:d3iGrammar.WorkflowContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#workflow_element.
+    def visitWorkflow_element(self, ctx:d3iGrammar.Workflow_elementContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#step.
+    def visitStep(self, ctx:d3iGrammar.StepContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by d3iGrammar#interface.
     def visitInterface(self, ctx:d3iGrammar.InterfaceContext):
         return self.visitChildren(ctx)

@@ -50,6 +50,9 @@ INTEGRATION : 'integration' ;
 AUDIT : 'audit' ;
 EVENTSOURCED : 'eventsourced' ;
 EMITS : 'emits' ;
+WORKFLOW : 'workflow' ;
+STEP : 'step' ;
+COMPENSATE : 'compensate' ;
 
 // built-in types
 INTEGER : 'integer' ;

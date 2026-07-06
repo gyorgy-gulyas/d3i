@@ -247,6 +247,7 @@ domain SomeDomain {
                     "acls": [],
                     "services": [],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -323,6 +324,7 @@ domain SomeDomain {
                     "acls": [],
                     "services": [],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [
                         {
                             "$type": "d3i.enum",
@@ -511,6 +513,7 @@ domain SomeDomain {
                     "acls": [],
                     "services": [],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [
                         {
@@ -1190,6 +1193,7 @@ domain SomeDomain {
                     "acls": [],
                     "services": [],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1350,6 +1354,7 @@ domain SomeDomain {
                     "acls": [],
                     "services": [],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [
                         {
@@ -1653,6 +1658,7 @@ domain SomeDomain {
                     "acls": [],
                     "services": [],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1857,6 +1863,7 @@ domain SomeDomain {
                     ],
                     "services": [],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -2151,6 +2158,7 @@ domain SomeDomain {
                         }
                     ],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -2284,6 +2292,7 @@ domain SomeDomain {
                     "acls": [],
                     "services": [],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -2435,6 +2444,7 @@ domain SomeDomain {
                         }
                     ],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [
                         {
                             "$type": "d3i.enum",
@@ -2666,6 +2676,7 @@ domain SomeDomain {
                     "acls": [],
                     "services": [],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -2948,6 +2959,7 @@ domain SomeDomain {
                     "acls": [],
                     "services": [],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -3087,6 +3099,7 @@ domain SomeDomain {
                         }
                     ],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -3219,6 +3232,7 @@ domain SomeDomain {
                         }
                     ],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -3282,6 +3296,7 @@ domain SomeDomain {
                     "acls": [],
                     "services": [],
                     "interfaces": [],
+                    "workflows": [],
                     "enums": [],
                     "value_objects": [
                         {

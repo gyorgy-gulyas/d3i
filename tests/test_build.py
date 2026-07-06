@@ -1243,5 +1243,36 @@ domain SomeDomain {
         self.assertEqual(command.emits[1].getText(), "AuditLogged")
 
 
+    def test_workflow(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        workflow OrderSaga {
+            command start( orderId:string )
+            query status( orderId:string ) : string
+            step reserveStock( orderId:string ) : boolean compensate releaseStock
+            step releaseStock( orderId:string )
+            eventhandler onPaid for event PaymentReceived
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        wf = root.domains[0].contexts[0].workflows[0]
+        self.assertEqual(wf.name, "OrderSaga")
+        self.assertEqual(len(wf.operations), 2)
+        self.assertEqual(wf.operations[0].kind, operation.Kind.Command)
+        self.assertEqual(wf.operations[0].name, "start")
+        self.assertEqual(wf.operations[1].kind, operation.Kind.Query)
+        self.assertEqual(len(wf.steps), 2)
+        self.assertEqual(wf.steps[0].name, "reserveStock")
+        self.assertEqual(wf.steps[0].compensate, "releaseStock")
+        self.assertEqual(wf.steps[1].name, "releaseStock")
+        self.assertEqual(wf.steps[1].compensate, None)
+        self.assertEqual(len(wf.eventhandlers), 1)
+        self.assertEqual(wf.eventhandlers[0].name, "onPaid")
+
+
 if __name__ == "__main__":
     unittest.main()

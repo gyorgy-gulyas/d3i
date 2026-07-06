@@ -254,6 +254,7 @@ class context(internal_scoped_base_element):
         self.acls: List[acl] = []
         self.services: List[service] = []
         self.interfaces: List[interface] = []
+        self.workflows: List[workflow] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitContext(self, parentData)
@@ -272,6 +273,8 @@ class context(internal_scoped_base_element):
             service.visit(visitor, data)
         for interface in self.interfaces:
             interface.visit(visitor, data)
+        for workflow in self.workflows:
+            workflow.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
         return super().getChildren() + self.composites + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces
@@ -591,6 +594,39 @@ class interface(functional_element):
 
     def getChildren(self) -> List[base_element]:
         return super().getChildren()
+
+
+class workflow(functional_element):
+    # Q3: workflow — reuses command/query (functional_element.operations) and
+    # eventhandlers, plus first-class steps (Temporal activities).
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False, withEvent=False, withEventHandler=True)
+        self.name: str = None
+        self.steps: List[step] = []
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitWorkflow(self, parentData)
+        super().visit(visitor, data)
+        for step in self.steps:
+            step.visit(visitor, data)
+
+
+class step(hinted_base_element):
+    # Q3: a step is a (Temporal) activity; `compensate` names the step that reverses it.
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = None
+        self.operation_params: List[operation_param] = []
+        self.operation_return: operation_return = None
+        self.compensate: str = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitStep(self, parentData)
+        super().visit(visitor, data)
+        for operation_param in self.operation_params:
+            operation_param.visit(visitor, data)
+        if (self.operation_return != None):
+            self.operation_return.visit(visitor, data)
 
 
 class operation(hinted_base_element):

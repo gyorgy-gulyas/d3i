@@ -314,6 +314,33 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#workflow.
+    def enterWorkflow(self, ctx:d3iGrammar.WorkflowContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#workflow.
+    def exitWorkflow(self, ctx:d3iGrammar.WorkflowContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#workflow_element.
+    def enterWorkflow_element(self, ctx:d3iGrammar.Workflow_elementContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#workflow_element.
+    def exitWorkflow_element(self, ctx:d3iGrammar.Workflow_elementContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#step.
+    def enterStep(self, ctx:d3iGrammar.StepContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#step.
+    def exitStep(self, ctx:d3iGrammar.StepContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#interface.
     def enterInterface(self, ctx:d3iGrammar.InterfaceContext):
         pass

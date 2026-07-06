@@ -87,6 +87,7 @@ class JsonEmitter(ElementVisitor):
             "acls": [],
             "services": [],
             "interfaces": [],
+            "workflows": [],
         }
         parentData['contexts'].append(data)
         return data
@@ -298,6 +299,28 @@ class JsonEmitter(ElementVisitor):
             "events": [],
         }
         parentData["services"].append(data)
+        return data
+
+    def visitWorkflow(self, workflow: workflow, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.workflow",
+            "name": workflow.name,
+            "operations": [],
+            "eventhandlers": [],
+            "steps": [],
+        }
+        parentData["workflows"].append(data)
+        return data
+
+    def visitStep(self, step: step, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.step",
+            "name": step.name,
+            "compensate": step.compensate,
+            "operation_params": [],
+            "operation_return": None,
+        }
+        parentData["steps"].append(data)
         return data
 
     def visitOperation(self, operation: operation, parentData: Any) -> Any:

@@ -179,6 +179,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(context_element.interface())
                 child.parent = result
                 result.interfaces.append(child)
+            elif (context_element.workflow()):
+                child = self.visit(context_element.workflow())
+                child.parent = result
+                result.workflows.append(child)
             counter = counter + 1
 
         return result
@@ -939,6 +943,103 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#interface_element.
     def visitInterface_element(self, ctx: d3iGrammar.Interface_elementContext):
         return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by d3iGrammar#workflow.
+    def visitWorkflow(self, ctx: d3iGrammar.WorkflowContext):
+        result = workflow(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+
+        counter = 0
+        while True:
+            document_line = ctx.DOCUMENT_LINE((counter))
+            if (document_line == None):
+                break
+            counter = counter + 1
+            result.document_lines.append(document_line.getText()[1:])
+
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if (decorator == None):
+                break
+            counter = counter + 1
+            child = self.visit(decorator)
+            child.parent = result
+            result.decorators.append(child)
+
+        counter = 0
+        while True:
+            workflow_element: d3iGrammar.Workflow_elementContext = ctx.workflow_element((counter))
+            if (workflow_element == None):
+                break
+            elif (workflow_element.operation() != None):
+                child = self.visit(workflow_element.operation())
+                child.parent = result
+                result.operations.append(child)
+            elif (workflow_element.step() != None):
+                child = self.visit(workflow_element.step())
+                child.parent = result
+                result.steps.append(child)
+            elif (workflow_element.eventhandler() != None):
+                child = self.visit(workflow_element.eventhandler())
+                child.parent = result
+                result.eventhandlers.append(child)
+            elif (workflow_element.enum()):
+                child = self.visit(workflow_element.enum())
+                child.parent = result
+                result.enums.append(child)
+            elif (workflow_element.value_object()):
+                child = self.visit(workflow_element.value_object())
+                child.parent = result
+                result.value_objects.append(child)
+            counter = counter + 1
+
+        return result
+
+    # Visit a parse tree produced by d3iGrammar#step.
+    def visitStep(self, ctx: d3iGrammar.StepContext):
+        result = step(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER(0) != None):
+            result.name = ctx.IDENTIFIER(0).getText()
+
+        counter = 0
+        while True:
+            document_line = ctx.DOCUMENT_LINE((counter))
+            if (document_line == None):
+                break
+            counter = counter + 1
+            result.document_lines.append(document_line.getText()[1:])
+
+        counter = 0
+        while True:
+            decorator = ctx.decorator((counter))
+            if (decorator == None):
+                break
+            counter = counter + 1
+            child = self.visit(decorator)
+            child.parent = result
+            result.decorators.append(child)
+
+        counter = 0
+        while True:
+            operation_param = ctx.operation_param((counter))
+            if (operation_param == None):
+                break
+            counter = counter + 1
+            child = self.visit(operation_param)
+            child.parent = result
+            result.operation_params.append(child)
+
+        if (ctx.operation_return() != None):
+            result.operation_return = self.visit(ctx.operation_return())
+            result.operation_return.parent = result
+
+        # Optional `compensate <stepName>`: the second IDENTIFIER of the step rule.
+        if (ctx.COMPENSATE() != None and ctx.IDENTIFIER(1) != None):
+            result.compensate = ctx.IDENTIFIER(1).getText()
+
+        return result
 
     # Visit a parse tree produced by d3iGrammar#operation.
     def visitOperation(self, ctx: d3iGrammar.OperationContext):
