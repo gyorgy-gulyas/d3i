@@ -1,5 +1,5 @@
 import unittest
-import jsondiff
+import json
 from d3i.Engine import *
 from d3i.emitters.JsonEmitter import *
 
@@ -11,15 +11,14 @@ class TestEmitterJson(unittest.TestCase):
         session = Session(Source.CreateFromText(""))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
     "imports": [],
     "domains": []
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_decorators_ok(self):
         engine = Engine()
@@ -31,7 +30,7 @@ domain somedomain{
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -47,12 +46,7 @@ domain somedomain{
                 {
                     "$type": "d3i.decorator",
                     "name": "without_params",
-                    "params": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 2,
-                        "column": 0
-                    }
+                    "params": []
                 },
                 {
                     "$type": "d3i.decorator",
@@ -61,61 +55,30 @@ domain somedomain{
                         {
                             "$type": "d3i.decorator_param",
                             "kind": "Kind.String",
-                            "value": "string",
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 3,
-                                "column": 14
-                            }
+                            "value": "string"
                         },
                         {
                             "$type": "d3i.decorator_param",
                             "kind": "Kind.Integer",
-                            "value": "1",
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 3,
-                                "column": 24
-                            }
+                            "value": "1"
                         },
                         {
                             "$type": "d3i.decorator_param",
                             "kind": "Kind.Number",
-                            "value": "3.14",
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 3,
-                                "column": 27
-                            }
+                            "value": "3.14"
                         },
                         {
                             "$type": "d3i.decorator_param",
                             "kind": "Kind.QualifiedName",
-                            "value": "identifier.sub.sub",
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 3,
-                                "column": 33
-                            }
+                            "value": "identifier.sub.sub"
                         }
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 0
-                    }
+                    ]
                 }
-            ],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            ]
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_domain_ok(self):
         engine = Engine()
@@ -125,7 +88,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -137,17 +100,11 @@ domain SomeDomain {
             "contexts": [],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_context_ok(self):
         engine = Engine()
@@ -160,7 +117,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -189,34 +146,18 @@ domain SomeDomain {
                         {
                             "$type": "d3i.decorator",
                             "name": "context_decorator",
-                            "params": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 3,
-                                "column": 4
-                            }
+                            "params": []
                         }
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    ]
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_enum_ok(self):
         engine = Engine()
@@ -236,7 +177,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -275,26 +216,11 @@ domain SomeDomain {
                                                 {
                                                     "$type": "d3i.decorator_param",
                                                     "kind": "Kind.Integer",
-                                                    "value": "1",
-                                                    "location": {
-                                                        "fileName": "internal string",
-                                                        "line": 7,
-                                                        "column": 20
-                                                    }
+                                                    "value": "1"
                                                 }
-                                            ],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 7,
-                                                "column": 12
-                                            }
+                                            ]
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 7,
-                                        "column": 12
-                                    }
+                                    ]
                                 },
                                 {
                                     "$type": "d3i.enum_element",
@@ -308,26 +234,11 @@ domain SomeDomain {
                                                 {
                                                     "$type": "d3i.decorator_param",
                                                     "kind": "Kind.Integer",
-                                                    "value": "2",
-                                                    "location": {
-                                                        "fileName": "internal string",
-                                                        "line": 9,
-                                                        "column": 20
-                                                    }
+                                                    "value": "2"
                                                 }
-                                            ],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 9,
-                                                "column": 12
-                                            }
+                                            ]
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 9,
-                                        "column": 12
-                                    }
+                                    ]
                                 }
                             ],
                             "document_lines": [],
@@ -335,12 +246,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.decorator",
                                     "name": "enum_decorator",
-                                    "params": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 4,
-                                        "column": 8
-                                    }
+                                    "params": []
                                 },
                                 {
                                     "$type": "d3i.decorator",
@@ -349,51 +255,25 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.decorator_param",
                                             "kind": "Kind.String",
-                                            "value": "decorator_value",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 5,
-                                                "column": 36
-                                            }
+                                            "value": "decorator_value"
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 5,
-                                        "column": 8
-                                    }
+                                    ]
                                 }
-                            ],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            ]
                         }
                     ],
                     "value_objects": [],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_value_object_ok(self):
         engine = Engine()
@@ -423,7 +303,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
 
         expected = """{
@@ -460,12 +340,7 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.reference_type",
                                         "kind": "Kind.Reference",
-                                        "reference_name": "Country",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 17,
-                                            "column": 20
-                                        }
+                                        "reference_name": "Country"
                                     },
                                     "document_lines": [],
                                     "decorators": [
@@ -476,26 +351,11 @@ domain SomeDomain {
                                                 {
                                                     "$type": "d3i.decorator_param",
                                                     "kind": "Kind.String",
-                                                    "value": "listOfContries",
-                                                    "location": {
-                                                        "fileName": "internal string",
-                                                        "line": 16,
-                                                        "column": 31
-                                                    }
+                                                    "value": "listOfContries"
                                                 }
-                                            ],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 16,
-                                                "column": 12
-                                            }
+                                            ]
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 16,
-                                        "column": 12
-                                    }
+                                    ]
                                 },
                                 {
                                     "$type": "d3i.value_object_member",
@@ -504,12 +364,7 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.String",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 19,
-                                            "column": 20
-                                        }
+                                        "primtiveKind": "PrimtiveKind.String"
                                     },
                                     "document_lines": [],
                                     "decorators": [
@@ -520,26 +375,11 @@ domain SomeDomain {
                                                 {
                                                     "$type": "d3i.decorator_param",
                                                     "kind": "Kind.Integer",
-                                                    "value": "100",
-                                                    "location": {
-                                                        "fileName": "internal string",
-                                                        "line": 18,
-                                                        "column": 25
-                                                    }
+                                                    "value": "100"
                                                 }
-                                            ],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 18,
-                                                "column": 12
-                                            }
+                                            ]
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 18,
-                                        "column": 12
-                                    }
+                                    ]
                                 },
                                 {
                                     "$type": "d3i.value_object_member",
@@ -548,20 +388,10 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.Integer",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 20,
-                                            "column": 20
-                                        }
+                                        "primtiveKind": "PrimtiveKind.Integer"
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 20,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "operations": [],
@@ -574,32 +404,17 @@ domain SomeDomain {
                                             "$type": "d3i.enum_element",
                                             "value": "Customer",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 8,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.enum_element",
                                             "value": "PrivatePerson",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 9,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 7,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "value_objects": [
@@ -615,20 +430,10 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.String",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 12,
-                                                    "column": 23
-                                                }
+                                                "primtiveKind": "PrimtiveKind.String"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 12,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.value_object_member",
@@ -637,32 +442,17 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.Date",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 13,
-                                                    "column": 23
-                                                }
+                                                "primtiveKind": "PrimtiveKind.Date"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 13,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "operations": [],
                                     "enums": [],
                                     "value_objects": [],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 11,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "document_lines": [],
@@ -670,12 +460,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.decorator",
                                     "name": "decorator",
-                                    "params": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 4,
-                                        "column": 8
-                                    }
+                                    "params": []
                                 },
                                 {
                                     "$type": "d3i.decorator",
@@ -684,50 +469,24 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.decorator_param",
                                             "kind": "Kind.String",
-                                            "value": "decorator_value",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 5,
-                                                "column": 31
-                                            }
+                                            "value": "decorator_value"
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 5,
-                                        "column": 8
-                                    }
+                                    ]
                                 }
-                            ],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            ]
                         }
                     ],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_aggregate_ok(self):
         engine = Engine()
@@ -764,7 +523,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -800,20 +559,10 @@ domain SomeDomain {
                                                 "type": {
                                                     "$type": "d3i.primitive_type",
                                                     "kind": "Kind.Primitive",
-                                                    "primtiveKind": "PrimtiveKind.String",
-                                                    "location": {
-                                                        "fileName": "internal string",
-                                                        "line": 18,
-                                                        "column": 19
-                                                    }
+                                                    "primtiveKind": "PrimtiveKind.String"
                                                 },
                                                 "document_lines": [],
-                                                "decorators": [],
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 18,
-                                                    "column": 16
-                                                }
+                                                "decorators": []
                                             },
                                             {
                                                 "$type": "d3i.entity_member",
@@ -822,20 +571,10 @@ domain SomeDomain {
                                                 "type": {
                                                     "$type": "d3i.reference_type",
                                                     "kind": "Kind.Reference",
-                                                    "reference_name": "PartnerAddress",
-                                                    "location": {
-                                                        "fileName": "internal string",
-                                                        "line": 19,
-                                                        "column": 24
-                                                    }
+                                                    "reference_name": "PartnerAddress"
                                                 },
                                                 "document_lines": [],
-                                                "decorators": [],
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 19,
-                                                    "column": 16
-                                                }
+                                                "decorators": []
                                             },
                                             {
                                                 "$type": "d3i.entity_member",
@@ -844,37 +583,17 @@ domain SomeDomain {
                                                 "type": {
                                                     "$type": "d3i.reference_type",
                                                     "kind": "Kind.Reference",
-                                                    "reference_name": "PartnerType",
-                                                    "location": {
-                                                        "fileName": "internal string",
-                                                        "line": 20,
-                                                        "column": 28
-                                                    }
+                                                    "reference_name": "PartnerType"
                                                 },
                                                 "document_lines": [],
-                                                "decorators": [],
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 20,
-                                                    "column": 16
-                                                }
+                                                "decorators": []
                                             }
                                         ],
                                         "operations": [],
                                         "enums": [],
                                         "value_objects": [],
                                         "document_lines": [],
-                                        "decorators": [],
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 17,
-                                            "column": 17
-                                        }
-                                    },
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 17,
-                                        "column": 12
+                                        "decorators": []
                                     }
                                 },
                                 {
@@ -892,20 +611,10 @@ domain SomeDomain {
                                                 "type": {
                                                     "$type": "d3i.primitive_type",
                                                     "kind": "Kind.Primitive",
-                                                    "primtiveKind": "PrimtiveKind.String",
-                                                    "location": {
-                                                        "fileName": "internal string",
-                                                        "line": 24,
-                                                        "column": 25
-                                                    }
+                                                    "primtiveKind": "PrimtiveKind.String"
                                                 },
                                                 "document_lines": [],
-                                                "decorators": [],
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 24,
-                                                    "column": 16
-                                                }
+                                                "decorators": []
                                             },
                                             {
                                                 "$type": "d3i.entity_member",
@@ -914,20 +623,10 @@ domain SomeDomain {
                                                 "type": {
                                                     "$type": "d3i.primitive_type",
                                                     "kind": "Kind.Primitive",
-                                                    "primtiveKind": "PrimtiveKind.String",
-                                                    "location": {
-                                                        "fileName": "internal string",
-                                                        "line": 25,
-                                                        "column": 21
-                                                    }
+                                                    "primtiveKind": "PrimtiveKind.String"
                                                 },
                                                 "document_lines": [],
-                                                "decorators": [],
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 25,
-                                                    "column": 16
-                                                }
+                                                "decorators": []
                                             },
                                             {
                                                 "$type": "d3i.entity_member",
@@ -936,37 +635,17 @@ domain SomeDomain {
                                                 "type": {
                                                     "$type": "d3i.primitive_type",
                                                     "kind": "Kind.Primitive",
-                                                    "primtiveKind": "PrimtiveKind.Number",
-                                                    "location": {
-                                                        "fileName": "internal string",
-                                                        "line": 26,
-                                                        "column": 25
-                                                    }
+                                                    "primtiveKind": "PrimtiveKind.Number"
                                                 },
                                                 "document_lines": [],
-                                                "decorators": [],
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 26,
-                                                    "column": 16
-                                                }
+                                                "decorators": []
                                             }
                                         ],
                                         "operations": [],
                                         "enums": [],
                                         "value_objects": [],
                                         "document_lines": [],
-                                        "decorators": [],
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 23,
-                                            "column": 13
-                                        }
-                                    },
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 23,
-                                        "column": 13
+                                        "decorators": []
                                     }
                                 }
                             ],
@@ -979,32 +658,17 @@ domain SomeDomain {
                                             "$type": "d3i.enum_element",
                                             "value": "Customer",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 8,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.enum_element",
                                             "value": "PrivatePerson",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 9,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 7,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "value_objects": [
@@ -1020,20 +684,10 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
-                                                "reference_name": "Country",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 12,
-                                                    "column": 24
-                                                }
+                                                "reference_name": "Country"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 12,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.value_object_member",
@@ -1042,20 +696,10 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.String",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 13,
-                                                    "column": 24
-                                                }
+                                                "primtiveKind": "PrimtiveKind.String"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 13,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.value_object_member",
@@ -1064,32 +708,17 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.Integer",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 14,
-                                                    "column": 24
-                                                }
+                                                "primtiveKind": "PrimtiveKind.Integer"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 14,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "operations": [],
                                     "enums": [],
                                     "value_objects": [],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 11,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "document_lines": [],
@@ -1097,12 +726,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.decorator",
                                     "name": "decorator",
-                                    "params": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 4,
-                                        "column": 8
-                                    }
+                                    "params": []
                                 },
                                 {
                                     "$type": "d3i.decorator",
@@ -1111,26 +735,11 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.decorator_param",
                                             "kind": "Kind.String",
-                                            "value": "decorator_value",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 5,
-                                                "column": 31
-                                            }
+                                            "value": "decorator_value"
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 5,
-                                        "column": 8
-                                    }
+                                    ]
                                 }
-                            ],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            ]
                         }
                     ],
                     "views": [],
@@ -1142,27 +751,16 @@ domain SomeDomain {
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_view_ok(self):
         engine = Engine()
@@ -1193,7 +791,7 @@ domain SomeDomain {
 """))
         root = engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         data = root.visit(jsonEmmiter, None)
         result = json.dumps(data, indent=4)
         expected = """{
@@ -1225,32 +823,17 @@ domain SomeDomain {
                                             "$type": "d3i.enum_element",
                                             "value": "Customer",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 8,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.enum_element",
                                             "value": "PrivatePerson",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 9,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 7,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "document_lines": [],
@@ -1258,12 +841,7 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.decorator",
                                     "name": "decorator",
-                                    "params": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 4,
-                                        "column": 8
-                                    }
+                                    "params": []
                                 },
                                 {
                                     "$type": "d3i.decorator",
@@ -1272,26 +850,11 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.decorator_param",
                                             "kind": "Kind.String",
-                                            "value": "decorator_value",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 5,
-                                                "column": 31
-                                            }
+                                            "value": "decorator_value"
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 5,
-                                        "column": 8
-                                    }
+                                    ]
                                 }
-                            ],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            ]
                         }
                     ],
                     "repositories": [],
@@ -1313,20 +876,10 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.reference_type",
                                         "kind": "Kind.Reference",
-                                        "reference_name": "Country",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 12,
-                                            "column": 24
-                                        }
+                                        "reference_name": "Country"
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 12,
-                                        "column": 16
-                                    }
+                                    "decorators": []
                                 },
                                 {
                                     "$type": "d3i.value_object_member",
@@ -1335,20 +888,10 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.String",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 13,
-                                            "column": 24
-                                        }
+                                        "primtiveKind": "PrimtiveKind.String"
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 13,
-                                        "column": 16
-                                    }
+                                    "decorators": []
                                 },
                                 {
                                     "$type": "d3i.value_object_member",
@@ -1357,56 +900,30 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.Integer",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 14,
-                                            "column": 24
-                                        }
+                                        "primtiveKind": "PrimtiveKind.Integer"
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 14,
-                                        "column": 16
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "operations": [],
                             "enums": [],
                             "value_objects": [],
                             "document_lines": [],
-                            "decorators": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 11,
-                                "column": 12
-                            }
+                            "decorators": []
                         }
                     ],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_repository_ok(self):
         engine = Engine()
@@ -1422,7 +939,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -1456,20 +973,10 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.String",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 6,
-                                                    "column": 30
-                                                }
+                                                "primtiveKind": "PrimtiveKind.String"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 6,
-                                                "column": 27
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "operation_return": {
@@ -1477,28 +984,13 @@ domain SomeDomain {
                                         "type": {
                                             "$type": "d3i.primitive_type",
                                             "kind": "Kind.Primitive",
-                                            "primtiveKind": "PrimtiveKind.String",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 6,
-                                                "column": 41
-                                            }
+                                            "primtiveKind": "PrimtiveKind.String"
                                         },
                                         "document_lines": [],
-                                        "decorators": [],
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 6,
-                                            "column": 41
-                                        }
+                                        "decorators": []
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 6,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "document_lines": [],
@@ -1510,26 +1002,11 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.decorator_param",
                                             "kind": "Kind.String",
-                                            "value": "mongo",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 4,
-                                                "column": 18
-                                            }
+                                            "value": "mongo"
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 4,
-                                        "column": 8
-                                    }
+                                    ]
                                 }
-                            ],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            ]
                         }
                     ],
                     "acls": [],
@@ -1539,27 +1016,16 @@ domain SomeDomain {
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_acl_ok(self):
         engine = Engine()
@@ -1585,7 +1051,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -1617,32 +1083,17 @@ domain SomeDomain {
                                             "$type": "d3i.enum_element",
                                             "value": "Customer",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 7,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.enum_element",
                                             "value": "PrivatePerson",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 8,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 6,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "value_objects": [
@@ -1658,20 +1109,10 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.String",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 11,
-                                                    "column": 24
-                                                }
+                                                "primtiveKind": "PrimtiveKind.String"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 11,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.value_object_member",
@@ -1680,32 +1121,17 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
-                                                "reference_name": "PartnerType",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 12,
-                                                    "column": 21
-                                                }
+                                                "reference_name": "PartnerType"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 12,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "operations": [],
                                     "enums": [],
                                     "value_objects": [],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 10,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "document_lines": [],
@@ -1717,26 +1143,11 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.decorator_param",
                                             "kind": "Kind.String",
-                                            "value": "value",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 4,
-                                                "column": 21
-                                            }
+                                            "value": "value"
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 4,
-                                        "column": 8
-                                    }
+                                    ]
                                 }
-                            ],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            ]
                         }
                     ],
                     "services": [],
@@ -1745,27 +1156,16 @@ domain SomeDomain {
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_service_ok(self):
         engine = Engine()
@@ -1799,7 +1199,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -1833,12 +1233,7 @@ domain SomeDomain {
                                     "members": [],
                                     "enums": [],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 14,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "eventhandlers": [],
@@ -1851,32 +1246,17 @@ domain SomeDomain {
                                             "$type": "d3i.enum_element",
                                             "value": "Customer",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 7,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.enum_element",
                                             "value": "PrivatePerson",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 8,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 6,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "value_objects": [
@@ -1892,20 +1272,10 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.String",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 11,
-                                                    "column": 24
-                                                }
+                                                "primtiveKind": "PrimtiveKind.String"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 11,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.value_object_member",
@@ -1914,32 +1284,17 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.reference_type",
                                                 "kind": "Kind.Reference",
-                                                "reference_name": "PartnerType",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 12,
-                                                    "column": 21
-                                                }
+                                                "reference_name": "PartnerType"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 12,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "operations": [],
                                     "enums": [],
                                     "value_objects": [],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 10,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "document_lines": [],
@@ -1951,26 +1306,11 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.decorator_param",
                                             "kind": "Kind.String",
-                                            "value": "value",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 4,
-                                                "column": 21
-                                            }
+                                            "value": "value"
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 4,
-                                        "column": 8
-                                    }
+                                    ]
                                 }
-                            ],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            ]
                         }
                     ],
                     "interfaces": [],
@@ -1978,27 +1318,16 @@ domain SomeDomain {
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_interface_ok(self):
         engine = Engine()
@@ -2032,7 +1361,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -2069,26 +1398,11 @@ domain SomeDomain {
                                         {
                                             "$type": "d3i.decorator_param",
                                             "kind": "Kind.String",
-                                            "value": "value",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 4,
-                                                "column": 21
-                                            }
+                                            "value": "value"
                                         }
-                                    ],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 4,
-                                        "column": 8
-                                    }
+                                    ]
                                 }
-                            ],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            ]
                         }
                     ],
                     "interfaces": [],
@@ -2102,32 +1416,17 @@ domain SomeDomain {
                                     "$type": "d3i.enum_element",
                                     "value": "Customer",
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 7,
-                                        "column": 16
-                                    }
+                                    "decorators": []
                                 },
                                 {
                                     "$type": "d3i.enum_element",
                                     "value": "PrivatePerson",
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 8,
-                                        "column": 16
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "document_lines": [],
-                            "decorators": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 6,
-                                "column": 12
-                            }
+                            "decorators": []
                         }
                     ],
                     "value_objects": [
@@ -2143,20 +1442,10 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.String",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 11,
-                                            "column": 24
-                                        }
+                                        "primtiveKind": "PrimtiveKind.String"
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 11,
-                                        "column": 16
-                                    }
+                                    "decorators": []
                                 },
                                 {
                                     "$type": "d3i.value_object_member",
@@ -2165,41 +1454,21 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.reference_type",
                                         "kind": "Kind.Reference",
-                                        "reference_name": "PartnerType",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 12,
-                                            "column": 21
-                                        }
+                                        "reference_name": "PartnerType"
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 12,
-                                        "column": 16
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "operations": [],
                             "enums": [],
                             "value_objects": [],
                             "document_lines": [],
-                            "decorators": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 10,
-                                "column": 12
-                            }
+                            "decorators": []
                         }
                     ],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 },
                 {
                     "$type": "d3i.context",
@@ -2220,22 +1489,12 @@ domain SomeDomain {
                         {
                             "$type": "d3i.decorator",
                             "name": "post",
-                            "params": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 18,
-                                "column": 12
-                            }
+                            "params": []
                         },
                         {
                             "$type": "d3i.decorator",
                             "name": "required",
-                            "params": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 19,
-                                "column": 22
-                            }
+                            "params": []
                         },
                         {
                             "$type": "d3i.decorator",
@@ -2244,19 +1503,9 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.decorator_param",
                                     "kind": "Kind.Integer",
-                                    "value": "200",
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 20,
-                                        "column": 26
-                                    }
+                                    "value": "200"
                                 }
-                            ],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 20,
-                                "column": 18
-                            }
+                            ]
                         },
                         {
                             "$type": "d3i.decorator",
@@ -2265,51 +1514,25 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.decorator_param",
                                     "kind": "Kind.Integer",
-                                    "value": "404",
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 21,
-                                        "column": 26
-                                    }
+                                    "value": "404"
                                 }
-                            ],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 21,
-                                "column": 18
-                            }
+                            ]
                         },
                         {
                             "$type": "d3i.decorator",
                             "name": "put",
-                            "params": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 23,
-                                "column": 12
-                            }
+                            "params": []
                         }
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 18,
-                        "column": 12
-                    }
+                    ]
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
 
     def tests_import_ok(self):
@@ -2321,7 +1544,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -2330,12 +1553,7 @@ domain SomeDomain {
             "$type": "d3i.import_",
             "name": "some.other.module",
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ],
     "domains": [
@@ -2345,17 +1563,11 @@ domain SomeDomain {
             "contexts": [],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 3,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_composite_ok(self):
         engine = Engine()
@@ -2378,7 +1590,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -2405,20 +1617,10 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.String",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 12,
-                                            "column": 19
-                                        }
+                                        "primtiveKind": "PrimtiveKind.String"
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 12,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 },
                                 {
                                     "$type": "d3i.composite_member",
@@ -2427,20 +1629,10 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.Integer",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 13,
-                                            "column": 18
-                                        }
+                                        "primtiveKind": "PrimtiveKind.Integer"
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 13,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "enums": [
@@ -2452,32 +1644,17 @@ domain SomeDomain {
                                             "$type": "d3i.enum_element",
                                             "value": "A",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 6,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.enum_element",
                                             "value": "B",
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 7,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 5,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "value_objects": [
@@ -2493,41 +1670,21 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.String",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 10,
-                                                    "column": 21
-                                                }
+                                                "primtiveKind": "PrimtiveKind.String"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 10,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "operations": [],
                                     "enums": [],
                                     "value_objects": [],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 9,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "document_lines": [],
-                            "decorators": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            "decorators": []
                         }
                     ],
                     "aggregates": [],
@@ -2540,27 +1697,16 @@ domain SomeDomain {
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_dto_ok(self):
         engine = Engine()
@@ -2578,7 +1724,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -2617,20 +1763,10 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.String",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 6,
-                                                    "column": 22
-                                                }
+                                                "primtiveKind": "PrimtiveKind.String"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 6,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         },
                                         {
                                             "$type": "d3i.dto_member",
@@ -2638,40 +1774,20 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.Integer",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 7,
-                                                    "column": 23
-                                                }
+                                                "primtiveKind": "PrimtiveKind.Integer"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 7,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "enums": [],
                                     "dtos": [],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 5,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "document_lines": [],
-                            "decorators": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            "decorators": []
                         }
                     ],
                     "interfaces": [],
@@ -2679,27 +1795,16 @@ domain SomeDomain {
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_event_eventhandler_ok(self):
         engine = Engine()
@@ -2717,7 +1822,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -2755,30 +1860,15 @@ domain SomeDomain {
                                             "type": {
                                                 "$type": "d3i.primitive_type",
                                                 "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.String",
-                                                "location": {
-                                                    "fileName": "internal string",
-                                                    "line": 6,
-                                                    "column": 21
-                                                }
+                                                "primtiveKind": "PrimtiveKind.String"
                                             },
                                             "document_lines": [],
-                                            "decorators": [],
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 6,
-                                                "column": 16
-                                            }
+                                            "decorators": []
                                         }
                                     ],
                                     "enums": [],
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 5,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "eventhandlers": [
@@ -2787,23 +1877,13 @@ domain SomeDomain {
                                     "name": "TheHandler",
                                     "handled_event": "TheEvent",
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 8,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "enums": [],
                             "value_objects": [],
                             "document_lines": [],
-                            "decorators": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            "decorators": []
                         }
                     ],
                     "interfaces": [],
@@ -2811,27 +1891,16 @@ domain SomeDomain {
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
 
     def tests_types_ok(self):
         engine = Engine()
@@ -2849,7 +1918,7 @@ domain SomeDomain {
 """))
         engine.Build(session)
 
-        jsonEmmiter = JsonEmitter()
+        jsonEmmiter = JsonEmitter(withLocation=False)
         result = jsonEmmiter.Emit(session)
         expected = """{
     "$type": "d3i.d3",
@@ -2888,26 +1957,11 @@ domain SomeDomain {
                                         "item_type": {
                                             "$type": "d3i.primitive_type",
                                             "kind": "Kind.Primitive",
-                                            "primtiveKind": "PrimtiveKind.String",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 5,
-                                                "column": 28
-                                            }
-                                        },
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 5,
-                                            "column": 23
+                                            "primtiveKind": "PrimtiveKind.String"
                                         }
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 5,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 },
                                 {
                                     "$type": "d3i.value_object_member",
@@ -2919,36 +1973,16 @@ domain SomeDomain {
                                         "key_type": {
                                             "$type": "d3i.primitive_type",
                                             "kind": "Kind.Primitive",
-                                            "primtiveKind": "PrimtiveKind.String",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 6,
-                                                "column": 26
-                                            }
+                                            "primtiveKind": "PrimtiveKind.String"
                                         },
                                         "value_type": {
                                             "$type": "d3i.primitive_type",
                                             "kind": "Kind.Primitive",
-                                            "primtiveKind": "PrimtiveKind.Integer",
-                                            "location": {
-                                                "fileName": "internal string",
-                                                "line": 6,
-                                                "column": 34
-                                            }
-                                        },
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 6,
-                                            "column": 22
+                                            "primtiveKind": "PrimtiveKind.Integer"
                                         }
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 6,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 },
                                 {
                                     "$type": "d3i.value_object_member",
@@ -2957,20 +1991,10 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.reference_type",
                                         "kind": "Kind.Reference",
-                                        "reference_name": "some.Reference",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 7,
-                                            "column": 22
-                                        }
+                                        "reference_name": "some.Reference"
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 7,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 },
                                 {
                                     "$type": "d3i.value_object_member",
@@ -2979,56 +2003,78 @@ domain SomeDomain {
                                     "type": {
                                         "$type": "d3i.primitive_type",
                                         "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.Boolean",
-                                        "location": {
-                                            "fileName": "internal string",
-                                            "line": 8,
-                                            "column": 28
-                                        }
+                                        "primtiveKind": "PrimtiveKind.Boolean"
                                     },
                                     "document_lines": [],
-                                    "decorators": [],
-                                    "location": {
-                                        "fileName": "internal string",
-                                        "line": 8,
-                                        "column": 12
-                                    }
+                                    "decorators": []
                                 }
                             ],
                             "operations": [],
                             "enums": [],
                             "value_objects": [],
                             "document_lines": [],
-                            "decorators": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 4,
-                                "column": 8
-                            }
+                            "decorators": []
                         }
                     ],
                     "document_lines": [],
-                    "decorators": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 4
-                    }
+                    "decorators": []
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
+            "decorators": []
         }
     ]
 }"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
+        self.assertEqual(json.loads(result), json.loads(expected))
+
+
+    def tests_new_constructs_serialize_ok(self):
+        # Covers JSON serialization of the Q1-Q5 constructs that no other snapshot
+        # populates: workflow/step (+compensate), ref type, integration/audit event
+        # kinds, eventsourced aggregate, populated emits, validate, and a
+        # value-object query operation.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Money {
+            amount:number validate value >= 0
+            query isPositive() : boolean
+        }
+        aggregate Customer {
+            root entity CustomerRoot { id:string }
+        }
+        eventsourced aggregate OrderAggregate {
+            root entity OrderHeader {
+                customer: ref Customer
+                command place() emits Placed
+            }
+        }
+        service TheService {
+            integration event Shipped version 1 { x:number }
+            audit event Logged version 1 { who:string }
+        }
+        workflow OrderSaga {
+            step reserveStock( id:string ) compensate releaseStock
+            step releaseStock( id:string )
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        result = JsonEmitter(withLocation=False).Emit(session)
+
+        self.assertIn('"$type": "d3i.workflow"', result)
+        self.assertIn('"$type": "d3i.step"', result)
+        self.assertIn('"compensate": "releaseStock"', result)
+        self.assertIn('"$type": "d3i.ref_type"', result)
+        self.assertIn('"kind": "Kind.Integration"', result)
+        self.assertIn('"kind": "Kind.Audit"', result)
+        self.assertIn('"eventsourced": "True"', result)
+        self.assertIn('"Placed"', result)
+        self.assertIn('"validate": "value>=0"', result)
+        self.assertIn('"name": "isPositive"', result)
 
 
 if __name__ == "__main__":
