@@ -341,6 +341,23 @@ class SemanticChecker(ElementVisitor):
         element, message = Engine.get_referenced_element_with_message(reference_type.parent, reference_type.reference_name)
         if (element == None):
             self.__error(reference_type, message)
+        # Q5: another aggregate must be referenced by identity, not embedded.
+        elif (isinstance(element, aggregate)):
+            name = reference_type.reference_name.getText()
+            self.__error(reference_type, f"Aggregate '{name}' must be referenced by identity: use 'ref {name}'.")
+
+    def visitRefType(self, ref_type: ref_type, parentData: Any, memberName: str) -> Any:
+        if (len(ref_type.reference_name.names) == 0):
+            self.__error(ref_type, f"Empty reference name.")
+            return
+
+        element, message = Engine.get_referenced_element_with_message(ref_type.parent, ref_type.reference_name)
+        if (element == None):
+            self.__error(ref_type, message)
+        # Q5: `ref` may only target an aggregate; embed value objects/entities directly.
+        elif (isinstance(element, aggregate) == False):
+            name = ref_type.reference_name.getText()
+            self.__error(ref_type, f"'ref' may only reference an aggregate; '{name}' is not an aggregate (embed value objects and entities directly).")
 
     def visitListType(self, list_type: list_type, parentData: Any, memberName: str) -> Any:
         if (list_type.item_type.kind == type.Kind.List or list_type.item_type.kind == type.Kind.Map):

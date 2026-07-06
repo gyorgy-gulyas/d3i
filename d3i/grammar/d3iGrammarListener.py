@@ -458,6 +458,15 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#ref_type.
+    def enterRef_type(self, ctx:d3iGrammar.Ref_typeContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#ref_type.
+    def exitRef_type(self, ctx:d3iGrammar.Ref_typeContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#qualifiedName.
     def enterQualifiedName(self, ctx:d3iGrammar.QualifiedNameContext):
         pass

@@ -963,6 +963,55 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("list can only contain" in session.diagnostics[0].toText())
 
+    def test_bare_aggregate_reference_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        aggregate Customer {
+            root entity CustomerRoot { id:string }
+        }
+        aggregate OrderAggregate {
+            root entity OrderHeader {
+                customer: Customer
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must be referenced by identity" in session.diagnostics[0].toText())
+        self.assertTrue("ref Customer" in session.diagnostics[0].toText())
+
+    def test_ref_to_non_aggregate_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Money { amount:number }
+        aggregate OrderAggregate {
+            root entity OrderHeader {
+                price: ref Money
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("may only reference an aggregate" in session.diagnostics[0].toText())
+
     def test_workflow_unknown_compensate_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""

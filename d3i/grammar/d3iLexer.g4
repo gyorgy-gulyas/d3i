@@ -55,6 +55,7 @@ STEP : 'step' ;
 COMPENSATE : 'compensate' ;
 // Q4: validate sublanguage keywords / operators
 VALIDATE : 'validate' ;
+REF : 'ref' ;
 AND : 'and' ;
 OR : 'or' ;
 NOT : 'not' ;

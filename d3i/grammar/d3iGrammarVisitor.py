@@ -259,6 +259,11 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by d3iGrammar#ref_type.
+    def visitRef_type(self, ctx:d3iGrammar.Ref_typeContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by d3iGrammar#qualifiedName.
     def visitQualifiedName(self, ctx:d3iGrammar.QualifiedNameContext):
         return self.visitChildren(ctx)

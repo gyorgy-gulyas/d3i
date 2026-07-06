@@ -1301,5 +1301,31 @@ domain SomeDomain {
         self.assertEqual(members["score"].validate, "valuebetween1and10")
 
 
+    def test_ref_type(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        aggregate Customer {
+            root entity CustomerRoot { id:string }
+        }
+        aggregate OrderAggregate {
+            root entity OrderHeader {
+                customer: ref Customer
+                relatedCustomers: list[ ref Customer ]
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        entity: entity = root.domains[0].contexts[0].aggregates[1].internal_entities[0].entity
+        members = {m.name: m for m in entity.members}
+        self.assertEqual(members["customer"].type.kind, type.Kind.Ref)
+        self.assertEqual(members["customer"].type.reference_name.getText(), "Customer")
+        self.assertEqual(members["relatedCustomers"].type.kind, type.Kind.List)
+        self.assertEqual(members["relatedCustomers"].type.item_type.kind, type.Kind.Ref)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -698,6 +698,7 @@ class type(base_element):
         Reference = 2
         List = 3
         Map = 4
+        Ref = 5
 
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
@@ -709,6 +710,8 @@ class type(base_element):
                 data = visitor.visitPrimitiveType(self, parentData, memberName)
             case type.Kind.Reference:
                 data = visitor.visitReferenceType(self, parentData, memberName)
+            case type.Kind.Ref:
+                data = visitor.visitRefType(self, parentData, memberName)
             case type.Kind.List:
                 data = visitor.visitListType(self, parentData, memberName)
                 if (self.item_type != None):
@@ -744,6 +747,13 @@ class primitive_type(type):
 
 
 class reference_type(type):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.reference_name: qualified_name = None
+
+
+class ref_type(type):
+    # Q5: reference to another aggregate by identity (kind == Ref).
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.reference_name: qualified_name = None

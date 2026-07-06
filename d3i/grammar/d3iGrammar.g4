@@ -242,6 +242,7 @@ type
     | reference_type
     | list_type
     | map_type
+    | ref_type
     ;
     
     primitive_type
@@ -270,7 +271,12 @@ type
     map_type
         : 'map' '[' type ',' type ']'
         ;
-        
+
+    // Q5: reference to another aggregate by identity (generates a typed id in codegen).
+    ref_type
+        : REF qualifiedName
+        ;
+
 qualifiedName
     : IDENTIFIER ('.' IDENTIFIER)*
     ;

@@ -142,6 +142,10 @@ class ElementVisitor(ABC):
         pass
 
     @abstractmethod
+    def visitRefType(self, ref_type: ref_type, parentData: Any, memberName: str) -> Any:
+        pass
+
+    @abstractmethod
     def visitListType(self, list_type: list_type, parentData: Any, memberName: str) -> Any:
         pass
 

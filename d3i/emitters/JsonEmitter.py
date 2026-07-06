@@ -380,6 +380,15 @@ class JsonEmitter(ElementVisitor):
         parentData[memberName] = data
         return data
 
+    def visitRefType(self, ref_type: ref_type, parentData: Any, memberName: str) -> Any:
+        data = {
+            "$type": "d3i.ref_type",
+            "kind": str(ref_type.kind),
+            "reference_name": str(ref_type.reference_name.getText())
+        }
+        parentData[memberName] = data
+        return data
+
     def visitListType(self, list_type: list_type, parentData: Any, memberName: str) -> Any:
         data = {
             "$type": "d3i.list_type",

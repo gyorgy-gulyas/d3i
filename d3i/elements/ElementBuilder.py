@@ -1248,6 +1248,15 @@ class ElementBuilder(d3iGrammarVisitor):
 
         return result
 
+    def visitRef_type(self, ctx: d3iGrammar.Ref_typeContext):
+        result = ref_type(self.fileName, ctx.start)
+        result.kind = type.Kind.Ref
+        if (ctx.qualifiedName() != None):
+            result.reference_name = self.visit(ctx.qualifiedName())
+            result.reference_name.parent = result
+
+        return result
+
     # Visit a parse tree produced by d3iGrammar#list_type.
     def visitList_type(self, ctx: d3iGrammar.List_typeContext):
         result = list_type(self.fileName, ctx.start)
