@@ -56,6 +56,13 @@ class ProtoEmitter:
                     code = self.endFile(code)
                     result.append(code)
 
+                # Process all context-level composites (one message per composite)
+                for composite in context.composites:
+                    code = self.beginCompositeFile(output_path, domain, context, composite, "Composites/Protos")
+                    code.content += self.compositeText(composite, code)
+                    code = self.endFile(code)
+                    result.append(code)
+
         return result
 
     def fileHeader(self) -> str:
@@ -193,6 +200,83 @@ class ProtoEmitter:
         # Loop through each valueobject members and generate code for each
         for member in dto.members:
             # Write each member
+            buffer.write(self.documentLines(member, indent+1))
+            buffer.write(self.protoMemberText(member.name, member.type, code, index, indent+1))
+            index = index + 1
+
+        buffer.write(f"{utils.tab(indent)}}}\n\n")
+
+        return buffer.getvalue()
+
+    def beginCompositeFile(self, output_path: str, domain: domain, context: context, composite: composite, subDirectoryName: str) -> proto_code:
+        """
+        Begins a context-level .proto file that holds a single composite as a message.
+        Unlike beginFile (interface-scoped), composites are not bound to an aggregate/version.
+        """
+        buffer = io.StringIO()
+
+        # proto 3 syntax
+        buffer.write(self.fileHeader())
+        buffer.write("\n")
+        buffer.write("syntax = \"proto3\";")
+        buffer.write("\n")
+
+        # namespaces
+        buffer.write("\n")
+        buffer.write(f"option csharp_namespace = \"{domain.name}.{context.name}.Protos\";")
+        buffer.write("\n")
+        buffer.write(f"option java_package = \"com.{context.name}\";\n")
+        buffer.write(f"option java_multiple_files = true;\n")
+
+        # package
+        buffer.write("\n")
+        buffer.write(f"package {domain.name}.{context.name};\n")
+        buffer.write("\n")
+
+        # make a placeholders for additional imports
+        buffer.write("<ADDITIONAL_IMPORTS>")
+        buffer.write("\n")
+
+        code: proto_code = proto_code(output_path, [domain.name, context.name, subDirectoryName], composite.name)
+        code.content = buffer.getvalue()
+        return code
+
+    def compositeText(self, composite: composite, code: proto_code, indent: int = 0) -> str:
+        """
+        Generates the proto message code for a composite (mirrors dtoText: inherited
+        bases are unfolded, then own inner enums and members are written).
+        """
+        bases: List[internal_scoped_base_element] = []
+        for inherit in composite.inherits:
+            base = Engine.get_referenced_element(composite.parent, inherit)
+            if (base != None):
+                utils.collectBaseRecursive(base, bases)
+
+        buffer = io.StringIO()
+        buffer.write(self.documentLines(composite, indent))
+        buffer.write(f"{utils.tab(indent)}message {composite.name} {{\n")
+
+        index: int = 1
+        # Unfold inherited bases
+        for base in bases:
+            buffer.write(f"{utils.tab(indent+1)}// unfold begin: {base.name}\n")
+
+            if (base.withEnum == True):
+                for child_enum in base.enums:
+                    buffer.write(self.enumText(child_enum, code, indent+1))
+
+            for member in base.members:
+                buffer.write(self.documentLines(member, indent+1))
+                buffer.write(self.protoMemberText(member.name, member.type, code, index, indent+1))
+                index = index + 1
+            buffer.write(f"{utils.tab(indent+1)}// unfold end {base.name}\n\n")
+
+        # own inner enums
+        for child_enum in composite.enums:
+            buffer.write(self.enumText(child_enum, code, indent+1))
+
+        # own members
+        for member in composite.members:
             buffer.write(self.documentLines(member, indent+1))
             buffer.write(self.protoMemberText(member.name, member.type, code, index, indent+1))
             index = index + 1

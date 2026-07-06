@@ -1179,6 +1179,11 @@ class ElementBuilder(d3iGrammarVisitor):
             result.kind = decorator_param.Kind.QualifiedName
             result.value = self.visit(ctx.qualifiedName())
             result.value.parent = result
+            # Backward compat: a bare single-identifier positional param (e.g.
+            # `@public_api( rest )`) also acts as a named flag, so find_param()
+            # can still locate it by name. Dotted names stay purely positional.
+            if (result.name == None and len(ctx.qualifiedName().IDENTIFIER()) == 1):
+                result.name = ctx.qualifiedName().getText()
         elif (ctx.INTEGER_CONSTANS() != None):
             result.kind = decorator_param.Kind.Integer
             result.value = int(ctx.INTEGER_CONSTANS().getText())
