@@ -22,13 +22,9 @@ import_rule
     ;
 
 domain
-    : directive* DOCUMENT_LINE* decorator* 'domain' IDENTIFIER '{' domain_element* '}'
+    : DOCUMENT_LINE* decorator* 'domain' IDENTIFIER '{' domain_element* '}'   // Q12: directive removed
     ;
 
-    directive
-        : DOCUMENT_LINE* IDENTIFIER qualifiedName
-        ;
-        
     domain_element
         : context
         ;

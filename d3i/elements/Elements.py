@@ -217,30 +217,16 @@ class domain(hinted_base_element, IScope):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
-        self.directives: List[directive] = []
         self.contexts: List[context] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitDomain(self, parentData)
         super().visit(visitor, data)
-        for directive in self.directives:
-            directive.visit(visitor, data)
         for context in self.contexts:
             context.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
         return super().getChildren() + self.contexts
-
-
-class directive(base_element):
-    def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
-        self.keyword = None
-        self.value: qualified_name = None
-
-    def visit(self, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitDirective(self, parentData)
-        super().visit(visitor, data)
 
 
 class context(internal_scoped_base_element):

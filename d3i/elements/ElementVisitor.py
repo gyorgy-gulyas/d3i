@@ -18,10 +18,6 @@ class ElementVisitor(ABC):
         pass
 
     @abstractmethod
-    def visitDirective(self, directive: directive, parentData: Any) -> Any:
-        pass
-
-    @abstractmethod
     def visitContext(self, context: context, parentData: Any) -> Any:
         pass
 

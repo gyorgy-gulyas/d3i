@@ -54,20 +54,6 @@ domain somedomain{
         self.assertEqual(_import.name, "somedomain.subdomain.subdomain")
 
 
-    def test_directive_qualified_ok(self):
-        engine = Engine()
-        session = Session(Source.CreateFromText("""
-resources somedomain.subdomain.subdomain
-domain somedomain{
-}
-"""))
-        root = engine.Build(session)
-        self.assertIsInstance(root, d3)
-        self.assertEqual(1, len(root.domains[0].directives))
-        directive: directive = root.domains[0].directives[0]
-        self.assertEqual(directive.keyword, "resources")
-        self.assertEqual(directive.value.getText(), "somedomain.subdomain.subdomain")
-
     def test_decorator_simple_ok(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""

@@ -35,15 +35,6 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by d3iGrammar#directive.
-    def enterDirective(self, ctx:d3iGrammar.DirectiveContext):
-        pass
-
-    # Exit a parse tree produced by d3iGrammar#directive.
-    def exitDirective(self, ctx:d3iGrammar.DirectiveContext):
-        pass
-
-
     # Enter a parse tree produced by d3iGrammar#domain_element.
     def enterDomain_element(self, ctx:d3iGrammar.Domain_elementContext):
         pass

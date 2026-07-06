@@ -40,7 +40,6 @@ domain somedomain{
         {
             "$type": "d3i.domain",
             "name": "somedomain",
-            "directives": [],
             "contexts": [],
             "domain_events": [],
             "document_lines": [],
@@ -135,70 +134,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
-            "contexts": [],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
-        }
-    ]
-}"""
-        diff = jsondiff.diff(result, expected, syntax='symmetric')
-        self.assertEqual(0, len(diff))
-
-    def tests_directives_ok(self):
-        engine = Engine()
-        session = Session(Source.CreateFromText("""
-using PartnerContext
-namespace somedomain.subdomain.subsubdomain
-                                                    
-domain SomeDomain {
-}
-"""))
-        engine.Build(session)
-
-        jsonEmmiter = JsonEmitter()
-        result = jsonEmmiter.Emit(session)
-        expected = """{
-    "$type": "d3i.d3",
-    "imports": [],
-    "domains": [
-        {
-            "$type": "d3i.domain",
-            "name": "SomeDomain",
-            "directives": [
-                {
-                    "$type": "d3i.directive",
-                    "keyword": "using",
-                    "value": [
-                        "PartnerContext"
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 2,
-                        "column": 0
-                    }
-                },
-                {
-                    "$type": "d3i.directive",
-                    "keyword": "namespace",
-                    "value": [
-                        "somedomain",
-                        "subdomain",
-                        "subsubdomain"
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 3,
-                        "column": 0
-                    }
-                }
-            ],
             "contexts": [],
             "domain_events": [],
             "document_lines": [],
@@ -234,7 +169,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -311,7 +245,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -500,7 +433,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -841,7 +773,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -1272,7 +1203,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -1472,75 +1402,6 @@ domain SomeDomain {
                 "line": 2,
                 "column": 0
             }
-        },
-        {
-            "$type": "d3i.domain",
-            "name": null,
-            "directives": [
-                {
-                    "$type": "d3i.directive",
-                    "keyword": "id",
-                    "value": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 17,
-                        "column": 12
-                    }
-                },
-                {
-                    "$type": "d3i.directive",
-                    "keyword": "address",
-                    "value": [
-                        "PartnerAddress"
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 18,
-                        "column": 12
-                    }
-                },
-                {
-                    "$type": "d3i.directive",
-                    "keyword": "partnerType",
-                    "value": [
-                        "PartnerType"
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 19,
-                        "column": 12
-                    }
-                },
-                {
-                    "$type": "d3i.directive",
-                    "keyword": "product",
-                    "value": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 20,
-                        "column": 12
-                    }
-                },
-                {
-                    "$type": "d3i.directive",
-                    "keyword": "quantity",
-                    "value": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 21,
-                        "column": 12
-                    }
-                }
-            ],
-            "contexts": [],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 17,
-                "column": 12
-            }
         }
     ]
 }"""
@@ -1570,7 +1431,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -1734,7 +1594,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -1902,69 +1761,6 @@ domain SomeDomain {
                 "line": 2,
                 "column": 0
             }
-        },
-        {
-            "$type": "d3i.domain",
-            "name": "partnerId",
-            "directives": [
-                {
-                    "$type": "d3i.directive",
-                    "keyword": "post",
-                    "value": [
-                        "getPartnerData"
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 15,
-                        "column": 13
-                    }
-                }
-            ],
-            "contexts": [],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [
-                {
-                    "$type": "d3i.decorator",
-                    "name": "required",
-                    "params": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 16,
-                        "column": 28
-                    }
-                }
-            ],
-            "location": {
-                "fileName": "internal string",
-                "line": 15,
-                "column": 13
-            }
-        },
-        {
-            "$type": "d3i.domain",
-            "name": null,
-            "directives": [
-                {
-                    "$type": "d3i.directive",
-                    "keyword": "PartnerData",
-                    "value": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 16,
-                        "column": 60
-                    }
-                }
-            ],
-            "contexts": [],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 16,
-                "column": 60
-            }
         }
     ]
 }"""
@@ -2012,7 +1808,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -2199,173 +1994,6 @@ domain SomeDomain {
                 "line": 2,
                 "column": 0
             }
-        },
-        {
-            "$type": "d3i.domain",
-            "name": "getOrder",
-            "directives": [
-                {
-                    "$type": "d3i.directive",
-                    "keyword": "orderId",
-                    "value": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 15,
-                        "column": 16
-                    }
-                }
-            ],
-            "contexts": [],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [
-                {
-                    "$type": "d3i.decorator",
-                    "name": "post",
-                    "params": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 18,
-                        "column": 12
-                    }
-                }
-            ],
-            "location": {
-                "fileName": "internal string",
-                "line": 15,
-                "column": 16
-            }
-        },
-        {
-            "$type": "d3i.domain",
-            "name": "orderId",
-            "directives": [],
-            "contexts": [],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [
-                {
-                    "$type": "d3i.decorator",
-                    "name": "required",
-                    "params": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 19,
-                        "column": 22
-                    }
-                }
-            ],
-            "location": {
-                "fileName": "internal string",
-                "line": 19,
-                "column": 22
-            }
-        },
-        {
-            "$type": "d3i.domain",
-            "name": "OrderData",
-            "directives": [],
-            "contexts": [],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [
-                {
-                    "$type": "d3i.decorator",
-                    "name": "status",
-                    "params": [
-                        {
-                            "$type": "d3i.decorator_param",
-                            "kind": "Kind.Integer",
-                            "value": "200",
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 20,
-                                "column": 26
-                            }
-                        }
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 20,
-                        "column": 18
-                    }
-                }
-            ],
-            "location": {
-                "fileName": "internal string",
-                "line": 20,
-                "column": 18
-            }
-        },
-        {
-            "$type": "d3i.domain",
-            "name": "ErrorNotFound",
-            "directives": [],
-            "contexts": [
-                {
-                    "$type": "d3i.context",
-                    "name": "closeAllOrder",
-                    "entities": [],
-                    "composites": [],
-                    "aggregates": [],
-                    "views": [],
-                    "repositories": [],
-                    "acls": [],
-                    "services": [],
-                    "interfaces": [],
-                    "workflows": [],
-                    "enums": [],
-                    "value_objects": [],
-                    "document_lines": [],
-                    "decorators": [
-                        {
-                            "$type": "d3i.decorator",
-                            "name": "put",
-                            "params": [],
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 23,
-                                "column": 12
-                            }
-                        }
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 23,
-                        "column": 12
-                    }
-                }
-            ],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [
-                {
-                    "$type": "d3i.decorator",
-                    "name": "status",
-                    "params": [
-                        {
-                            "$type": "d3i.decorator_param",
-                            "kind": "Kind.Integer",
-                            "value": "404",
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 21,
-                                "column": 26
-                            }
-                        }
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 21,
-                        "column": 18
-                    }
-                }
-            ],
-            "location": {
-                "fileName": "internal string",
-                "line": 21,
-                "column": 18
-            }
         }
     ]
 }"""
@@ -2413,7 +2041,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -2573,124 +2200,10 @@ domain SomeDomain {
                         "line": 3,
                         "column": 4
                     }
-                }
-            ],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [],
-            "location": {
-                "fileName": "internal string",
-                "line": 2,
-                "column": 0
-            }
-        },
-        {
-            "$type": "d3i.domain",
-            "name": "getOrder",
-            "directives": [
-                {
-                    "$type": "d3i.directive",
-                    "keyword": "OrderPlaced",
-                    "value": [
-                        "orderId"
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 14,
-                        "column": 18
-                    }
-                }
-            ],
-            "contexts": [],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [
-                {
-                    "$type": "d3i.decorator",
-                    "name": "post",
-                    "params": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 18,
-                        "column": 12
-                    }
-                }
-            ],
-            "location": {
-                "fileName": "internal string",
-                "line": 14,
-                "column": 18
-            }
-        },
-        {
-            "$type": "d3i.domain",
-            "name": "orderId",
-            "directives": [],
-            "contexts": [],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [
-                {
-                    "$type": "d3i.decorator",
-                    "name": "required",
-                    "params": [],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 19,
-                        "column": 22
-                    }
-                }
-            ],
-            "location": {
-                "fileName": "internal string",
-                "line": 19,
-                "column": 22
-            }
-        },
-        {
-            "$type": "d3i.domain",
-            "name": "OrderData",
-            "directives": [],
-            "contexts": [],
-            "domain_events": [],
-            "document_lines": [],
-            "decorators": [
-                {
-                    "$type": "d3i.decorator",
-                    "name": "status",
-                    "params": [
-                        {
-                            "$type": "d3i.decorator_param",
-                            "kind": "Kind.Integer",
-                            "value": "200",
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 20,
-                                "column": 26
-                            }
-                        }
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 20,
-                        "column": 18
-                    }
-                }
-            ],
-            "location": {
-                "fileName": "internal string",
-                "line": 20,
-                "column": 18
-            }
-        },
-        {
-            "$type": "d3i.domain",
-            "name": "ErrorNotFound",
-            "directives": [],
-            "contexts": [
+                },
                 {
                     "$type": "d3i.context",
-                    "name": "closeAllOrder",
+                    "name": "getOrder",
                     "entities": [],
                     "composites": [],
                     "aggregates": [],
@@ -2706,6 +2219,68 @@ domain SomeDomain {
                     "decorators": [
                         {
                             "$type": "d3i.decorator",
+                            "name": "post",
+                            "params": [],
+                            "location": {
+                                "fileName": "internal string",
+                                "line": 18,
+                                "column": 12
+                            }
+                        },
+                        {
+                            "$type": "d3i.decorator",
+                            "name": "required",
+                            "params": [],
+                            "location": {
+                                "fileName": "internal string",
+                                "line": 19,
+                                "column": 22
+                            }
+                        },
+                        {
+                            "$type": "d3i.decorator",
+                            "name": "status",
+                            "params": [
+                                {
+                                    "$type": "d3i.decorator_param",
+                                    "kind": "Kind.Integer",
+                                    "value": "200",
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 20,
+                                        "column": 26
+                                    }
+                                }
+                            ],
+                            "location": {
+                                "fileName": "internal string",
+                                "line": 20,
+                                "column": 18
+                            }
+                        },
+                        {
+                            "$type": "d3i.decorator",
+                            "name": "status",
+                            "params": [
+                                {
+                                    "$type": "d3i.decorator_param",
+                                    "kind": "Kind.Integer",
+                                    "value": "404",
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 21,
+                                        "column": 26
+                                    }
+                                }
+                            ],
+                            "location": {
+                                "fileName": "internal string",
+                                "line": 21,
+                                "column": 18
+                            }
+                        },
+                        {
+                            "$type": "d3i.decorator",
                             "name": "put",
                             "params": [],
                             "location": {
@@ -2717,40 +2292,18 @@ domain SomeDomain {
                     ],
                     "location": {
                         "fileName": "internal string",
-                        "line": 23,
+                        "line": 18,
                         "column": 12
                     }
                 }
             ],
             "domain_events": [],
             "document_lines": [],
-            "decorators": [
-                {
-                    "$type": "d3i.decorator",
-                    "name": "status",
-                    "params": [
-                        {
-                            "$type": "d3i.decorator_param",
-                            "kind": "Kind.Integer",
-                            "value": "404",
-                            "location": {
-                                "fileName": "internal string",
-                                "line": 21,
-                                "column": 26
-                            }
-                        }
-                    ],
-                    "location": {
-                        "fileName": "internal string",
-                        "line": 21,
-                        "column": 18
-                    }
-                }
-            ],
+            "decorators": [],
             "location": {
                 "fileName": "internal string",
-                "line": 21,
-                "column": 18
+                "line": 2,
+                "column": 0
             }
         }
     ]
@@ -2789,7 +2342,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [],
             "domain_events": [],
             "document_lines": [],
@@ -2835,7 +2387,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -3036,7 +2587,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -3176,7 +2726,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",
@@ -3309,7 +2858,6 @@ domain SomeDomain {
         {
             "$type": "d3i.domain",
             "name": "SomeDomain",
-            "directives": [],
             "contexts": [
                 {
                     "$type": "d3i.context",

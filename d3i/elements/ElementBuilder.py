@@ -49,17 +49,6 @@ class ElementBuilder(d3iGrammarVisitor):
 
         return result
     
-    # Visit a parse tree produced by d3iGrammar#directive.
-    def visitDirective(self, ctx: d3iGrammar.DirectiveContext):
-        result = directive(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.keyword = ctx.IDENTIFIER().getText()
-        if (ctx.qualifiedName() != None):
-            result.value = self.visit(ctx.qualifiedName())
-            result.value.parent = result
-
-        return result
-
     # Visit a parse tree produced by d3iGrammar#domain.
     def visitDomain(self, ctx: d3iGrammar.DomainContext):
         result = domain(self.fileName, ctx.start)
@@ -84,16 +73,6 @@ class ElementBuilder(d3iGrammarVisitor):
             child = self.visit(decorator)
             child.parent = result
             result.decorators.append(child)
-
-        counter = 0
-        while True:
-            directive = ctx.directive((counter))
-            if (directive == None):
-                break
-            counter = counter + 1
-            child = self.visit(directive)
-            child.parent = result
-            result.directives.append(child)
 
         counter = 0
         while True:

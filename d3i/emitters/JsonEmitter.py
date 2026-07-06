@@ -59,20 +59,10 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.domain",
             "name": domain.name,
-            "directives": [],
             "contexts": [],
             "domain_events": []
         }
         parentData['domains'].append(data)
-        return data
-
-    def visitDirective(self, directive: directive, parentData: Any) -> Any:
-        data = {
-            "$type": "d3i.directive",
-            "keyword": directive.keyword,
-            "value": directive.value.names,
-        }
-        parentData['directives'].append(data)
         return data
 
     def visitContext(self, context: context, parentData: Any) -> Any:

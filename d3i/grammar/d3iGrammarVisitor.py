@@ -24,11 +24,6 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by d3iGrammar#directive.
-    def visitDirective(self, ctx:d3iGrammar.DirectiveContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by d3iGrammar#domain_element.
     def visitDomain_element(self, ctx:d3iGrammar.Domain_elementContext):
         return self.visitChildren(ctx)

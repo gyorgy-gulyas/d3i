@@ -22,9 +22,6 @@ class SemanticChecker(ElementVisitor):
     def visitDomain(self, domain: domain, parentData: Any) -> Any:
         pass
 
-    def visitDirective(self, directive: directive, parentData: Any) -> Any:
-        pass
-
     def visitContext(self, context: context, parentData: Any) -> Any:
         pass
 
