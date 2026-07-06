@@ -1179,5 +1179,69 @@ domain SomeDomain {
         self.assertEqual(entity.operations[1].name, "isOverdue")
 
 
+    def test_event_kinds(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        service TheService {
+            event Plain version 1 { x:number }
+            domain event Created version 1 { x:number }
+            integration event Shipped version 1 { x:number }
+            audit event Logged version 1 { who:string }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        service = root.domains[0].contexts[0].services[0]
+        self.assertEqual(len(service.events), 4)
+        self.assertEqual(service.events[0].kind, event.Kind.Domain)
+        self.assertEqual(service.events[1].kind, event.Kind.Domain)
+        self.assertEqual(service.events[2].kind, event.Kind.Integration)
+        self.assertEqual(service.events[3].kind, event.Kind.Audit)
+
+    def test_eventsourced_aggregate(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        eventsourced aggregate Account {
+            root entity AccountRoot { balance:number }
+        }
+        aggregate Plain {
+            root entity PlainRoot { x:number }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        self.assertEqual(context.aggregates[0].eventsourced, True)
+        self.assertEqual(context.aggregates[1].eventsourced, False)
+
+    def test_command_emits(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        aggregate OrderAggregate {
+            root entity OrderHeader {
+                total:number
+                command place() emits Placed, AuditLogged
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        entity: entity = root.domains[0].contexts[0].aggregates[0].internal_entities[0].entity
+        command: operation = entity.operations[0]
+        self.assertEqual(command.name, "place")
+        self.assertEqual(len(command.emits), 2)
+        self.assertEqual(command.emits[0].getText(), "Placed")
+        self.assertEqual(command.emits[1].getText(), "AuditLogged")
+
+
 if __name__ == "__main__":
     unittest.main()

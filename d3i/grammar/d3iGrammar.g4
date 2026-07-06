@@ -93,8 +93,15 @@ composite
             ;
 
 event
-    :  DOCUMENT_LINE* decorator* 'event' IDENTIFIER 'version' INTEGER_CONSTANS inherits? '{' event_element* '}'
+    :  DOCUMENT_LINE* decorator* event_kind? 'event' IDENTIFIER 'version' INTEGER_CONSTANS inherits? '{' event_element* '}'
     ;
+
+    // Q2: three explicit event kinds. No prefix (or 'domain') = domain event.
+    event_kind
+        : 'domain'
+        | 'integration'
+        | 'audit'
+        ;
 
     event_element
         : event_member
@@ -125,7 +132,7 @@ entity
             ;
         
 aggregate
-    :  DOCUMENT_LINE* decorator* 'aggregate' IDENTIFIER '{' aggregate_element* '}'
+    :  DOCUMENT_LINE* decorator* 'eventsourced'? 'aggregate' IDENTIFIER '{' aggregate_element* '}'   // Q2: eventsourced marker
     ;
 
     aggregate_element
@@ -183,8 +190,13 @@ interface
         ;
    
 operation
-    : DOCUMENT_LINE* decorator* ('command' | 'query' ) IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' (':' operation_return )?
+    : DOCUMENT_LINE* decorator* ('command' | 'query' ) IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' (':' operation_return )? emits_clause?
     ;
+
+    // Q2: a command may declare the events it produces (the command records; the service publishes).
+    emits_clause
+        : 'emits' qualifiedName (',' qualifiedName)*
+        ;
 
     operation_param
         : DOCUMENT_LINE* decorator* IDENTIFIER ':' type

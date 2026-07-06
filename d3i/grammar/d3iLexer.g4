@@ -46,6 +46,10 @@ FOR : 'for' ;
 PROJECTED: 'projected' ;
 COMMAND : 'command' ;
 QUERY : 'query' ;
+INTEGRATION : 'integration' ;
+AUDIT : 'audit' ;
+EVENTSOURCED : 'eventsourced' ;
+EMITS : 'emits' ;
 
 // built-in types
 INTEGER : 'integer' ;

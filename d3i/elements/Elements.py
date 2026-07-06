@@ -385,12 +385,19 @@ class composite_member(hinted_base_element):
 
 
 class event(internal_scoped_base_element):
+    # Q2: three explicit event kinds (no prefix / 'domain' = Domain).
+    class Kind(Enum):
+        Domain = 1
+        Integration = 2
+        Audit = 3
+
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=False)
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.version: int = None
         self.members: List[event_member] = []
+        self.kind: event.Kind = event.Kind.Domain
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEvent(self, parentData)
@@ -457,6 +464,7 @@ class aggregate(internal_scoped_base_element):
         super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.name: str = None
         self.internal_entities: List[aggregate_entity] = []
+        self.eventsourced: bool = False   # Q2: 'eventsourced aggregate' marker
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitAggregate(self, parentData)
@@ -596,6 +604,7 @@ class operation(hinted_base_element):
         self.operation_params: List[operation_param] = []
         self.operation_return: operation_return = None
         self.kind: operation.Kind = operation.Kind.Command
+        self.emits: List[qualified_name] = []   # Q2: events a command records
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitOperation(self, parentData)

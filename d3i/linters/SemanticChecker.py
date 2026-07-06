@@ -291,6 +291,10 @@ class SemanticChecker(ElementVisitor):
             if (neighbour.name == operation.name):
                 self.__error(operation, f"An operation '{operation.name}' with same name is already exists in {neighbour.locationText()}.")
 
+        # Q2: only commands may emit events (a command records; the service publishes).
+        if (operation.kind.name == "Query" and len(operation.emits) > 0):
+            self.__error(operation, f"A query operation '{operation.name}' cannot emit events; only commands may declare 'emits'.")
+
     def visitOperationParam(self, param: operation_param, parentData: Any) -> Any:
         parent_operation: operation = param.parent
         for neighbour in parent_operation.operation_params:

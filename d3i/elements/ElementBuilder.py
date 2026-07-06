@@ -440,6 +440,15 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
+        if (ctx.event_kind() != None):
+            kind_text = ctx.event_kind().getText()
+            if (kind_text == "integration"):
+                result.kind = event.Kind.Integration
+            elif (kind_text == "audit"):
+                result.kind = event.Kind.Audit
+            else:
+                result.kind = event.Kind.Domain
+
         if( ctx.VERSION() != None):
             result.version = int(ctx.INTEGER_CONSTANS().getText())
 
@@ -632,6 +641,8 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#aggregate.
     def visitAggregate(self, ctx: d3iGrammar.AggregateContext):
         result = aggregate(self.fileName, ctx.start)
+        if (ctx.EVENTSOURCED() != None):
+            result.eventsourced = True
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
@@ -971,6 +982,12 @@ class ElementBuilder(d3iGrammarVisitor):
         if(ctx.operation_return() != None ):
             result.operation_return = self.visit(ctx.operation_return())
             result.operation_return.parent = result
+
+        if (ctx.emits_clause() != None):
+            for emitted in ctx.emits_clause().qualifiedName():
+                child = self.visit(emitted)
+                child.parent = result
+                result.emits.append(child)
 
         return result
 

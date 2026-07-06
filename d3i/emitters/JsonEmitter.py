@@ -96,6 +96,7 @@ class JsonEmitter(ElementVisitor):
             "$type": "d3i.event",
             "name": event.name,
             "version": str(event.version),
+            "kind": str(event.kind),
             "inherits": [],
             "members": []
         }
@@ -225,6 +226,7 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.aggregate",
             "name": aggregate.name,
+            "eventsourced": str(aggregate.eventsourced),
             "internal_entities": []
         }
         parentData["aggregates"].append(data)
@@ -302,6 +304,8 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.operation",
             "name": operation.name,
+            "kind": str(operation.kind),
+            "emits": [emitted.getText() for emitted in operation.emits],
             "operation_params": [],
             "operation_return": None,
         }

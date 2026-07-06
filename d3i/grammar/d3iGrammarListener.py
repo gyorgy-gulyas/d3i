@@ -161,6 +161,15 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#event_kind.
+    def enterEvent_kind(self, ctx:d3iGrammar.Event_kindContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#event_kind.
+    def exitEvent_kind(self, ctx:d3iGrammar.Event_kindContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#event_element.
     def enterEvent_element(self, ctx:d3iGrammar.Event_elementContext):
         pass
@@ -329,6 +338,15 @@ class d3iGrammarListener(ParseTreeListener):
 
     # Exit a parse tree produced by d3iGrammar#operation.
     def exitOperation(self, ctx:d3iGrammar.OperationContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#emits_clause.
+    def enterEmits_clause(self, ctx:d3iGrammar.Emits_clauseContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#emits_clause.
+    def exitEmits_clause(self, ctx:d3iGrammar.Emits_clauseContext):
         pass
 
 

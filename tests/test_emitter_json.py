@@ -844,6 +844,7 @@ domain SomeDomain {
                         {
                             "$type": "d3i.aggregate",
                             "name": "OrderAggregate",
+                            "eventsourced": "False",
                             "internal_entities": [
                                 {
                                     "$type": "d3i.aggregate_entity",
@@ -1564,6 +1565,8 @@ domain SomeDomain {
                                 {
                                     "$type": "d3i.operation",
                                     "name": "getById",
+                                    "kind": "Kind.Query",
+                                    "emits": [],
                                     "operation_params": [
                                         {
                                             "$type": "d3i.operation_param",
@@ -2004,6 +2007,7 @@ domain SomeDomain {
                                     "$type": "d3i.event",
                                     "name": "OrderPlaced",
                                     "version": "None",
+                                    "kind": "Kind.Domain",
                                     "inherits": [],
                                     "members": [],
                                     "enums": [],
@@ -3154,6 +3158,7 @@ domain SomeDomain {
                                     "$type": "d3i.event",
                                     "name": "TheEvent",
                                     "version": "1",
+                                    "kind": "Kind.Domain",
                                     "inherits": [],
                                     "members": [
                                         {
