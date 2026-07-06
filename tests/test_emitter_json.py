@@ -2712,5 +2712,715 @@ domain SomeDomain {
         self.assertEqual(0, len(diff))
 
 
+    def tests_import_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+import some.other.module
+domain SomeDomain {
+}
+"""))
+        engine.Build(session)
+
+        jsonEmmiter = JsonEmitter()
+        result = jsonEmmiter.Emit(session)
+        expected = """{
+    "$type": "d3i.d3",
+    "imports": [
+        {
+            "$type": "d3i.import_",
+            "name": "some.other.module",
+            "document_lines": [],
+            "decorators": [],
+            "location": {
+                "fileName": "internal string",
+                "line": 2,
+                "column": 0
+            }
+        }
+    ],
+    "domains": [
+        {
+            "$type": "d3i.domain",
+            "name": "SomeDomain",
+            "directives": [],
+            "contexts": [],
+            "domain_events": [],
+            "document_lines": [],
+            "decorators": [],
+            "location": {
+                "fileName": "internal string",
+                "line": 3,
+                "column": 0
+            }
+        }
+    ]
+}"""
+        diff = jsondiff.diff(result, expected, syntax='symmetric')
+        self.assertEqual(0, len(diff))
+
+    def tests_composite_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        composite Base {
+            enum Kind {
+                A,
+                B
+            }
+            valueobject Inner {
+                data:string
+            }
+            common:string
+            count:integer
+        }
+    }
+}
+"""))
+        engine.Build(session)
+
+        jsonEmmiter = JsonEmitter()
+        result = jsonEmmiter.Emit(session)
+        expected = """{
+    "$type": "d3i.d3",
+    "imports": [],
+    "domains": [
+        {
+            "$type": "d3i.domain",
+            "name": "SomeDomain",
+            "directives": [],
+            "contexts": [
+                {
+                    "$type": "d3i.context",
+                    "name": "Order",
+                    "entities": [],
+                    "composites": [
+                        {
+                            "$type": "d3i.composite",
+                            "name": "Base",
+                            "inherits": [],
+                            "members": [
+                                {
+                                    "$type": "d3i.composite_member",
+                                    "name": "common",
+                                    "type": {
+                                        "$type": "d3i.primitive_type",
+                                        "kind": "Kind.Primitive",
+                                        "primtiveKind": "PrimtiveKind.String",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 12,
+                                            "column": 19
+                                        }
+                                    },
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 12,
+                                        "column": 12
+                                    }
+                                },
+                                {
+                                    "$type": "d3i.composite_member",
+                                    "name": "count",
+                                    "type": {
+                                        "$type": "d3i.primitive_type",
+                                        "kind": "Kind.Primitive",
+                                        "primtiveKind": "PrimtiveKind.Integer",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 13,
+                                            "column": 18
+                                        }
+                                    },
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 13,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "enums": [
+                                {
+                                    "$type": "d3i.enum",
+                                    "name": "Kind",
+                                    "enum_elements": [
+                                        {
+                                            "$type": "d3i.enum_element",
+                                            "value": "A",
+                                            "document_lines": [],
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 6,
+                                                "column": 16
+                                            }
+                                        },
+                                        {
+                                            "$type": "d3i.enum_element",
+                                            "value": "B",
+                                            "document_lines": [],
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 7,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 5,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "value_objects": [
+                                {
+                                    "$type": "d3i.value_object",
+                                    "name": "Inner",
+                                    "inherits": [],
+                                    "members": [
+                                        {
+                                            "$type": "d3i.value_object_member",
+                                            "name": "data",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 10,
+                                                    "column": 21
+                                                }
+                                            },
+                                            "document_lines": [],
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 10,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "enums": [],
+                                    "value_objects": [],
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 9,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "document_lines": [],
+                            "decorators": [],
+                            "location": {
+                                "fileName": "internal string",
+                                "line": 4,
+                                "column": 8
+                            }
+                        }
+                    ],
+                    "aggregates": [],
+                    "views": [],
+                    "repositories": [],
+                    "acls": [],
+                    "services": [],
+                    "interfaces": [],
+                    "enums": [],
+                    "value_objects": [],
+                    "document_lines": [],
+                    "decorators": [],
+                    "location": {
+                        "fileName": "internal string",
+                        "line": 3,
+                        "column": 4
+                    }
+                }
+            ],
+            "domain_events": [],
+            "document_lines": [],
+            "decorators": [],
+            "location": {
+                "fileName": "internal string",
+                "line": 2,
+                "column": 0
+            }
+        }
+    ]
+}"""
+        diff = jsondiff.diff(result, expected, syntax='symmetric')
+        self.assertEqual(0, len(diff))
+
+    def tests_dto_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        interface TheInterface version 1 {
+            dto TheDto {
+                field:string
+                amount:integer
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+
+        jsonEmmiter = JsonEmitter()
+        result = jsonEmmiter.Emit(session)
+        expected = """{
+    "$type": "d3i.d3",
+    "imports": [],
+    "domains": [
+        {
+            "$type": "d3i.domain",
+            "name": "SomeDomain",
+            "directives": [],
+            "contexts": [
+                {
+                    "$type": "d3i.context",
+                    "name": "Order",
+                    "entities": [],
+                    "composites": [],
+                    "aggregates": [],
+                    "views": [],
+                    "repositories": [],
+                    "acls": [],
+                    "services": [
+                        {
+                            "$type": "d3i.interface",
+                            "name": "TheInterface",
+                            "version": "1",
+                            "operations": [],
+                            "events": [],
+                            "enums": [],
+                            "dtos": [
+                                {
+                                    "$type": "d3i.dto",
+                                    "name": "TheDto",
+                                    "inherits": [],
+                                    "members": [
+                                        {
+                                            "$type": "d3i.dto_member",
+                                            "name": "field",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 6,
+                                                    "column": 22
+                                                }
+                                            },
+                                            "document_lines": [],
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 6,
+                                                "column": 16
+                                            }
+                                        },
+                                        {
+                                            "$type": "d3i.dto_member",
+                                            "name": "amount",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.Integer",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 7,
+                                                    "column": 23
+                                                }
+                                            },
+                                            "document_lines": [],
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 7,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "enums": [],
+                                    "dtos": [],
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 5,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "document_lines": [],
+                            "decorators": [],
+                            "location": {
+                                "fileName": "internal string",
+                                "line": 4,
+                                "column": 8
+                            }
+                        }
+                    ],
+                    "interfaces": [],
+                    "enums": [],
+                    "value_objects": [],
+                    "document_lines": [],
+                    "decorators": [],
+                    "location": {
+                        "fileName": "internal string",
+                        "line": 3,
+                        "column": 4
+                    }
+                }
+            ],
+            "domain_events": [],
+            "document_lines": [],
+            "decorators": [],
+            "location": {
+                "fileName": "internal string",
+                "line": 2,
+                "column": 0
+            }
+        }
+    ]
+}"""
+        diff = jsondiff.diff(result, expected, syntax='symmetric')
+        self.assertEqual(0, len(diff))
+
+    def tests_event_eventhandler_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        service TheService {
+            event TheEvent version 1 {
+                data:string
+            }
+            eventhandler TheHandler for event TheEvent
+        }
+    }
+}
+"""))
+        engine.Build(session)
+
+        jsonEmmiter = JsonEmitter()
+        result = jsonEmmiter.Emit(session)
+        expected = """{
+    "$type": "d3i.d3",
+    "imports": [],
+    "domains": [
+        {
+            "$type": "d3i.domain",
+            "name": "SomeDomain",
+            "directives": [],
+            "contexts": [
+                {
+                    "$type": "d3i.context",
+                    "name": "Order",
+                    "entities": [],
+                    "composites": [],
+                    "aggregates": [],
+                    "views": [],
+                    "repositories": [],
+                    "acls": [],
+                    "services": [
+                        {
+                            "$type": "d3i.service",
+                            "name": "TheService",
+                            "operations": [],
+                            "events": [
+                                {
+                                    "$type": "d3i.event",
+                                    "name": "TheEvent",
+                                    "version": "1",
+                                    "inherits": [],
+                                    "members": [
+                                        {
+                                            "$type": "d3i.event_member",
+                                            "name": "data",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String",
+                                                "location": {
+                                                    "fileName": "internal string",
+                                                    "line": 6,
+                                                    "column": 21
+                                                }
+                                            },
+                                            "document_lines": [],
+                                            "decorators": [],
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 6,
+                                                "column": 16
+                                            }
+                                        }
+                                    ],
+                                    "enums": [],
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 5,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "eventhandlers": [
+                                {
+                                    "$type": "d3i.eventhandler",
+                                    "name": "TheHandler",
+                                    "handled_event": "TheEvent",
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 8,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "enums": [],
+                            "value_objects": [],
+                            "document_lines": [],
+                            "decorators": [],
+                            "location": {
+                                "fileName": "internal string",
+                                "line": 4,
+                                "column": 8
+                            }
+                        }
+                    ],
+                    "interfaces": [],
+                    "enums": [],
+                    "value_objects": [],
+                    "document_lines": [],
+                    "decorators": [],
+                    "location": {
+                        "fileName": "internal string",
+                        "line": 3,
+                        "column": 4
+                    }
+                }
+            ],
+            "domain_events": [],
+            "document_lines": [],
+            "decorators": [],
+            "location": {
+                "fileName": "internal string",
+                "line": 2,
+                "column": 0
+            }
+        }
+    ]
+}"""
+        diff = jsondiff.diff(result, expected, syntax='symmetric')
+        self.assertEqual(0, len(diff))
+
+    def tests_types_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Types {
+            listField: list[string]
+            mapField: map[string, integer]
+            refField: some.Reference
+            primitiveField: boolean
+        }
+    }
+}
+"""))
+        engine.Build(session)
+
+        jsonEmmiter = JsonEmitter()
+        result = jsonEmmiter.Emit(session)
+        expected = """{
+    "$type": "d3i.d3",
+    "imports": [],
+    "domains": [
+        {
+            "$type": "d3i.domain",
+            "name": "SomeDomain",
+            "directives": [],
+            "contexts": [
+                {
+                    "$type": "d3i.context",
+                    "name": "Order",
+                    "entities": [],
+                    "composites": [],
+                    "aggregates": [],
+                    "views": [],
+                    "repositories": [],
+                    "acls": [],
+                    "services": [],
+                    "interfaces": [],
+                    "enums": [],
+                    "value_objects": [
+                        {
+                            "$type": "d3i.value_object",
+                            "name": "Types",
+                            "inherits": [],
+                            "members": [
+                                {
+                                    "$type": "d3i.value_object_member",
+                                    "name": "listField",
+                                    "type": {
+                                        "$type": "d3i.list_type",
+                                        "kind": "Kind.List",
+                                        "item_type": {
+                                            "$type": "d3i.primitive_type",
+                                            "kind": "Kind.Primitive",
+                                            "primtiveKind": "PrimtiveKind.String",
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 5,
+                                                "column": 28
+                                            }
+                                        },
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 5,
+                                            "column": 23
+                                        }
+                                    },
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 5,
+                                        "column": 12
+                                    }
+                                },
+                                {
+                                    "$type": "d3i.value_object_member",
+                                    "name": "mapField",
+                                    "type": {
+                                        "$type": "d3i.map_type",
+                                        "kind": "Kind.Map",
+                                        "key_type": {
+                                            "$type": "d3i.primitive_type",
+                                            "kind": "Kind.Primitive",
+                                            "primtiveKind": "PrimtiveKind.String",
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 6,
+                                                "column": 26
+                                            }
+                                        },
+                                        "value_type": {
+                                            "$type": "d3i.primitive_type",
+                                            "kind": "Kind.Primitive",
+                                            "primtiveKind": "PrimtiveKind.Integer",
+                                            "location": {
+                                                "fileName": "internal string",
+                                                "line": 6,
+                                                "column": 34
+                                            }
+                                        },
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 6,
+                                            "column": 22
+                                        }
+                                    },
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 6,
+                                        "column": 12
+                                    }
+                                },
+                                {
+                                    "$type": "d3i.value_object_member",
+                                    "name": "refField",
+                                    "type": {
+                                        "$type": "d3i.reference_type",
+                                        "kind": "Kind.Reference",
+                                        "reference_name": "some.Reference",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 7,
+                                            "column": 22
+                                        }
+                                    },
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 7,
+                                        "column": 12
+                                    }
+                                },
+                                {
+                                    "$type": "d3i.value_object_member",
+                                    "name": "primitiveField",
+                                    "type": {
+                                        "$type": "d3i.primitive_type",
+                                        "kind": "Kind.Primitive",
+                                        "primtiveKind": "PrimtiveKind.Boolean",
+                                        "location": {
+                                            "fileName": "internal string",
+                                            "line": 8,
+                                            "column": 28
+                                        }
+                                    },
+                                    "document_lines": [],
+                                    "decorators": [],
+                                    "location": {
+                                        "fileName": "internal string",
+                                        "line": 8,
+                                        "column": 12
+                                    }
+                                }
+                            ],
+                            "enums": [],
+                            "value_objects": [],
+                            "document_lines": [],
+                            "decorators": [],
+                            "location": {
+                                "fileName": "internal string",
+                                "line": 4,
+                                "column": 8
+                            }
+                        }
+                    ],
+                    "document_lines": [],
+                    "decorators": [],
+                    "location": {
+                        "fileName": "internal string",
+                        "line": 3,
+                        "column": 4
+                    }
+                }
+            ],
+            "domain_events": [],
+            "document_lines": [],
+            "decorators": [],
+            "location": {
+                "fileName": "internal string",
+                "line": 2,
+                "column": 0
+            }
+        }
+    ]
+}"""
+        diff = jsondiff.diff(result, expected, syntax='symmetric')
+        self.assertEqual(0, len(diff))
+
+
 if __name__ == "__main__":
     unittest.main()
