@@ -626,6 +626,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
+                            "operations": [],
                             "enums": [
                                 {
                                     "$type": "d3i.enum",
@@ -712,6 +713,7 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
+                                    "operations": [],
                                     "enums": [],
                                     "value_objects": [],
                                     "document_lines": [],
@@ -915,6 +917,7 @@ domain SomeDomain {
                                                 }
                                             }
                                         ],
+                                        "operations": [],
                                         "enums": [],
                                         "value_objects": [],
                                         "document_lines": [],
@@ -1003,6 +1006,7 @@ domain SomeDomain {
                                                 }
                                             }
                                         ],
+                                        "operations": [],
                                         "enums": [],
                                         "value_objects": [],
                                         "document_lines": [],
@@ -1127,6 +1131,7 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
+                                    "operations": [],
                                     "enums": [],
                                     "value_objects": [],
                                     "document_lines": [],
@@ -1415,6 +1420,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
+                            "operations": [],
                             "enums": [],
                             "value_objects": [],
                             "document_lines": [],
@@ -1803,6 +1809,7 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
+                                    "operations": [],
                                     "enums": [],
                                     "value_objects": [],
                                     "document_lines": [],
@@ -2096,6 +2103,7 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
+                                    "operations": [],
                                     "enums": [],
                                     "value_objects": [],
                                     "document_lines": [],
@@ -2509,6 +2517,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
+                            "operations": [],
                             "enums": [],
                             "value_objects": [],
                             "document_lines": [],
@@ -2908,6 +2917,7 @@ domain SomeDomain {
                                             }
                                         }
                                     ],
+                                    "operations": [],
                                     "enums": [],
                                     "value_objects": [],
                                     "document_lines": [],
@@ -3387,6 +3397,7 @@ domain SomeDomain {
                                     }
                                 }
                             ],
+                            "operations": [],
                             "enums": [],
                             "value_objects": [],
                             "document_lines": [],

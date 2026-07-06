@@ -107,6 +107,11 @@ class SemanticChecker(ElementVisitor):
             if (neighbour.name == the_value_object.name):
                 self.__error(the_value_object, f"A value object '{the_value_object.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
+        # Q1: value objects are immutable, so they may only expose query operations.
+        for op in the_value_object.operations:
+            if (op.kind == operation.Kind.Command):
+                self.__error(op, f"A value object operation '{op.name}' cannot be a command; value objects are immutable and may only have query operations.")
+
     def visitValueObjectMember(self, member: value_object_member, parentData: Any) -> Any:
         parent_value_object: value_object = member.parent
         for neighbour in parent_value_object.members:

@@ -306,12 +306,15 @@ class value_object(internal_scoped_base_element):
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[value_object_member] = []
+        self.operations: List[operation] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitValueObject(self, parentData)
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
+        for operation in self.operations:
+            operation.visit(visitor, data)
 
 
 class value_object_member(hinted_base_element):
@@ -425,12 +428,15 @@ class entity(internal_scoped_base_element):
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[entity_member] = []
+        self.operations: List[operation] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEntity(self, parentData)
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
+        for operation in self.operations:
+            operation.visit(visitor, data)
 
 
 class entity_member(hinted_base_element):

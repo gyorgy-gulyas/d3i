@@ -1134,5 +1134,50 @@ domain SomeDomain {
         self.assertEqual(query.operation_return.type.reference_name.getText(), "SomeType")
 
 
+    def test_value_object_operation(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Money {
+            amount:number
+            currency:string
+            query isPositive() : boolean
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        value_object: value_object = context.value_objects[0]
+        self.assertEqual(len(value_object.operations), 1)
+        self.assertEqual(value_object.operations[0].kind, operation.Kind.Query)
+        self.assertEqual(value_object.operations[0].name, "isPositive")
+
+    def test_entity_operation(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        aggregate OrderAggregate {
+            root entity OrderHeader {
+                total:number
+                command applyDiscount( percent:number )
+                query isOverdue() : boolean
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        entity: entity = context.aggregates[0].internal_entities[0].entity
+        self.assertEqual(len(entity.operations), 2)
+        self.assertEqual(entity.operations[0].kind, operation.Kind.Command)
+        self.assertEqual(entity.operations[0].name, "applyDiscount")
+        self.assertEqual(entity.operations[1].kind, operation.Kind.Query)
+        self.assertEqual(entity.operations[1].name, "isOverdue")
+
+
 if __name__ == "__main__":
     unittest.main()

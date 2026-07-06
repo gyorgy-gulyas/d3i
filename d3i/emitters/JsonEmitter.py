@@ -144,6 +144,7 @@ class JsonEmitter(ElementVisitor):
             "name": value_object.name,
             "inherits": [],
             "members": [],
+            "operations": [],
         }
         parentData["value_objects"].append(data)
         return data
@@ -201,6 +202,7 @@ class JsonEmitter(ElementVisitor):
             "name": entity.name,
             "inherits": [],
             "members": [],
+            "operations": [],
         }
 
         if isinstance(entity.parent, context):

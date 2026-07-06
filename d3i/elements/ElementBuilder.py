@@ -311,6 +311,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(value_object_element.value_object())
                 child.parent = result
                 result.value_objects.append(child)
+            elif (value_object_element.operation()):
+                child = self.visit(value_object_element.operation())
+                child.parent = result
+                result.operations.append(child)
             counter = counter + 1
 
         return result
@@ -584,6 +588,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(entity_element.value_object())
                 child.parent = result
                 result.value_objects.append(child)
+            elif (entity_element.operation()):
+                child = self.visit(entity_element.operation())
+                child.parent = result
+                result.operations.append(child)
             counter = counter + 1
 
         return result

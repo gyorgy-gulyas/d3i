@@ -57,6 +57,7 @@ value_object
         : value_object_member
         | enum
         | value_object
+        | operation      // Q1: value objects may expose pure query operations
         ;
         
         value_object_member
@@ -116,6 +117,7 @@ entity
         : entity_member
         | enum
         | value_object
+        | operation      // Q1: entities (incl. aggregate root) may have command/query operations
         ;
 
         entity_member

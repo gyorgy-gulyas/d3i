@@ -963,6 +963,28 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("list can only contain" in session.diagnostics[0].toText())
 
+    def test_valueobject_command_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Money {
+            amount:number
+            command setAmount( value:number )
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("setAmount" in session.diagnostics[0].toText())
+        self.assertTrue("cannot be a command" in session.diagnostics[0].toText())
+
     def test_invalid_map_type_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
