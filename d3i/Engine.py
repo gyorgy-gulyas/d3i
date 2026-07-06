@@ -238,7 +238,7 @@ class Engine:
                             # merge composite
                             for imported_composit in imported_context.composites:
                                 imported_composit.parent = context_already
-                                context_already.composit.append(imported_composit)
+                                context_already.composites.append(imported_composit)
 
                             # merge aggregate
                             for imported_aggregate in imported_context.aggregates:
@@ -301,9 +301,6 @@ class Engine:
         version_candidate: str = None
         if (len(name.names) > 1):
             version_candidate = name.names[1]
-
-        if( name.getText() == "LoginIF.v1.LoginResultDTO" ):
-            pass
 
         rest_name_index = 1
         # go up until we find the element for the first part of the name vit version is has it

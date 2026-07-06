@@ -963,6 +963,27 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("list can only contain" in session.diagnostics[0].toText())
 
+    def test_conflict_view_member_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        view TheView {
+            member:string
+            member:integer
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 2)
+        self.assertTrue(all("member" in s.toText() and "conflicts" in s.toText() for s in session.diagnostics))
+
     def test_any_on_field_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
