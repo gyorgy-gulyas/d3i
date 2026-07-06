@@ -319,10 +319,10 @@ class SemanticChecker(ElementVisitor):
 
     def visitMapType(self, map_type: map_type, parentData: Any, memberName: str) -> Any:
         if (map_type.key_type.kind != type.Kind.Primitive or map_type.key_type.primtiveKind != primitive_type.PrimtiveKind.String):
-            self.__error(list_type, f" Invalid map key type: A map type must have string keys. Other key types are not supported")
+            self.__error(map_type, f" Invalid map key type: A map type must have string keys. Other key types are not supported")
 
         if (map_type.value_type.kind == type.Kind.List or map_type.value_type.kind == type.Kind.Map):
-            self.__error(list_type, f"Invalid value type definition: Value of map can only contain primitive or reference types. Nested list or map types are not supported as map value elements")
+            self.__error(map_type, f"Invalid value type definition: Value of map can only contain primitive or reference types. Nested list or map types are not supported as map value elements")
         pass
 
     def visitDecoratedElement(self, decorated_element: hinted_base_element, parentData: Any) -> Any:
