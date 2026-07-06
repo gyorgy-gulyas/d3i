@@ -26,6 +26,20 @@ class ElementBuilder(d3iGrammarVisitor):
             result.decorators.append(child)
             i += 1
 
+    # Shared body for the `IDENTIFIER ':' type` member rules (value object / entity /
+    # composite / dto / view / event member, and operation param): name, type,
+    # optional validate expr (Q4, only where the rule has one), doc lines, decorators.
+    def __build_member(self, ctx, result):
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+        if (ctx.type_() != None):
+            result.type = self.visit(ctx.type_())
+            result.type.parent = result
+        if (hasattr(ctx, "validate_expr") and ctx.validate_expr() != None):
+            result.validate = ctx.validate_expr().getText()
+        self.__build_document_lines(ctx, result)
+        self.__build_decorators(ctx, result)
+
     # Visit a parse tree produced by d3iGrammar#d3i.
     def visitD3(self, ctx: d3iGrammar.D3Context):
 
@@ -191,16 +205,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#dto_member.
     def visitDto_member(self, ctx:d3iGrammar.Dto_memberContext):
         result = dto_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        self.__build_document_lines(ctx, result)
-
-        self.__build_decorators(ctx, result)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#value_object.
@@ -249,18 +254,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#value_object_member.
     def visitValue_object_member(self, ctx: d3iGrammar.Value_object_memberContext):
         result = value_object_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-        if (ctx.validate_expr() != None):
-            result.validate = ctx.validate_expr().getText()
-
-        self.__build_document_lines(ctx, result)
-
-        self.__build_decorators(ctx, result)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#composite.
@@ -305,18 +299,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#composite_member.
     def visitComposite_member(self, ctx:d3iGrammar.Composite_memberContext):
         result = composite_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-        if (ctx.validate_expr() != None):
-            result.validate = ctx.validate_expr().getText()
-
-        self.__build_document_lines(ctx, result)
-
-        self.__build_decorators(ctx, result)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#event.
@@ -369,16 +352,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#event_member.
     def visitEvent_member(self, ctx: d3iGrammar.Event_memberContext):
         result = event_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        self.__build_document_lines(ctx, result)
-
-        self.__build_decorators(ctx, result)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#eventhandler.
@@ -441,18 +415,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#entity_member.
     def visitEntity_member(self, ctx: d3iGrammar.Entity_memberContext):
         result = entity_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-        if (ctx.validate_expr() != None):
-            result.validate = ctx.validate_expr().getText()
-
-        self.__build_document_lines(ctx, result)
-
-        self.__build_decorators(ctx, result)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#aggregate.
@@ -552,16 +515,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#view_member.
     def visitView_member(self, ctx: d3iGrammar.View_memberContext):
         result = view_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        self.__build_document_lines(ctx, result)
-
-        self.__build_decorators(ctx, result)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#repository.
@@ -782,16 +736,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#operation_param.
     def visitOperation_param(self, ctx: d3iGrammar.Operation_paramContext):
         result = operation_param(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        self.__build_document_lines(ctx, result)
-
-        self.__build_decorators(ctx, result)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#operation_return.
