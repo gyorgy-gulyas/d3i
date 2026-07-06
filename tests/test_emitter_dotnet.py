@@ -679,5 +679,85 @@ domain WebShop {
         self.assertIn("public Dictionary<string,int> mapField { get; set; }", content)
 
 
+    def test_emitter_ref_ok(self):
+        # Q5: a ref member must emit without crashing. Typed-id codegen
+        # (ref Customer -> CustomerId) is deferred; for now ref delegates to the
+        # aggregate reference.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        aggregate Customer {
+            root entity CustomerRoot { id:string }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                customer: ref Customer
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        header = next(f for f in result if f.fileName == "OrderHeader.cs")
+        self.assertIn("public WebShop.Orders.Customer customer { get; set; }", header.content)
+
+    def test_emitter_optional_nullable_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        valueobject Contact {
+            email:string
+            @optional
+            phone:string
+            @optional
+            age:integer
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        content = result[0].content
+        # Q8: unmarked = required (non-nullable); @optional -> nullable
+        self.assertIn("public string email { get; set; }", content)
+        self.assertIn("public string? phone { get; set; }", content)
+        self.assertIn("public int? age { get; set; }", content)
+
+    def test_emitter_deprecated_gdpr_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        @deprecated( "use NewAddress, since 2.3" )
+        valueobject Address {
+            city:string
+            @deprecated( "use zip" )
+            zipCode:integer
+            @gdpr
+            email:string
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertEqual(1, len(result))
+        content = result[0].content
+        # Q13: @deprecated -> [Obsolete] on both the class and the field
+        self.assertIn('[Obsolete("use NewAddress, since 2.3")]', content)
+        self.assertIn('[Obsolete("use zip")]', content)
+        # @gdpr is a marker only: it must not emit any attribute (exactly two [Obsolete]s)
+        self.assertEqual(content.count("[Obsolete"), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

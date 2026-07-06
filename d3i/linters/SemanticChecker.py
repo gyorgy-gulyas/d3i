@@ -22,9 +22,6 @@ class SemanticChecker(ElementVisitor):
     def visitDomain(self, domain: domain, parentData: Any) -> Any:
         pass
 
-    def visitDirective(self, directive: directive, parentData: Any) -> Any:
-        pass
-
     def visitContext(self, context: context, parentData: Any) -> Any:
         pass
 
@@ -106,6 +103,11 @@ class SemanticChecker(ElementVisitor):
                 continue
             if (neighbour.name == the_value_object.name):
                 self.__error(the_value_object, f"A value object '{the_value_object.name}' conflicts with same name with element in {neighbour.locationText()}.")
+
+        # Q1: value objects are immutable, so they may only expose query operations.
+        for op in the_value_object.operations:
+            if (op.kind == operation.Kind.Command):
+                self.__error(op, f"A value object operation '{op.name}' cannot be a command; value objects are immutable and may only have query operations.")
 
     def visitValueObjectMember(self, member: value_object_member, parentData: Any) -> Any:
         parent_value_object: value_object = member.parent
@@ -279,12 +281,38 @@ class SemanticChecker(ElementVisitor):
                     if (other_interface.version == the_interface.version):
                         self.__error(the_interface, f"An interface '{the_interface.name}' with same name and version is already exists in {neighbour.locationText()}.")
 
+    def visitWorkflow(self, the_workflow: workflow, parentData: Any) -> Any:
+        scope = Engine.get_current_scope(the_workflow.parent)
+        for neighbour in scope.getChildren():
+            if (neighbour is the_workflow):
+                continue
+            if (neighbour.name == the_workflow.name):
+                self.__error(the_workflow, f"A workflow '{the_workflow.name}' with same name is already exists in {neighbour.locationText()}.")
+
+    def visitStep(self, the_step: step, parentData: Any) -> Any:
+        the_workflow: workflow = the_step.parent
+        for neighbour in the_workflow.steps:
+            if (neighbour is the_step):
+                continue
+            if (neighbour.name == the_step.name):
+                self.__error(the_step, f"A step '{the_step.name}' with same name is already exists in {neighbour.locationText()}.")
+
+        # Q3: `compensate` must reference an existing step in the same workflow.
+        if (the_step.compensate != None):
+            step_names = [s.name for s in the_workflow.steps]
+            if (the_step.compensate not in step_names):
+                self.__error(the_step, f"The compensating step '{the_step.compensate}' referenced by step '{the_step.name}' is not found in workflow '{the_workflow.name}'.")
+
     def visitOperation(self, operation: operation, parentData: Any) -> Any:
         for neighbour in operation.parent.operations:
             if (neighbour is operation):
                 continue
             if (neighbour.name == operation.name):
                 self.__error(operation, f"An operation '{operation.name}' with same name is already exists in {neighbour.locationText()}.")
+
+        # Q2: only commands may emit events (a command records; the service publishes).
+        if (operation.kind.name == "Query" and len(operation.emits) > 0):
+            self.__error(operation, f"A query operation '{operation.name}' cannot emit events; only commands may declare 'emits'.")
 
     def visitOperationParam(self, param: operation_param, parentData: Any) -> Any:
         parent_operation: operation = param.parent
@@ -301,7 +329,16 @@ class SemanticChecker(ElementVisitor):
         pass
 
     def visitPrimitiveType(self, primtiveType: primitive_type, parentData: Any, memberName: str) -> Any:
-        pass
+        # Q10: `any` and `stream` may not appear on a domain-model field.
+        if (primtiveType.primtiveKind == primitive_type.PrimtiveKind.Any or primtiveType.primtiveKind == primitive_type.PrimtiveKind.Stream):
+            owner = primtiveType.parent
+            while (isinstance(owner, type)):   # skip list/map wrappers
+                owner = owner.parent
+            if (isinstance(owner, value_object_member) or isinstance(owner, entity_member) or isinstance(owner, composite_member)):
+                if (primtiveType.primtiveKind == primitive_type.PrimtiveKind.Any):
+                    self.__error(primtiveType, f"The 'any' type is not allowed on a domain model field; use a concrete type (an ACL at the boundary may use 'any').")
+                else:
+                    self.__error(primtiveType, f"The 'stream' type is not allowed on a field; it may only appear in an operation signature (command/query/step param or return).")
 
     def visitReferenceType(self, reference_type: reference_type, parentData: Any, memberName: str) -> Any:
         if (len(reference_type.reference_name.names) == 0):
@@ -310,6 +347,23 @@ class SemanticChecker(ElementVisitor):
         element, message = Engine.get_referenced_element_with_message(reference_type.parent, reference_type.reference_name)
         if (element == None):
             self.__error(reference_type, message)
+        # Q5: another aggregate must be referenced by identity, not embedded.
+        elif (isinstance(element, aggregate)):
+            name = reference_type.reference_name.getText()
+            self.__error(reference_type, f"Aggregate '{name}' must be referenced by identity: use 'ref {name}'.")
+
+    def visitRefType(self, ref_type: ref_type, parentData: Any, memberName: str) -> Any:
+        if (len(ref_type.reference_name.names) == 0):
+            self.__error(ref_type, f"Empty reference name.")
+            return
+
+        element, message = Engine.get_referenced_element_with_message(ref_type.parent, ref_type.reference_name)
+        if (element == None):
+            self.__error(ref_type, message)
+        # Q5: `ref` may only target an aggregate; embed value objects/entities directly.
+        elif (isinstance(element, aggregate) == False):
+            name = ref_type.reference_name.getText()
+            self.__error(ref_type, f"'ref' may only reference an aggregate; '{name}' is not an aggregate (embed value objects and entities directly).")
 
     def visitListType(self, list_type: list_type, parentData: Any, memberName: str) -> Any:
         if (list_type.item_type.kind == type.Kind.List or list_type.item_type.kind == type.Kind.Map):

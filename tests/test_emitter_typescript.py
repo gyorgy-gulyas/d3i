@@ -73,5 +73,32 @@ domain WebShop {
         self.assertIn("rest.axios.get", content)
 
 
+    def test_emitter_ref_ok(self):
+        # Q5: a ref member must emit without crashing (typed-id codegen deferred).
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        aggregate Customer {
+            root entity CustomerRoot { id:string }
+        }
+        @public_api( rest, collection = "PublicApi" )
+        interface OrderIF version 1 {
+            dto OrderDto {
+                c: ref Customer
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = TypeScriptEmitter().Emit(session)
+        types = next(f for f in result if f.fileName == "OrderIF_v1.ts")
+        self.assertIn("export interface OrderDto {", types.content)
+        self.assertIn("c:Customer;", types.content)
+
+
 if __name__ == "__main__":
     unittest.main()

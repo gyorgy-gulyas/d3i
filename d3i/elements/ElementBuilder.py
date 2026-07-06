@@ -10,6 +10,36 @@ class ElementBuilder(d3iGrammarVisitor):
         self.elementTree = d3()
         self.fileName: str = fileName
 
+    # Shared helpers: every element rule carries DOCUMENT_LINE* decorator*, so the
+    # doc-line and decorator collection loops are factored out of each visitX.
+    def __build_document_lines(self, ctx, result):
+        i = 0
+        while ctx.DOCUMENT_LINE(i) != None:
+            result.document_lines.append(ctx.DOCUMENT_LINE(i).getText()[1:])
+            i += 1
+
+    def __build_decorators(self, ctx, result):
+        i = 0
+        while ctx.decorator(i) != None:
+            child = self.visit(ctx.decorator(i))
+            child.parent = result
+            result.decorators.append(child)
+            i += 1
+
+    # Shared body for the `IDENTIFIER ':' type` member rules (value object / entity /
+    # composite / dto / view / event member, and operation param): name, type,
+    # optional validate expr (Q4, only where the rule has one), doc lines, decorators.
+    def __build_member(self, ctx, result):
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+        if (ctx.type_() != None):
+            result.type = self.visit(ctx.type_())
+            result.type.parent = result
+        if (hasattr(ctx, "validate_expr") and ctx.validate_expr() != None):
+            result.validate = ctx.validate_expr().getText()
+        self.__build_document_lines(ctx, result)
+        self.__build_decorators(ctx, result)
+
     # Visit a parse tree produced by d3iGrammar#d3i.
     def visitD3(self, ctx: d3iGrammar.D3Context):
 
@@ -36,30 +66,13 @@ class ElementBuilder(d3iGrammarVisitor):
     def visitImport_rule(self, ctx: d3iGrammar.Import_ruleContext):
         result = import_(self.fileName, ctx.start)
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
         if (ctx.qualifiedName() != None):
             result.name = self.visit(ctx.qualifiedName()).getText()
 
         return result
     
-    # Visit a parse tree produced by d3iGrammar#directive.
-    def visitDirective(self, ctx: d3iGrammar.DirectiveContext):
-        result = directive(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.keyword = ctx.IDENTIFIER().getText()
-        if (ctx.qualifiedName() != None):
-            result.value = self.visit(ctx.qualifiedName())
-            result.value.parent = result
-
-        return result
-
     # Visit a parse tree produced by d3iGrammar#domain.
     def visitDomain(self, ctx: d3iGrammar.DomainContext):
         result = domain(self.fileName, ctx.start)
@@ -67,33 +80,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
             
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
-
-        counter = 0
-        while True:
-            directive = ctx.directive((counter))
-            if (directive == None):
-                break
-            counter = counter + 1
-            child = self.visit(directive)
-            child.parent = result
-            result.directives.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -119,23 +108,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -179,6 +154,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(context_element.interface())
                 child.parent = result
                 result.interfaces.append(child)
+            elif (context_element.workflow()):
+                child = self.visit(context_element.workflow())
+                child.parent = result
+                result.workflows.append(child)
             counter = counter + 1
 
         return result
@@ -193,23 +172,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -240,30 +205,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#dto_member.
     def visitDto_member(self, ctx:d3iGrammar.Dto_memberContext):
         result = dto_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
-
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#value_object.
@@ -275,23 +217,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.inherits() != None):
             result.inherits = result.value = self.visit(ctx.inherits())
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -311,6 +239,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(value_object_element.value_object())
                 child.parent = result
                 result.value_objects.append(child)
+            elif (value_object_element.operation()):
+                child = self.visit(value_object_element.operation())
+                child.parent = result
+                result.operations.append(child)
             counter = counter + 1
 
         return result
@@ -322,30 +254,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#value_object_member.
     def visitValue_object_member(self, ctx: d3iGrammar.Value_object_memberContext):
         result = value_object_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
-
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#composite.
@@ -357,23 +266,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.inherits() != None):
             result.inherits = result.value = self.visit(ctx.inherits())
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -404,30 +299,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#composite_member.
     def visitComposite_member(self, ctx:d3iGrammar.Composite_memberContext):
         result = composite_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
-
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#event.
@@ -436,29 +308,24 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
+        if (ctx.event_kind() != None):
+            kind_text = ctx.event_kind().getText()
+            if (kind_text == "integration"):
+                result.kind = event.Kind.Integration
+            elif (kind_text == "audit"):
+                result.kind = event.Kind.Audit
+            else:
+                result.kind = event.Kind.Domain
+
         if( ctx.VERSION() != None):
             result.version = int(ctx.INTEGER_CONSTANS().getText())
 
         if (ctx.inherits() != None):
             result.inherits = result.value = self.visit(ctx.inherits())
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -485,30 +352,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#event_member.
     def visitEvent_member(self, ctx: d3iGrammar.Event_memberContext):
         result = event_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
-
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#eventhandler.
@@ -517,23 +361,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         result.handledEvent = self.visit(ctx.qualifiedName())
         result.handledEvent.parent = result
@@ -549,23 +379,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.inherits() != None):
             result.inherits = result.value = self.visit(ctx.inherits())
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -584,6 +400,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(entity_element.value_object())
                 child.parent = result
                 result.value_objects.append(child)
+            elif (entity_element.operation()):
+                child = self.visit(entity_element.operation())
+                child.parent = result
+                result.operations.append(child)
             counter = counter + 1
 
         return result
@@ -595,55 +415,20 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#entity_member.
     def visitEntity_member(self, ctx: d3iGrammar.Entity_memberContext):
         result = entity_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
-
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#aggregate.
     def visitAggregate(self, ctx: d3iGrammar.AggregateContext):
         result = aggregate(self.fileName, ctx.start)
+        if (ctx.EVENTSOURCED() != None):
+            result.eventsourced = True
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -697,23 +482,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.inherits() != None):
             result.inherits = result.value = self.visit(ctx.inherits())
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -744,30 +515,7 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#view_member.
     def visitView_member(self, ctx: d3iGrammar.View_memberContext):
         result = view_member(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
-
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#repository.
@@ -776,23 +524,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -813,23 +547,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -873,23 +593,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if( ctx.VERSION() != None):
             result.version = int(ctx.INTEGER_CONSTANS().getText())
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -921,29 +627,84 @@ class ElementBuilder(d3iGrammarVisitor):
     def visitInterface_element(self, ctx: d3iGrammar.Interface_elementContext):
         return self.visitChildren(ctx)
 
+    # Visit a parse tree produced by d3iGrammar#workflow.
+    def visitWorkflow(self, ctx: d3iGrammar.WorkflowContext):
+        result = workflow(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+
+        self.__build_document_lines(ctx, result)
+
+        self.__build_decorators(ctx, result)
+
+        counter = 0
+        while True:
+            workflow_element: d3iGrammar.Workflow_elementContext = ctx.workflow_element((counter))
+            if (workflow_element == None):
+                break
+            elif (workflow_element.operation() != None):
+                child = self.visit(workflow_element.operation())
+                child.parent = result
+                result.operations.append(child)
+            elif (workflow_element.step() != None):
+                child = self.visit(workflow_element.step())
+                child.parent = result
+                result.steps.append(child)
+            elif (workflow_element.eventhandler() != None):
+                child = self.visit(workflow_element.eventhandler())
+                child.parent = result
+                result.eventhandlers.append(child)
+            elif (workflow_element.enum()):
+                child = self.visit(workflow_element.enum())
+                child.parent = result
+                result.enums.append(child)
+            elif (workflow_element.value_object()):
+                child = self.visit(workflow_element.value_object())
+                child.parent = result
+                result.value_objects.append(child)
+            counter = counter + 1
+
+        return result
+
+    # Visit a parse tree produced by d3iGrammar#step.
+    def visitStep(self, ctx: d3iGrammar.StepContext):
+        result = step(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER(0) != None):
+            result.name = ctx.IDENTIFIER(0).getText()
+
+        self.__build_document_lines(ctx, result)
+
+        self.__build_decorators(ctx, result)
+
+        counter = 0
+        while True:
+            operation_param = ctx.operation_param((counter))
+            if (operation_param == None):
+                break
+            counter = counter + 1
+            child = self.visit(operation_param)
+            child.parent = result
+            result.operation_params.append(child)
+
+        if (ctx.operation_return() != None):
+            result.operation_return = self.visit(ctx.operation_return())
+            result.operation_return.parent = result
+
+        # Optional `compensate <stepName>`: the second IDENTIFIER of the step rule.
+        if (ctx.COMPENSATE() != None and ctx.IDENTIFIER(1) != None):
+            result.compensate = ctx.IDENTIFIER(1).getText()
+
+        return result
+
     # Visit a parse tree produced by d3iGrammar#operation.
     def visitOperation(self, ctx: d3iGrammar.OperationContext):
         result = operation(self.fileName, ctx.start)
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         if( ctx.COMMAND() != None ):
             result.kind = operation.Kind.Command
@@ -964,35 +725,18 @@ class ElementBuilder(d3iGrammarVisitor):
             result.operation_return = self.visit(ctx.operation_return())
             result.operation_return.parent = result
 
+        if (ctx.emits_clause() != None):
+            for emitted in ctx.emits_clause().qualifiedName():
+                child = self.visit(emitted)
+                child.parent = result
+                result.emits.append(child)
+
         return result
 
     # Visit a parse tree produced by d3iGrammar#operation_param.
     def visitOperation_param(self, ctx: d3iGrammar.Operation_paramContext):
         result = operation_param(self.fileName, ctx.start)
-        if (ctx.IDENTIFIER() != None):
-            result.name = ctx.IDENTIFIER().getText()
-        if (ctx.type_() != None):
-            result.type = self.visit(ctx.type_())
-            result.type.parent = result
-
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
-
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
-
+        self.__build_member(ctx, result)
         return result
 
     # Visit a parse tree produced by d3iGrammar#operation_return.
@@ -1001,23 +745,9 @@ class ElementBuilder(d3iGrammarVisitor):
         result.type = self.visit(ctx.type_())
         result.type.parent = result
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         return result
 
@@ -1027,23 +757,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -1110,6 +826,15 @@ class ElementBuilder(d3iGrammarVisitor):
     def visitReference_type(self, ctx: d3iGrammar.Reference_typeContext):
         result = reference_type(self.fileName, ctx.start)
         result.kind = type.Kind.Reference
+        if (ctx.qualifiedName() != None):
+            result.reference_name = self.visit(ctx.qualifiedName())
+            result.reference_name.parent = result
+
+        return result
+
+    def visitRef_type(self, ctx: d3iGrammar.Ref_typeContext):
+        result = ref_type(self.fileName, ctx.start)
+        result.kind = type.Kind.Ref
         if (ctx.qualifiedName() != None):
             result.reference_name = self.visit(ctx.qualifiedName())
             result.reference_name.parent = result
@@ -1205,23 +930,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         counter = 0
         while True:
@@ -1241,23 +952,9 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.IDENTIFIER() != None):
             result.value = ctx.IDENTIFIER().getText()
 
-        counter = 0
-        while True:
-            document_line = ctx.DOCUMENT_LINE((counter))
-            if (document_line == None):
-                break
-            counter = counter + 1
-            result.document_lines.append(document_line.getText()[1:])
+        self.__build_document_lines(ctx, result)
 
-        counter = 0
-        while True:
-            decorator = ctx.decorator((counter))
-            if (decorator == None):
-                break
-            counter = counter + 1
-            child = self.visit(decorator)
-            child.parent = result
-            result.decorators.append(child)
+        self.__build_decorators(ctx, result)
 
         return result
 

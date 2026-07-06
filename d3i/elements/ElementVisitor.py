@@ -18,10 +18,6 @@ class ElementVisitor(ABC):
         pass
 
     @abstractmethod
-    def visitDirective(self, directive: directive, parentData: Any) -> Any:
-        pass
-
-    @abstractmethod
     def visitContext(self, context: context, parentData: Any) -> Any:
         pass
 
@@ -110,6 +106,14 @@ class ElementVisitor(ABC):
         pass
 
     @abstractmethod
+    def visitWorkflow(self, workflow: workflow, parentData: Any) -> Any:
+        pass
+
+    @abstractmethod
+    def visitStep(self, step: step, parentData: Any) -> Any:
+        pass
+
+    @abstractmethod
     def visitOperation(self, operation: operation, parentData: Any) -> Any:
         pass
 
@@ -131,6 +135,10 @@ class ElementVisitor(ABC):
 
     @abstractmethod
     def visitReferenceType(self, reference_type: reference_type, parentData: Any, memberName: str) -> Any:
+        pass
+
+    @abstractmethod
+    def visitRefType(self, ref_type: ref_type, parentData: Any, memberName: str) -> Any:
         pass
 
     @abstractmethod

@@ -22,13 +22,9 @@ import_rule
     ;
 
 domain
-    : directive* DOCUMENT_LINE* decorator* 'domain' IDENTIFIER '{' domain_element* '}'
+    : DOCUMENT_LINE* decorator* 'domain' IDENTIFIER '{' domain_element* '}'   // Q12: directive removed
     ;
 
-    directive
-        : DOCUMENT_LINE* IDENTIFIER qualifiedName
-        ;
-        
     domain_element
         : context
         ;
@@ -47,6 +43,7 @@ context
         | acl
         | service
         | interface
+        | workflow
         ;
 
 value_object
@@ -57,10 +54,11 @@ value_object
         : value_object_member
         | enum
         | value_object
+        | operation      // Q1: value objects may expose pure query operations
         ;
         
         value_object_member
-            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   // Q4
             ;
 
 dto
@@ -88,12 +86,19 @@ composite
         ;
         
         composite_member
-            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   // Q4
             ;
 
 event
-    :  DOCUMENT_LINE* decorator* 'event' IDENTIFIER 'version' INTEGER_CONSTANS inherits? '{' event_element* '}'
+    :  DOCUMENT_LINE* decorator* event_kind? 'event' IDENTIFIER 'version' INTEGER_CONSTANS inherits? '{' event_element* '}'
     ;
+
+    // Q2: three explicit event kinds. No prefix (or 'domain') = domain event.
+    event_kind
+        : 'domain'
+        | 'integration'
+        | 'audit'
+        ;
 
     event_element
         : event_member
@@ -116,14 +121,15 @@ entity
         : entity_member
         | enum
         | value_object
+        | operation      // Q1: entities (incl. aggregate root) may have command/query operations
         ;
 
         entity_member
-            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   // Q4
             ;
         
 aggregate
-    :  DOCUMENT_LINE* decorator* 'aggregate' IDENTIFIER '{' aggregate_element* '}'
+    :  DOCUMENT_LINE* decorator* 'eventsourced'? 'aggregate' IDENTIFIER '{' aggregate_element* '}'   // Q2: eventsourced marker
     ;
 
     aggregate_element
@@ -169,6 +175,25 @@ service
         | eventhandler
         ;
 
+// Q3: workflow — first-class now, Temporal implementation later.
+workflow
+    :  DOCUMENT_LINE* decorator* 'workflow' IDENTIFIER '{' workflow_element*  '}'
+    ;
+
+    workflow_element
+        : operation        // reuse command (start) / query (status)
+        | step
+        | eventhandler
+        | enum
+        | value_object
+        ;
+
+    // A step is a (Temporal) activity: a generated function that may declare the
+    // step which compensates it (declarative saga pairing).
+    step
+        : DOCUMENT_LINE* decorator* 'step' IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' (':' operation_return )? ('compensate' IDENTIFIER)?
+        ;
+
 interface
     :  DOCUMENT_LINE* decorator* 'interface' IDENTIFIER 'version' INTEGER_CONSTANS '{' interface_element*  '}'
     ;
@@ -181,8 +206,13 @@ interface
         ;
    
 operation
-    : DOCUMENT_LINE* decorator* ('command' | 'query' ) IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' (':' operation_return )?
+    : DOCUMENT_LINE* decorator* ('command' | 'query' ) IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' (':' operation_return )? emits_clause?
     ;
+
+    // Q2: a command may declare the events it produces (the command records; the service publishes).
+    emits_clause
+        : 'emits' qualifiedName (',' qualifiedName)*
+        ;
 
     operation_param
         : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
@@ -208,6 +238,7 @@ type
     | reference_type
     | list_type
     | map_type
+    | ref_type
     ;
     
     primitive_type
@@ -236,10 +267,58 @@ type
     map_type
         : 'map' '[' type ',' type ']'
         ;
-        
-qualifiedName 
-    : IDENTIFIER ('.' IDENTIFIER)* 
+
+    // Q5: reference to another aggregate by identity (generates a typed id in codegen).
+    ref_type
+        : REF qualifiedName
+        ;
+
+qualifiedName
+    : IDENTIFIER ('.' IDENTIFIER)*
     ;
+
+// Q4: small, lintable validate expression sublanguage.
+// `value` is the field itself; a bare IDENTIFIER may reference a sibling field.
+validate_expr
+    : validate_or
+    ;
+
+    validate_or
+        : validate_and (OR validate_and)*
+        ;
+
+    validate_and
+        : validate_unary (AND validate_unary)*
+        ;
+
+    validate_unary
+        : NOT validate_unary
+        | validate_predicate
+        ;
+
+    validate_predicate
+        : validate_term (( LT | LE | GT | GE | EQ | NEQ ) validate_term)?
+        | validate_term IN validate_range
+        | validate_term IN validate_set
+        | validate_term BETWEEN validate_term AND validate_term
+        ;
+
+    validate_range
+        : validate_term DOTDOT validate_term
+        ;
+
+    validate_set
+        : '{' validate_term (',' validate_term)* '}'
+        ;
+
+    validate_term
+        : IDENTIFIER '(' (validate_term (',' validate_term)*)? ')'   // function call: len(...), matches(...)
+        | IDENTIFIER                                                 // 'value' or a sibling field
+        | INTEGER_CONSTANS
+        | NUMBER_CONSTANS
+        | STRING_LITERAL
+        | '(' validate_expr ')'
+        ;
 
 decorator
     : '@' IDENTIFIER

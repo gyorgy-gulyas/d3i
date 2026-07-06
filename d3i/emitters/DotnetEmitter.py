@@ -327,6 +327,7 @@ class DotnetEmitter:
         buffer = io.StringIO()
         # Add documentation lines for the composite
         buffer.write(self.documentLines(element, indent))
+        buffer.write(self.deprecatedText(element, indent))   # Q13: @deprecated -> [Obsolete]
         # Write the data class declaration with indentation
         buffer.write(f"{utils.tab(indent)}public partial class {name} : {", ".join(inherit_names)}\n")
         buffer.write(f"{utils.tab(indent)}{{\n")
@@ -510,6 +511,8 @@ class DotnetEmitter:
         match memberType.kind:
             case type.Kind.Primitive:
                 return self.dataClassMemberEqualsText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Ref:
+                return self.dataClassMemberEqualsText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.Reference:
                 return self.dataClassMemberEqualsText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.List:
@@ -521,6 +524,8 @@ class DotnetEmitter:
         match memberType.kind:
             case type.Kind.Primitive:
                 return self.dataClassMemberHashText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Ref:
+                return self.dataClassMemberHashText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.Reference:
                 return self.dataClassMemberHashText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.List:
@@ -604,6 +609,8 @@ class DotnetEmitter:
         match memberType.kind:
             case type.Kind.Primitive:
                 return self.dataClassMemberCloneText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Ref:
+                return self.dataClassMemberCloneText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.Reference:
                 return self.dataClassMemberCloneText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.List:
@@ -660,6 +667,8 @@ class DotnetEmitter:
         match memberType.item_type.kind:
             case type.Kind.Primitive:
                 buffer.write(f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{memberName}.Select( v => {self.dataClassMemberCloneExpression( "v", memberType.item_type, code )} ));\n")
+            case type.Kind.Ref:
+                reference_type: reference_type = memberType.item_type
             case type.Kind.Reference:
                 reference_type: reference_type = memberType.item_type
                 referenced_element: base_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name )
@@ -683,6 +692,8 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent)}// clone of {memberName}\n")        
                 buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{memberName})\n")
                 buffer.write( f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.dataClassMemberCloneExpression("kvp.Value", memberType.value_type, code)};\n")
+            case type.Kind.Ref:
+                buffer.write(f"\n")
             case type.Kind.Reference:
                 buffer.write(f"\n")
                 buffer.write(f"{utils.tab(indent)}// clone of {memberName}\n")        
@@ -772,6 +783,8 @@ class DotnetEmitter:
         match memberType.kind:
             case type.Kind.Primitive:
                 return self.dataClassMemberToGrpcMappingText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Ref:
+                return self.dataClassMemberToGrpcMappingText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.Reference:
                 return self.dataClassMemberToGrpcMappingText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.List:
@@ -783,6 +796,8 @@ class DotnetEmitter:
         match memberType.kind:
             case type.Kind.Primitive:
                 return self.dataClassMemberFromGrpcMappingText_Primitive(memberName, memberType, code, dst, src, indent)
+            case type.Kind.Ref:
+                return self.dataClassMemberFromGrpcMappingText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.Reference:
                 return self.dataClassMemberFromGrpcMappingText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.List:
@@ -888,6 +903,8 @@ class DotnetEmitter:
                 else:
                     buffer.write(
                         f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.AddRange( {src}{memberName}.Select( v => {self.convertExpressionToGrpcRepresentation("v", memberType.item_type, code)} ));\n")
+            case type.Kind.Ref:
+                reference_type: reference_type = memberType.item_type
             case type.Kind.Reference:
                 reference_type: reference_type = memberType.item_type
                 referenced_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
@@ -911,6 +928,8 @@ class DotnetEmitter:
                 else:
                     buffer.write(
                         f"{utils.tab(indent)}{dst}{memberName}.AddRange( {src}{utils.camel_to_pascal(memberName)}.Select( v => {self.convertExpressionFromGrpcRepresentation("v", memberType.item_type, code)} ));\n")
+            case type.Kind.Ref:
+                reference_type: reference_type = memberType.item_type
             case type.Kind.Reference:
                 reference_type: reference_type = memberType.item_type
                 referenced_element = Engine.get_referenced_element(reference_type.parent, reference_type.reference_name)
@@ -934,6 +953,8 @@ class DotnetEmitter:
                     buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add({src}{memberName});\n")
                 else:
                     buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add({src}{memberName}.ToDictionary( kvp => kvp.Key, kvp => {self.convertExpressionToGrpcRepresentation("kvp.Value", memberType.value_type, code)}));\n")
+            case type.Kind.Ref:
+                buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add( {src}{memberName}.ToDictionary( kvp => kvp.Key, kvp => {self.typeText(memberType.value_type, code)}.ToGrpc( kvp.Value ) ));\n")
             case type.Kind.Reference:
                 buffer.write(f"{utils.tab(indent)}{dst}{utils.camel_to_pascal(memberName)}.Add( {src}{memberName}.ToDictionary( kvp => kvp.Key, kvp => {self.typeText(memberType.value_type, code)}.ToGrpc( kvp.Value ) ));\n")
             case type.Kind.List:
@@ -956,6 +977,8 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent)}foreach( var kvp in {src}{utils.camel_to_pascal(memberName)})\n")
                 buffer.write(
                     f"{utils.tab(indent+1)}{dst}{memberName}[kvp.Key] = {self.convertExpressionFromGrpcRepresentation("kvp.Value", memberType.value_type, code)};\n")
+            case type.Kind.Ref:
+                buffer.write(f"\n")
             case type.Kind.Reference:
                 buffer.write(f"\n")
                 buffer.write(f"{utils.tab(indent)}// mapping of {memberName}\n")        
@@ -1986,6 +2009,19 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
 
+    def deprecatedText(self, element: hinted_base_element, indent: int) -> str:
+        # Q13: @deprecated(...) -> C# [Obsolete("message")]. The optional first
+        # decorator param is the message (e.g. @deprecated("use X, since 2.3")).
+        deprecated = element.find_decorator("deprecated")
+        if (deprecated == None):
+            return ""
+        message = None
+        if (len(deprecated.params) > 0):
+            message = deprecated.params[0].value
+        if (message != None):
+            return f'{utils.tab(indent)}[Obsolete("{message}")]\n'
+        return f"{utils.tab(indent)}[Obsolete]\n"
+
     def propertyText(self, member: hinted_base_element, code: dotnet_code, indent: int) -> str:
         buffer = io.StringIO()
 
@@ -1997,7 +2033,11 @@ class DotnetEmitter:
             value = dotnet_code.find_param("code")
             if( value != None ):
                 buffer.write(f"{utils.tab(indent)}{value.value}\n")
-        buffer.write(f"{utils.tab(indent)}public {self.typeText(member.type, code,fullName=True)} {member.name} {{ get; set; }}")
+        buffer.write(self.deprecatedText(member, indent))
+        type_text = self.typeText(member.type, code, fullName=True)
+        if (member.find_decorator("optional") != None):   # Q8: @optional -> nullable; unmarked = required
+            type_text = type_text + "?"
+        buffer.write(f"{utils.tab(indent)}public {type_text} {member.name} {{ get; set; }}")
         if(member.type.kind == type.Kind.List or member.type.kind == type.Kind.Map ):
             buffer.write(f" = new();")
         buffer.write(f"\n")
@@ -2008,6 +2048,8 @@ class DotnetEmitter:
         match type.kind:
             case type.Kind.Primitive:
                 return self.typeTextPrimitive(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
+            case type.Kind.Ref:
+                return self.typeTextReference(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
             case type.Kind.Reference:
                 return self.typeTextReference(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
             case type.Kind.List:

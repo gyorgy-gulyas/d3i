@@ -46,6 +46,28 @@ FOR : 'for' ;
 PROJECTED: 'projected' ;
 COMMAND : 'command' ;
 QUERY : 'query' ;
+INTEGRATION : 'integration' ;
+AUDIT : 'audit' ;
+EVENTSOURCED : 'eventsourced' ;
+EMITS : 'emits' ;
+WORKFLOW : 'workflow' ;
+STEP : 'step' ;
+COMPENSATE : 'compensate' ;
+// Q4: validate sublanguage keywords / operators
+VALIDATE : 'validate' ;
+REF : 'ref' ;
+AND : 'and' ;
+OR : 'or' ;
+NOT : 'not' ;
+IN : 'in' ;
+BETWEEN : 'between' ;
+LE : '<=' ;
+GE : '>=' ;
+NEQ : '!=' ;
+EQ : '==' ;
+LT : '<' ;
+GT : '>' ;
+DOTDOT : '..' ;
 
 // built-in types
 INTEGER : 'integer' ;

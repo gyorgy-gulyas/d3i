@@ -217,30 +217,16 @@ class domain(hinted_base_element, IScope):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
-        self.directives: List[directive] = []
         self.contexts: List[context] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitDomain(self, parentData)
         super().visit(visitor, data)
-        for directive in self.directives:
-            directive.visit(visitor, data)
         for context in self.contexts:
             context.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
         return super().getChildren() + self.contexts
-
-
-class directive(base_element):
-    def __init__(self, fileName, pos):
-        super().__init__(fileName, pos)
-        self.keyword = None
-        self.value: qualified_name = None
-
-    def visit(self, visitor: ElementVisitor, parentData: Any):
-        data = visitor.visitDirective(self, parentData)
-        super().visit(visitor, data)
 
 
 class context(internal_scoped_base_element):
@@ -254,6 +240,7 @@ class context(internal_scoped_base_element):
         self.acls: List[acl] = []
         self.services: List[service] = []
         self.interfaces: List[interface] = []
+        self.workflows: List[workflow] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitContext(self, parentData)
@@ -272,6 +259,8 @@ class context(internal_scoped_base_element):
             service.visit(visitor, data)
         for interface in self.interfaces:
             interface.visit(visitor, data)
+        for workflow in self.workflows:
+            workflow.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
         return super().getChildren() + self.composites + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces
@@ -306,12 +295,15 @@ class value_object(internal_scoped_base_element):
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[value_object_member] = []
+        self.operations: List[operation] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitValueObject(self, parentData)
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
+        for operation in self.operations:
+            operation.visit(visitor, data)
 
 
 class value_object_member(hinted_base_element):
@@ -319,6 +311,7 @@ class value_object_member(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.type: type = None
+        self.validate: str = None   # Q4: validate expression text, or None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitValueObjectMember(self, parentData)
@@ -373,6 +366,7 @@ class composite_member(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.type: type = None
+        self.validate: str = None   # Q4: validate expression text, or None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitCompositeMember(self, parentData)
@@ -382,12 +376,19 @@ class composite_member(hinted_base_element):
 
 
 class event(internal_scoped_base_element):
+    # Q2: three explicit event kinds (no prefix / 'domain' = Domain).
+    class Kind(Enum):
+        Domain = 1
+        Integration = 2
+        Audit = 3
+
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=False)
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.version: int = None
         self.members: List[event_member] = []
+        self.kind: event.Kind = event.Kind.Domain
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEvent(self, parentData)
@@ -425,12 +426,15 @@ class entity(internal_scoped_base_element):
         self.inherits: List[qualified_name] = []
         self.name: str = None
         self.members: List[entity_member] = []
+        self.operations: List[operation] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEntity(self, parentData)
         super().visit(visitor, data)
         for member in self.members:
             member.visit(visitor, data)
+        for operation in self.operations:
+            operation.visit(visitor, data)
 
 
 class entity_member(hinted_base_element):
@@ -438,6 +442,7 @@ class entity_member(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.type: type = None
+        self.validate: str = None   # Q4: validate expression text, or None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEntityMember(self, parentData)
@@ -451,6 +456,7 @@ class aggregate(internal_scoped_base_element):
         super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.name: str = None
         self.internal_entities: List[aggregate_entity] = []
+        self.eventsourced: bool = False   # Q2: 'eventsourced aggregate' marker
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitAggregate(self, parentData)
@@ -579,6 +585,39 @@ class interface(functional_element):
         return super().getChildren()
 
 
+class workflow(functional_element):
+    # Q3: workflow — reuses command/query (functional_element.operations) and
+    # eventhandlers, plus first-class steps (Temporal activities).
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False, withEvent=False, withEventHandler=True)
+        self.name: str = None
+        self.steps: List[step] = []
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitWorkflow(self, parentData)
+        super().visit(visitor, data)
+        for step in self.steps:
+            step.visit(visitor, data)
+
+
+class step(hinted_base_element):
+    # Q3: a step is a (Temporal) activity; `compensate` names the step that reverses it.
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.name: str = None
+        self.operation_params: List[operation_param] = []
+        self.operation_return: operation_return = None
+        self.compensate: str = None
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitStep(self, parentData)
+        super().visit(visitor, data)
+        for operation_param in self.operation_params:
+            operation_param.visit(visitor, data)
+        if (self.operation_return != None):
+            self.operation_return.visit(visitor, data)
+
+
 class operation(hinted_base_element):
     class Kind(Enum):
         Command = 1
@@ -590,6 +629,7 @@ class operation(hinted_base_element):
         self.operation_params: List[operation_param] = []
         self.operation_return: operation_return = None
         self.kind: operation.Kind = operation.Kind.Command
+        self.emits: List[qualified_name] = []   # Q2: events a command records
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitOperation(self, parentData)
@@ -644,6 +684,7 @@ class type(base_element):
         Reference = 2
         List = 3
         Map = 4
+        Ref = 5
 
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
@@ -655,6 +696,8 @@ class type(base_element):
                 data = visitor.visitPrimitiveType(self, parentData, memberName)
             case type.Kind.Reference:
                 data = visitor.visitReferenceType(self, parentData, memberName)
+            case type.Kind.Ref:
+                data = visitor.visitRefType(self, parentData, memberName)
             case type.Kind.List:
                 data = visitor.visitListType(self, parentData, memberName)
                 if (self.item_type != None):
@@ -690,6 +733,13 @@ class primitive_type(type):
 
 
 class reference_type(type):
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos)
+        self.reference_name: qualified_name = None
+
+
+class ref_type(type):
+    # Q5: reference to another aggregate by identity (kind == Ref).
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.reference_name: qualified_name = None

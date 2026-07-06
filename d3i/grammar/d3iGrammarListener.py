@@ -35,15 +35,6 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by d3iGrammar#directive.
-    def enterDirective(self, ctx:d3iGrammar.DirectiveContext):
-        pass
-
-    # Exit a parse tree produced by d3iGrammar#directive.
-    def exitDirective(self, ctx:d3iGrammar.DirectiveContext):
-        pass
-
-
     # Enter a parse tree produced by d3iGrammar#domain_element.
     def enterDomain_element(self, ctx:d3iGrammar.Domain_elementContext):
         pass
@@ -158,6 +149,15 @@ class d3iGrammarListener(ParseTreeListener):
 
     # Exit a parse tree produced by d3iGrammar#event.
     def exitEvent(self, ctx:d3iGrammar.EventContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#event_kind.
+    def enterEvent_kind(self, ctx:d3iGrammar.Event_kindContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#event_kind.
+    def exitEvent_kind(self, ctx:d3iGrammar.Event_kindContext):
         pass
 
 
@@ -305,6 +305,33 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#workflow.
+    def enterWorkflow(self, ctx:d3iGrammar.WorkflowContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#workflow.
+    def exitWorkflow(self, ctx:d3iGrammar.WorkflowContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#workflow_element.
+    def enterWorkflow_element(self, ctx:d3iGrammar.Workflow_elementContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#workflow_element.
+    def exitWorkflow_element(self, ctx:d3iGrammar.Workflow_elementContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#step.
+    def enterStep(self, ctx:d3iGrammar.StepContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#step.
+    def exitStep(self, ctx:d3iGrammar.StepContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#interface.
     def enterInterface(self, ctx:d3iGrammar.InterfaceContext):
         pass
@@ -329,6 +356,15 @@ class d3iGrammarListener(ParseTreeListener):
 
     # Exit a parse tree produced by d3iGrammar#operation.
     def exitOperation(self, ctx:d3iGrammar.OperationContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#emits_clause.
+    def enterEmits_clause(self, ctx:d3iGrammar.Emits_clauseContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#emits_clause.
+    def exitEmits_clause(self, ctx:d3iGrammar.Emits_clauseContext):
         pass
 
 
@@ -413,12 +449,93 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#ref_type.
+    def enterRef_type(self, ctx:d3iGrammar.Ref_typeContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#ref_type.
+    def exitRef_type(self, ctx:d3iGrammar.Ref_typeContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#qualifiedName.
     def enterQualifiedName(self, ctx:d3iGrammar.QualifiedNameContext):
         pass
 
     # Exit a parse tree produced by d3iGrammar#qualifiedName.
     def exitQualifiedName(self, ctx:d3iGrammar.QualifiedNameContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#validate_expr.
+    def enterValidate_expr(self, ctx:d3iGrammar.Validate_exprContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#validate_expr.
+    def exitValidate_expr(self, ctx:d3iGrammar.Validate_exprContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#validate_or.
+    def enterValidate_or(self, ctx:d3iGrammar.Validate_orContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#validate_or.
+    def exitValidate_or(self, ctx:d3iGrammar.Validate_orContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#validate_and.
+    def enterValidate_and(self, ctx:d3iGrammar.Validate_andContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#validate_and.
+    def exitValidate_and(self, ctx:d3iGrammar.Validate_andContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#validate_unary.
+    def enterValidate_unary(self, ctx:d3iGrammar.Validate_unaryContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#validate_unary.
+    def exitValidate_unary(self, ctx:d3iGrammar.Validate_unaryContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#validate_predicate.
+    def enterValidate_predicate(self, ctx:d3iGrammar.Validate_predicateContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#validate_predicate.
+    def exitValidate_predicate(self, ctx:d3iGrammar.Validate_predicateContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#validate_range.
+    def enterValidate_range(self, ctx:d3iGrammar.Validate_rangeContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#validate_range.
+    def exitValidate_range(self, ctx:d3iGrammar.Validate_rangeContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#validate_set.
+    def enterValidate_set(self, ctx:d3iGrammar.Validate_setContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#validate_set.
+    def exitValidate_set(self, ctx:d3iGrammar.Validate_setContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#validate_term.
+    def enterValidate_term(self, ctx:d3iGrammar.Validate_termContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#validate_term.
+    def exitValidate_term(self, ctx:d3iGrammar.Validate_termContext):
         pass
 
 

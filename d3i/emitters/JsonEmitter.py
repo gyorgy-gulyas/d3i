@@ -59,20 +59,10 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.domain",
             "name": domain.name,
-            "directives": [],
             "contexts": [],
             "domain_events": []
         }
         parentData['domains'].append(data)
-        return data
-
-    def visitDirective(self, directive: directive, parentData: Any) -> Any:
-        data = {
-            "$type": "d3i.directive",
-            "keyword": directive.keyword,
-            "value": directive.value.names,
-        }
-        parentData['directives'].append(data)
         return data
 
     def visitContext(self, context: context, parentData: Any) -> Any:
@@ -87,6 +77,7 @@ class JsonEmitter(ElementVisitor):
             "acls": [],
             "services": [],
             "interfaces": [],
+            "workflows": [],
         }
         parentData['contexts'].append(data)
         return data
@@ -96,6 +87,7 @@ class JsonEmitter(ElementVisitor):
             "$type": "d3i.event",
             "name": event.name,
             "version": str(event.version),
+            "kind": str(event.kind),
             "inherits": [],
             "members": []
         }
@@ -144,6 +136,7 @@ class JsonEmitter(ElementVisitor):
             "name": value_object.name,
             "inherits": [],
             "members": [],
+            "operations": [],
         }
         parentData["value_objects"].append(data)
         return data
@@ -152,6 +145,7 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.value_object_member",
             "name": value_object_member.name,
+            "validate": value_object_member.validate,
             "type": {},
         }
         parentData["members"].append(data)
@@ -171,6 +165,7 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.composite_member",
             "name": composite_member.name,
+            "validate": composite_member.validate,
             "type": {},
         }
         parentData["members"].append(data)
@@ -201,6 +196,7 @@ class JsonEmitter(ElementVisitor):
             "name": entity.name,
             "inherits": [],
             "members": [],
+            "operations": [],
         }
 
         if isinstance(entity.parent, context):
@@ -214,6 +210,7 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.entity_member",
             "name": entity_member.name,
+            "validate": entity_member.validate,
             "type": {},
         }
         parentData["members"].append(data)
@@ -223,6 +220,7 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.aggregate",
             "name": aggregate.name,
+            "eventsourced": str(aggregate.eventsourced),
             "internal_entities": []
         }
         parentData["aggregates"].append(data)
@@ -296,10 +294,34 @@ class JsonEmitter(ElementVisitor):
         parentData["services"].append(data)
         return data
 
+    def visitWorkflow(self, workflow: workflow, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.workflow",
+            "name": workflow.name,
+            "operations": [],
+            "eventhandlers": [],
+            "steps": [],
+        }
+        parentData["workflows"].append(data)
+        return data
+
+    def visitStep(self, step: step, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.step",
+            "name": step.name,
+            "compensate": step.compensate,
+            "operation_params": [],
+            "operation_return": None,
+        }
+        parentData["steps"].append(data)
+        return data
+
     def visitOperation(self, operation: operation, parentData: Any) -> Any:
         data = {
             "$type": "d3i.operation",
             "name": operation.name,
+            "kind": str(operation.kind),
+            "emits": [emitted.getText() for emitted in operation.emits],
             "operation_params": [],
             "operation_return": None,
         }
@@ -344,6 +366,15 @@ class JsonEmitter(ElementVisitor):
             "$type": "d3i.reference_type",
             "kind": str(reference_type.kind),
             "reference_name": str(reference_type.reference_name.getText())
+        }
+        parentData[memberName] = data
+        return data
+
+    def visitRefType(self, ref_type: ref_type, parentData: Any, memberName: str) -> Any:
+        data = {
+            "$type": "d3i.ref_type",
+            "kind": str(ref_type.kind),
+            "reference_name": str(ref_type.reference_name.getText())
         }
         parentData[memberName] = data
         return data

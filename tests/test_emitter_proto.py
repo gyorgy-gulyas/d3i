@@ -94,5 +94,31 @@ domain WebShop {
         self.assertIn("repeated string tags = 2;", content)
 
 
+    def test_emitter_ref_ok(self):
+        # Q5: a ref member must emit without crashing (typed-id codegen deferred).
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        aggregate Customer {
+            root entity CustomerRoot { id:string }
+        }
+        interface OrderIF version 1 {
+            dto OrderDto {
+                c: ref Customer
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = ProtoEmitter().Emit(session)
+        content = result[0].content
+        self.assertIn("message OrderDto {", content)
+        self.assertIn("Customer c = 1;", content)
+
+
 if __name__ == "__main__":
     unittest.main()

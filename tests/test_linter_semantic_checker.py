@@ -963,6 +963,178 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("list can only contain" in session.diagnostics[0].toText())
 
+    def test_any_on_field_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Bag {
+            data: any
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'any' type is not allowed on a domain model field" in session.diagnostics[0].toText())
+
+    def test_stream_on_field_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Bag {
+            data: stream
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'stream' type is not allowed on a field" in session.diagnostics[0].toText())
+
+    def test_any_stream_in_operation_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        service TheService {
+            command send( payload:any ) : stream
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_bare_aggregate_reference_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        aggregate Customer {
+            root entity CustomerRoot { id:string }
+        }
+        aggregate OrderAggregate {
+            root entity OrderHeader {
+                customer: Customer
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must be referenced by identity" in session.diagnostics[0].toText())
+        self.assertTrue("ref Customer" in session.diagnostics[0].toText())
+
+    def test_ref_to_non_aggregate_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Money { amount:number }
+        aggregate OrderAggregate {
+            root entity OrderHeader {
+                price: ref Money
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("may only reference an aggregate" in session.diagnostics[0].toText())
+
+    def test_workflow_unknown_compensate_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        workflow OrderSaga {
+            step reserveStock( orderId:string ) compensate nonExistentStep
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("nonExistentStep" in session.diagnostics[0].toText())
+        self.assertTrue("is not found in workflow" in session.diagnostics[0].toText())
+
+    def test_query_emits_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        service TheService {
+            query getIt( id:string ) : string emits SomeEvent
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("getIt" in session.diagnostics[0].toText())
+        self.assertTrue("cannot emit events" in session.diagnostics[0].toText())
+
+    def test_valueobject_command_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Money {
+            amount:number
+            command setAmount( value:number )
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("setAmount" in session.diagnostics[0].toText())
+        self.assertTrue("cannot be a command" in session.diagnostics[0].toText())
+
     def test_invalid_map_type_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""

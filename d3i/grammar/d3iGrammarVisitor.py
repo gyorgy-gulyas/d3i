@@ -24,11 +24,6 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by d3iGrammar#directive.
-    def visitDirective(self, ctx:d3iGrammar.DirectiveContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by d3iGrammar#domain_element.
     def visitDomain_element(self, ctx:d3iGrammar.Domain_elementContext):
         return self.visitChildren(ctx)
@@ -91,6 +86,11 @@ class d3iGrammarVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by d3iGrammar#event.
     def visitEvent(self, ctx:d3iGrammar.EventContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#event_kind.
+    def visitEvent_kind(self, ctx:d3iGrammar.Event_kindContext):
         return self.visitChildren(ctx)
 
 
@@ -174,6 +174,21 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by d3iGrammar#workflow.
+    def visitWorkflow(self, ctx:d3iGrammar.WorkflowContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#workflow_element.
+    def visitWorkflow_element(self, ctx:d3iGrammar.Workflow_elementContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#step.
+    def visitStep(self, ctx:d3iGrammar.StepContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by d3iGrammar#interface.
     def visitInterface(self, ctx:d3iGrammar.InterfaceContext):
         return self.visitChildren(ctx)
@@ -186,6 +201,11 @@ class d3iGrammarVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by d3iGrammar#operation.
     def visitOperation(self, ctx:d3iGrammar.OperationContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#emits_clause.
+    def visitEmits_clause(self, ctx:d3iGrammar.Emits_clauseContext):
         return self.visitChildren(ctx)
 
 
@@ -234,8 +254,53 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by d3iGrammar#ref_type.
+    def visitRef_type(self, ctx:d3iGrammar.Ref_typeContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by d3iGrammar#qualifiedName.
     def visitQualifiedName(self, ctx:d3iGrammar.QualifiedNameContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#validate_expr.
+    def visitValidate_expr(self, ctx:d3iGrammar.Validate_exprContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#validate_or.
+    def visitValidate_or(self, ctx:d3iGrammar.Validate_orContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#validate_and.
+    def visitValidate_and(self, ctx:d3iGrammar.Validate_andContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#validate_unary.
+    def visitValidate_unary(self, ctx:d3iGrammar.Validate_unaryContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#validate_predicate.
+    def visitValidate_predicate(self, ctx:d3iGrammar.Validate_predicateContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#validate_range.
+    def visitValidate_range(self, ctx:d3iGrammar.Validate_rangeContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#validate_set.
+    def visitValidate_set(self, ctx:d3iGrammar.Validate_setContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#validate_term.
+    def visitValidate_term(self, ctx:d3iGrammar.Validate_termContext):
         return self.visitChildren(ctx)
 
 

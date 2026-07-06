@@ -54,20 +54,6 @@ domain somedomain{
         self.assertEqual(_import.name, "somedomain.subdomain.subdomain")
 
 
-    def test_directive_qualified_ok(self):
-        engine = Engine()
-        session = Session(Source.CreateFromText("""
-resources somedomain.subdomain.subdomain
-domain somedomain{
-}
-"""))
-        root = engine.Build(session)
-        self.assertIsInstance(root, d3)
-        self.assertEqual(1, len(root.domains[0].directives))
-        directive: directive = root.domains[0].directives[0]
-        self.assertEqual(directive.keyword, "resources")
-        self.assertEqual(directive.value.getText(), "somedomain.subdomain.subdomain")
-
     def test_decorator_simple_ok(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
@@ -1132,6 +1118,199 @@ domain SomeDomain {
         self.assertEqual(query.operation_params[0].type.primtiveKind, primitive_type.PrimtiveKind.Integer)
         self.assertEqual(query.operation_return.type.kind, type.Kind.Reference)
         self.assertEqual(query.operation_return.type.reference_name.getText(), "SomeType")
+
+
+    def test_value_object_operation(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Money {
+            amount:number
+            currency:string
+            query isPositive() : boolean
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        value_object: value_object = context.value_objects[0]
+        self.assertEqual(len(value_object.operations), 1)
+        self.assertEqual(value_object.operations[0].kind, operation.Kind.Query)
+        self.assertEqual(value_object.operations[0].name, "isPositive")
+
+    def test_entity_operation(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        aggregate OrderAggregate {
+            root entity OrderHeader {
+                total:number
+                command applyDiscount( percent:number )
+                query isOverdue() : boolean
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        entity: entity = context.aggregates[0].internal_entities[0].entity
+        self.assertEqual(len(entity.operations), 2)
+        self.assertEqual(entity.operations[0].kind, operation.Kind.Command)
+        self.assertEqual(entity.operations[0].name, "applyDiscount")
+        self.assertEqual(entity.operations[1].kind, operation.Kind.Query)
+        self.assertEqual(entity.operations[1].name, "isOverdue")
+
+
+    def test_event_kinds(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        service TheService {
+            event Plain version 1 { x:number }
+            domain event Created version 1 { x:number }
+            integration event Shipped version 1 { x:number }
+            audit event Logged version 1 { who:string }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        service = root.domains[0].contexts[0].services[0]
+        self.assertEqual(len(service.events), 4)
+        self.assertEqual(service.events[0].kind, event.Kind.Domain)
+        self.assertEqual(service.events[1].kind, event.Kind.Domain)
+        self.assertEqual(service.events[2].kind, event.Kind.Integration)
+        self.assertEqual(service.events[3].kind, event.Kind.Audit)
+
+    def test_eventsourced_aggregate(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        eventsourced aggregate Account {
+            root entity AccountRoot { balance:number }
+        }
+        aggregate Plain {
+            root entity PlainRoot { x:number }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        self.assertEqual(context.aggregates[0].eventsourced, True)
+        self.assertEqual(context.aggregates[1].eventsourced, False)
+
+    def test_command_emits(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        aggregate OrderAggregate {
+            root entity OrderHeader {
+                total:number
+                command place() emits Placed, AuditLogged
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        entity: entity = root.domains[0].contexts[0].aggregates[0].internal_entities[0].entity
+        command: operation = entity.operations[0]
+        self.assertEqual(command.name, "place")
+        self.assertEqual(len(command.emits), 2)
+        self.assertEqual(command.emits[0].getText(), "Placed")
+        self.assertEqual(command.emits[1].getText(), "AuditLogged")
+
+
+    def test_workflow(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        workflow OrderSaga {
+            command start( orderId:string )
+            query status( orderId:string ) : string
+            step reserveStock( orderId:string ) : boolean compensate releaseStock
+            step releaseStock( orderId:string )
+            eventhandler onPaid for event PaymentReceived
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        wf = root.domains[0].contexts[0].workflows[0]
+        self.assertEqual(wf.name, "OrderSaga")
+        self.assertEqual(len(wf.operations), 2)
+        self.assertEqual(wf.operations[0].kind, operation.Kind.Command)
+        self.assertEqual(wf.operations[0].name, "start")
+        self.assertEqual(wf.operations[1].kind, operation.Kind.Query)
+        self.assertEqual(len(wf.steps), 2)
+        self.assertEqual(wf.steps[0].name, "reserveStock")
+        self.assertEqual(wf.steps[0].compensate, "releaseStock")
+        self.assertEqual(wf.steps[1].name, "releaseStock")
+        self.assertEqual(wf.steps[1].compensate, None)
+        self.assertEqual(len(wf.eventhandlers), 1)
+        self.assertEqual(wf.eventhandlers[0].name, "onPaid")
+
+
+    def test_validate_expression(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Range {
+            plain:number
+            start:number validate value >= 0
+            end:number validate value >= start and value <= 100
+            code:string validate len(value) > 3 and matches(value, "[A-Z]+")
+            kind:string validate value in { "A", "B", "C" }
+            score:number validate value between 1 and 10
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        vo = root.domains[0].contexts[0].value_objects[0]
+        members = {m.name: m for m in vo.members}
+        self.assertIsNone(members["plain"].validate)
+        self.assertEqual(members["start"].validate, "value>=0")
+        self.assertEqual(members["end"].validate, "value>=startandvalue<=100")
+        self.assertEqual(members["code"].validate, 'len(value)>3andmatches(value,"[A-Z]+")')
+        self.assertEqual(members["kind"].validate, 'valuein{"A","B","C"}')
+        self.assertEqual(members["score"].validate, "valuebetween1and10")
+
+
+    def test_ref_type(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        aggregate Customer {
+            root entity CustomerRoot { id:string }
+        }
+        aggregate OrderAggregate {
+            root entity OrderHeader {
+                customer: ref Customer
+                relatedCustomers: list[ ref Customer ]
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        entity: entity = root.domains[0].contexts[0].aggregates[1].internal_entities[0].entity
+        members = {m.name: m for m in entity.members}
+        self.assertEqual(members["customer"].type.kind, type.Kind.Ref)
+        self.assertEqual(members["customer"].type.reference_name.getText(), "Customer")
+        self.assertEqual(members["relatedCustomers"].type.kind, type.Kind.List)
+        self.assertEqual(members["relatedCustomers"].type.item_type.kind, type.Kind.Ref)
 
 
 if __name__ == "__main__":
