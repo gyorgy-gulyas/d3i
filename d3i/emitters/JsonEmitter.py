@@ -260,7 +260,6 @@ class JsonEmitter(ElementVisitor):
         data = {
             "$type": "d3i.repository",
             "name": repository.name,
-            "referenced_name": repository.referenced_name,
         }
         parentData["repositories"].append(data)
         return data

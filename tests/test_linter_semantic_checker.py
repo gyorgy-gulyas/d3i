@@ -370,7 +370,7 @@ domain SomeDomain {
         valueobject TheName { }
         aggregate TheName { root entity TheEntity{}}
         view TheName { }
-        repository TheName : TheName
+        repository TheName {}
         acl TheName {}
         service TheName {}
         interface TheName version 1 {}
@@ -501,25 +501,6 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("OrderAggregate" in session.diagnostics[0].toText())
         self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "More than one root"]))
-
-    def test_repository_unknown_reference_fail(self):
-        engine = Engine()
-        session = Session(Source.CreateFromText("""
-domain SomeDomain {
-    context OrderContext{
-        repository TheRepository : NotDefined
-    }
-}
-"""))
-        root = engine.Build(session)
-        self.assertFalse(session.HasAnyError())
-
-        checker = SemanticChecker(session)
-        data = root.visit(checker, None)
-        session.PrintDiagnostics()
-        self.assertEqual(len(session.diagnostics), 1)
-        self.assertTrue("TheRepository" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8)", "NotDefined"]))
 
     def test_conflict_acl_fail(self):
         engine = Engine()

@@ -691,7 +691,8 @@ domain somedomain {
                 price:decimal
             }
         }
-        repository orders:Order
+        repository orders {
+        }
     }
 }
 """))
@@ -699,8 +700,7 @@ domain somedomain {
         context: context = root.domains[0].contexts[0]
         repository: repository = context.repositories[0]
         self.assertEqual(repository.name, "orders")
-        self.assertEqual(repository.referenced_name, "Order")
-        self.assertEqual(repository.kind, repository.Kind.RelationalSQL)
+        self.assertEqual(len(repository.operations), 0)
 
     def test_service_event_ok(self):
         engine = Engine()
