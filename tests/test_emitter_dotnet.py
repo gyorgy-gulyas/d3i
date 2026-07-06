@@ -498,5 +498,186 @@ namespace WebShop.CustomerContext
         print(result[1].content)
 
 
+    def test_emitter_aggregate_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        aggregate CustomerAggregate {
+            root entity Customer {
+                @id
+                id:string
+                name:string
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertEqual(1, len(result))
+        self.assertEqual(result[0].fileName, "Customer.cs")
+        content = result[0].content
+        self.assertIn("namespace WebShop.Orders.CustomerAggregate", content)
+        self.assertIn("public partial class Customer : IEquatable<Customer>", content)
+        self.assertIn("public string name { get; set; }", content)
+
+    def test_emitter_service_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        service OrderService {
+            command placeOrder( customerId:string ) : boolean
+            query getOrder( id:string ) : string
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertEqual(1, len(result))
+        self.assertEqual(result[0].fileName, "IOrderService.cs")
+        content = result[0].content
+        self.assertIn("using ServiceKit.Net;", content)
+        self.assertIn("public partial interface IOrderService", content)
+        self.assertIn("Task<Response<bool>> placeOrder(CallingContext ctx, string customerId)", content)
+        self.assertIn("Task<Response<string>> getOrder(CallingContext ctx, string id)", content)
+
+    def test_emitter_interface_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        interface OrderIF version 1 {
+            query getOrder( id:string ) : string
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertEqual(1, len(result))
+        self.assertEqual(result[0].fileName, "IOrderIF_v1.cs")
+        content = result[0].content
+        self.assertIn("public partial interface IOrderIF_v1", content)
+        self.assertIn("Task<Response<string>> getOrder(CallingContext ctx, string id)", content)
+
+    def test_emitter_acl_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        acl OrderACL {
+            query getData( id:string ) : string
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertEqual(1, len(result))
+        self.assertEqual(result[0].fileName, "IOrderACL.cs")
+        content = result[0].content
+        self.assertIn("public partial interface IOrderACL", content)
+        self.assertIn("Task<Response<string>> getData(CallingContext ctx, string id)", content)
+
+    def test_emitter_repository_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        repository OrderRepository {
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertEqual(1, len(result))
+        self.assertEqual(result[0].fileName, "IOrderRepository.cs")
+        self.assertIn("public partial interface IOrderRepository", result[0].content)
+
+    def test_emitter_dto_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        interface OrderIF version 1 {
+            dto OrderDto {
+                field:string
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertEqual(1, len(result))
+        self.assertEqual(result[0].fileName, "IOrderIF_v1.cs")
+        content = result[0].content
+        self.assertIn("public partial interface IOrderIF_v1", content)
+        self.assertIn("public partial class OrderDto : IEquatable<OrderDto>", content)
+        self.assertIn("public string field { get; set; }", content)
+
+    def test_emitter_event_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        service OrderService {
+            event OrderPlaced version 1 {
+                orderId:string
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertEqual(1, len(result))
+        self.assertEqual(result[0].fileName, "IOrderService.cs")
+        content = result[0].content
+        self.assertIn("public partial class OrderPlaced_v1 : IEquatable<OrderPlaced_v1>", content)
+        self.assertIn("public string orderId { get; set; }", content)
+
+    def test_emitter_types_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        valueobject Types {
+            listField: list[string]
+            mapField: map[string, integer]
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertEqual(1, len(result))
+        self.assertEqual(result[0].fileName, "Types.cs")
+        content = result[0].content
+        self.assertIn("public partial class Types : IEquatable<Types>", content)
+        self.assertIn("public List<string> listField { get; set; }", content)
+        self.assertIn("public Dictionary<string,int> mapField { get; set; }", content)
+
+
 if __name__ == "__main__":
     unittest.main()
