@@ -157,6 +157,25 @@ class JsonEmitter(ElementVisitor):
         parentData["members"].append(data)
         return data
 
+    def visitComposite(self, composite: composite, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.composite",
+            "name": composite.name,
+            "inherits": [],
+            "members": [],
+        }
+        parentData["composites"].append(data)
+        return data
+
+    def visitCompositeMember(self, composite_member: composite_member, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.composite_member",
+            "name": composite_member.name,
+            "type": {},
+        }
+        parentData["members"].append(data)
+        return data
+
     def visitDto(self, dto: dto, parentData: Any) -> Any:
         data = {
             "$type": "d3i.dto",

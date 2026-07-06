@@ -1171,7 +1171,10 @@ class ElementBuilder(d3iGrammarVisitor):
     # Visit a parse tree produced by d3iGrammar#decorator_param.
     def visitDecorator_param(self, ctx: d3iGrammar.Decorator_paramContext):
         result = decorator_param(self.fileName, ctx.start)
-        result.name = ctx.IDENTIFIER().getText()
+        # A decorator param may be positional (a bare value with no name),
+        # so IDENTIFIER can be absent; leave name as None in that case.
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
         if (ctx.qualifiedName() != None):
             result.kind = decorator_param.Kind.QualifiedName
             result.value = self.visit(ctx.qualifiedName())
