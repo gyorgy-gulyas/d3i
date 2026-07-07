@@ -333,10 +333,18 @@ class DotnetEmitter:
         for own_member in members:
             if (getattr(own_member, "validate_ast", None) != None):
                 validate_members.append(own_member)
+        # does a non-composite base CLASS carry validate rules? then we override + chain base
+        base_has_validate = False
+        for inherit in inherits:
+            base = Engine.get_referenced_element(element.parent, inherit)
+            if (base != None and isinstance(base, composite) == False and self.__classHasValidate(base)):
+                base_has_validate = True
+                break
         if (len(validate_members) > 0):
-            inherit_names.append("IValidable")
             code.usings.add("PolyPersist")
             code.usings.add("PolyPersist.Net.Common")
+            if (base_has_validate == False):
+                inherit_names.append("IValidable")   # a base class already declares it otherwise
 
         buffer = io.StringIO()
         # Add documentation lines for the composite
@@ -403,9 +411,11 @@ class DotnetEmitter:
         # Equal and HashCode
         buffer.write(self.dataClassEqualsAndHashCodeText(element, inherits, name, members, code, indent+1))
 
-        # Validation (IValidable) — only when some member carries a `validate` rule
+        # Validation (IValidable) — only when some member carries a `validate` rule.
+        # If a base class also validates, override it and chain base.Validate first.
         if (len(validate_members) > 0):
-            buffer.write(self.dataClassValidateText(name, validate_members, code, indent+1))
+            modifier = "override" if base_has_validate else "virtual"
+            buffer.write(self.dataClassValidateText(name, validate_members, code, modifier, base_has_validate, indent+1))
 
         if ( utils.isPublishedOn(element.getInterface(), "grpc" ) == True and isinstance(element,dto)):
             buffer.write(self.dtoGrpcMappingText(element, code, indent+1))
@@ -416,17 +426,40 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
 
-    def dataClassValidateText(self, name: str, validate_members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> str:
+    def __classHasValidate(self, element) -> bool:
+        # True when the class (own members, inlined composites, or any base CLASS) validates
+        for member in getattr(element, "members", []):
+            if (getattr(member, "validate_ast", None) != None):
+                return True
+        for inherit in getattr(element, "inherits", []):
+            base = Engine.get_referenced_element(element.parent, inherit)
+            if (base == None):
+                continue
+            if (isinstance(base, composite)):
+                base_composites: List[composite] = []
+                utils.collectBaseCompositsRecursive(base, base_composites)
+                for base_composite in base_composites:
+                    for member in base_composite.members:
+                        if (getattr(member, "validate_ast", None) != None):
+                            return True
+            elif (self.__classHasValidate(base)):
+                return True
+        return False
+
+    def dataClassValidateText(self, name: str, validate_members: List[hinted_base_element], code: dotnet_code, modifier: str, call_base: bool, indent: int = 1) -> str:
         # Generates `bool Validate(IList<IValidationError> errors)` (PolyPersist.IValidable).
         # Each rule becomes an `if (<violated>)` that records a readable error; the guard is
         # the NEGATION of the rule folded into the operators (so `value > 0` reads `amount <= 0`,
         # not `!(amount > 0)`) with bare field names and only the parentheses precedence needs.
+        # `modifier` is virtual/override; when overriding, base.Validate runs first.
         buffer = io.StringIO()
         buffer.write(f"\n")
         buffer.write(f"{utils.tab(indent)}#region Validation\n")
-        buffer.write(f"{utils.tab(indent)}public bool Validate( IList<IValidationError> errors )\n")
+        buffer.write(f"{utils.tab(indent)}public {modifier} bool Validate( IList<IValidationError> errors )\n")
         buffer.write(f"{utils.tab(indent)}{{\n")
         buffer.write(f"{utils.tab(indent+1)}int before = errors.Count;\n")
+        if (call_base):
+            buffer.write(f"{utils.tab(indent+1)}base.Validate( errors );\n")
         for member in validate_members:
             violated = self.__validateViolation(member.validate_ast, member, code)
             if (member.find_decorator("optional") != None):

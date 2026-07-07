@@ -786,7 +786,7 @@ domain Shop {
         self.assertIn("using PolyPersist;", content)
         self.assertIn("using PolyPersist.Net.Common;", content)
         self.assertIn(", IValidable", content)
-        self.assertIn("public bool Validate( IList<IValidationError> errors )", content)
+        self.assertIn("public virtual bool Validate( IList<IValidationError> errors )", content)
         # own rule: readable, negation folded into the operators, bare field names
         self.assertIn("if (amount <= 0 || amount > 1000)", content)
         # inlined composite rule (zipCode) lands in Order.Validate; string len -> .Length
@@ -794,6 +794,36 @@ domain Shop {
         self.assertIn("if (zipCode.Length != 4)", content)
         # @optional member is guarded by a null-check
         self.assertIn("note != null && (", content)
+
+    def test_emitter_validate_base_class_chain(self):
+        # a value object inheriting a validating base overrides Validate and chains base.Validate
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain D {
+    context C {
+        valueobject Base {
+            a: number validate value > 0
+        }
+        valueobject Derived inherits Base {
+            b: number validate value > 0
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        base = next(f for f in result if f.fileName == "Base.cs").content
+        derived = next(f for f in result if f.fileName == "Derived.cs").content
+
+        # base: fresh IValidable, virtual, no base call
+        self.assertIn("public virtual bool Validate( IList<IValidationError> errors )", base)
+        # derived: overrides and chains; IValidable is inherited (not re-listed)
+        self.assertIn("public override bool Validate( IList<IValidationError> errors )", derived)
+        self.assertIn("base.Validate( errors );", derived)
+        self.assertIn("if (b <= 0)", derived)
+        self.assertNotIn("IValidable", derived.split("class Derived")[1].split("{")[0])
 
     def test_emitter_validate_collection_len_count(self):
         # len() on a list/map maps to .Count (not .Length)

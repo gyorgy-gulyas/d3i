@@ -23,9 +23,11 @@ TODO — d3i
        string, == on same category; top-level boolean); .NET codegen -> PolyPersist.IValidable
        with readable guards (negation folded into operators, bare field names, minimal parens,
        len -> .Length for string / .Count for list/map; @optional -> null-guarded).
-       Remaining: base-class (non-composite) validate not chained (call base.Validate);
-       no negative literals in the validate grammar (`-10` doesn't tokenize);
-       no client-side/TS validation yet.
+       Base-class chaining DONE (.NET): a value object/entity inheriting a validating base
+       emits `override` + `base.Validate(errors)` first (base is `virtual`); multi-level
+       chains. NOTE: DTOs cannot inherit in the grammar (the `dto` rule has no `inherits`),
+       so there is no TS-side chaining to do — DTO validators are flat.
+       Remaining: no negative literals in the validate grammar (`-10` doesn't tokenize).
 
 [done] DTO client-side validation: a dto's OWN `validate` rules (not derived from the
     domain) generate a TypeScript validator `validate<Dto>(dto): ValidationError[]` in the
@@ -33,12 +35,6 @@ TODO — d3i
     Object.keys().length, matches -> new RegExp().test). Same type-aware lint applies.
     The server (domain IValidable) is still the authoritative validator. Needed a grammar
     fix: dto_member now allows `(VALIDATE validate_expr)?` (regenerated the parser).
-
-[future] LANGUAGE INDEPENDENCE (multi-target codegen): the validate codegen now has TWO
-    backends (C# IValidable + TS validator) built from the same validate AST, but the
-    violation/truth/value logic is DUPLICATED in each emitter. Factor it into one
-    language-parametrized generator so validation (and the rest) can add Java/etc. without
-    re-implementing. The element tree + validate AST are already language-neutral.
 
 [deferred language codegen] see memory microniq-current-work.md:
     - workflow Temporal runtime implementation
