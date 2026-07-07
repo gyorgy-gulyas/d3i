@@ -1309,6 +1309,44 @@ domain D {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("Unknown function 'size'" in session.diagnostics[0].toText())
 
+    def test_validate_type_mismatch_fail(self):
+        # you cannot order-compare a string ( `> 0` needs a number/date )
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain D {
+    context C {
+        valueobject V {
+            name: string validate value > 0
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("needs ordered values" in session.diagnostics[0].toText())
+
+    def test_validate_len_on_number_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain D {
+    context C {
+        valueobject V {
+            n: integer validate len(value) > 0
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'len'" in session.diagnostics[0].toText())
+        self.assertTrue("string or a list/map" in session.diagnostics[0].toText())
+
     def test_validate_not_boolean_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""

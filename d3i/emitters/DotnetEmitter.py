@@ -417,57 +417,138 @@ class DotnetEmitter:
         return code
 
     def dataClassValidateText(self, name: str, validate_members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> str:
-        # Generates `bool Validate(IList<IValidationError> errors)` (PolyPersist.IValidable):
-        # one guard per member rule; a failing rule appends a ValidationError.
+        # Generates `bool Validate(IList<IValidationError> errors)` (PolyPersist.IValidable).
+        # Each rule becomes an `if (<violated>)` that records a readable error; the guard is
+        # the NEGATION of the rule folded into the operators (so `value > 0` reads `amount <= 0`,
+        # not `!(amount > 0)`) with bare field names and only the parentheses precedence needs.
         buffer = io.StringIO()
         buffer.write(f"\n")
         buffer.write(f"{utils.tab(indent)}#region Validation\n")
         buffer.write(f"{utils.tab(indent)}public bool Validate( IList<IValidationError> errors )\n")
         buffer.write(f"{utils.tab(indent)}{{\n")
-        buffer.write(f"{utils.tab(indent+1)}int __start = errors.Count;\n")
+        buffer.write(f"{utils.tab(indent+1)}int before = errors.Count;\n")
         for member in validate_members:
-            condition = self.validateExprText(member.validate_ast, member.name, code)
-            # an @optional (nullable) member is only validated when present
+            violated = self.__validateViolation(member.validate_ast, member, code)
             if (member.find_decorator("optional") != None):
-                guard = f"this.{member.name} != null && !({condition})"
-            else:
-                guard = f"!({condition})"
-            errorText = member.validate.replace("\\", "\\\\").replace("\"", "\\\"")
-            buffer.write(f"{utils.tab(indent+1)}if ({guard})\n")
-            buffer.write(f"{utils.tab(indent+2)}errors.Add( new ValidationError {{ TypeOfEntity = \"{name}\", MemberOfEntity = \"{member.name}\", ErrorText = \"validation failed: {errorText}\" }} );\n")
-        buffer.write(f"{utils.tab(indent+1)}return errors.Count == __start;\n")
+                violated = f"{member.name} != null && ({violated})"
+            message = self.__validateRuleText(member.validate_ast).replace("\\", "\\\\").replace("\"", "\\\"")
+            buffer.write(f"\n")
+            buffer.write(f"{utils.tab(indent+1)}if ({violated})\n")
+            buffer.write(f"{utils.tab(indent+2)}errors.Add( new ValidationError {{ TypeOfEntity = \"{name}\", MemberOfEntity = \"{member.name}\", ErrorText = \"{member.name} must satisfy: {message}\" }} );\n")
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent+1)}return errors.Count == before;\n")
         buffer.write(f"{utils.tab(indent)}}}\n")
         buffer.write(f"{utils.tab(indent)}#endregion Validation\n")
         return buffer.getvalue()
 
-    def validateExprText(self, node: validate_node, member_name: str, code: dotnet_code) -> str:
-        # maps a validate AST node to a C# boolean/value expression
+    # C# for "the rule is VIOLATED" (negation folded into the operators)
+    def __validateViolation(self, node: validate_node, member: hinted_base_element, code: dotnet_code) -> str:
         if (isinstance(node, validate_binary)):
-            left = self.validateExprText(node.left, member_name, code)
-            right = self.validateExprText(node.right, member_name, code)
-            op = {"and": "&&", "or": "||"}.get(node.op, node.op)   # comparisons pass through
-            return f"({left} {op} {right})"
+            if (node.op == "and"):
+                return f"{self.__violationOperand(node.left, member, code)} || {self.__violationOperand(node.right, member, code)}"
+            if (node.op == "or"):
+                return f"{self.__violationOperand(node.left, member, code)} && {self.__violationOperand(node.right, member, code)}"
+            flipped = {"<": ">=", "<=": ">", ">": "<=", ">=": "<", "==": "!=", "!=": "=="}[node.op]
+            return f"{self.__validateValue(node.left, member, code)} {flipped} {self.__validateValue(node.right, member, code)}"
         if (isinstance(node, validate_not)):
-            return f"(!({self.validateExprText(node.operand, member_name, code)}))"
+            return self.__validateTruth(node.operand, member, code)
         if (isinstance(node, validate_in_range) or isinstance(node, validate_between)):
-            term = self.validateExprText(node.term, member_name, code)
-            low = self.validateExprText(node.low, member_name, code)
-            high = self.validateExprText(node.high, member_name, code)
-            return f"({term} >= {low} && {term} <= {high})"
+            term = self.__validateValue(node.term, member, code)
+            return f"{term} < {self.__validateValue(node.low, member, code)} || {term} > {self.__validateValue(node.high, member, code)}"
         if (isinstance(node, validate_in_set)):
-            term = self.validateExprText(node.term, member_name, code)
-            parts = [f"{term} == {self.validateExprText(item, member_name, code)}" for item in node.items]
-            return "(" + " || ".join(parts) + ")"
-        if (isinstance(node, validate_call)):
-            args = [self.validateExprText(arg, member_name, code) for arg in node.args]
-            if (node.func == "len"):
-                return f"({args[0]}).Length"
-            if (node.func == "matches"):
-                return f"System.Text.RegularExpressions.Regex.IsMatch({args[0]}, {args[1]})"
-            return f"{node.func}({', '.join(args)})"
+            term = self.__validateValue(node.term, member, code)
+            return " && ".join([f"{term} != {self.__validateValue(item, member, code)}" for item in node.items])
+        if (isinstance(node, validate_call)):   # matches -> a boolean, violated is the negation
+            return f"!{self.__validateTruth(node, member, code)}"
+        if (isinstance(node, validate_ref)):    # a boolean field
+            return f"!{self.__validateValue(node, member, code)}"
+        return f"!({self.__validateTruth(node, member, code)})"
+
+    def __violationOperand(self, node: validate_node, member: hinted_base_element, code: dotnet_code) -> str:
+        text = self.__validateViolation(node, member, code)
+        return f"({text})" if self.__validateCompound(node) else text
+
+    # C# for "the rule holds" (positive form)
+    def __validateTruth(self, node: validate_node, member: hinted_base_element, code: dotnet_code) -> str:
+        if (isinstance(node, validate_binary)):
+            if (node.op == "and" or node.op == "or"):
+                op = "&&" if (node.op == "and") else "||"
+                return f"{self.__truthOperand(node.left, member, code)} {op} {self.__truthOperand(node.right, member, code)}"
+            return f"{self.__validateValue(node.left, member, code)} {node.op} {self.__validateValue(node.right, member, code)}"
+        if (isinstance(node, validate_not)):
+            return f"!({self.__validateTruth(node.operand, member, code)})"
+        if (isinstance(node, validate_in_range) or isinstance(node, validate_between)):
+            term = self.__validateValue(node.term, member, code)
+            return f"{term} >= {self.__validateValue(node.low, member, code)} && {term} <= {self.__validateValue(node.high, member, code)}"
+        if (isinstance(node, validate_in_set)):
+            term = self.__validateValue(node.term, member, code)
+            return " || ".join([f"{term} == {self.__validateValue(item, member, code)}" for item in node.items])
+        return self.__validateValue(node, member, code)
+
+    def __truthOperand(self, node: validate_node, member: hinted_base_element, code: dotnet_code) -> str:
+        text = self.__validateTruth(node, member, code)
+        return f"({text})" if self.__validateCompound(node) else text
+
+    # does this node produce a boolean built from && / || (so it needs parens as an operand)?
+    def __validateCompound(self, node: validate_node) -> bool:
+        if (isinstance(node, validate_binary)):
+            return node.op == "and" or node.op == "or"
+        if (isinstance(node, validate_in_range) or isinstance(node, validate_between)):
+            return True
+        if (isinstance(node, validate_in_set)):
+            return len(node.items) > 1
+        if (isinstance(node, validate_not)):
+            return False
+        return False
+
+    # C# for a plain value operand (bare field name, literal, or a function result)
+    def __validateValue(self, node: validate_node, member: hinted_base_element, code: dotnet_code) -> str:
         if (isinstance(node, validate_ref)):
-            target = member_name if (node.name == "value") else node.name
-            return f"this.{target}"
+            return member.name if (node.name == "value") else node.name
+        if (isinstance(node, validate_literal)):
+            return node.value
+        if (isinstance(node, validate_call)):
+            if (node.func == "len"):
+                target = self.__validateValue(node.args[0], member, code)
+                accessor = "Count" if self.__validateIsCollection(node.args[0], member) else "Length"
+                return f"{target}.{accessor}"
+            if (node.func == "matches"):
+                code.usings.add("System.Text.RegularExpressions")
+                return f"Regex.IsMatch({self.__validateValue(node.args[0], member, code)}, {self.__validateValue(node.args[1], member, code)})"
+        return self.__validateTruth(node, member, code)
+
+    def __validateIsCollection(self, node: validate_node, member: hinted_base_element) -> bool:
+        # a len() argument is `value` (this member) or a sibling; list/map -> .Count, else .Length
+        if (isinstance(node, validate_ref) == False):
+            return False
+        target = member
+        if (node.name != "value"):
+            target = None
+            for candidate in member.parent.members:
+                if (candidate.name == node.name):
+                    target = candidate
+                    break
+        if (target == None or target.type == None):
+            return False
+        return target.type.kind == type.Kind.List or target.type.kind == type.Kind.Map
+
+    # a readable rendering of the rule for the error message (spaces, uppercase AND/OR)
+    def __validateRuleText(self, node: validate_node) -> str:
+        if (isinstance(node, validate_binary)):
+            op = node.op.upper() if (node.op == "and" or node.op == "or") else node.op
+            return f"{self.__validateRuleText(node.left)} {op} {self.__validateRuleText(node.right)}"
+        if (isinstance(node, validate_not)):
+            return f"NOT ({self.__validateRuleText(node.operand)})"
+        if (isinstance(node, validate_in_range)):
+            return f"{self.__validateRuleText(node.term)} IN {self.__validateRuleText(node.low)}..{self.__validateRuleText(node.high)}"
+        if (isinstance(node, validate_between)):
+            return f"{self.__validateRuleText(node.term)} BETWEEN {self.__validateRuleText(node.low)} AND {self.__validateRuleText(node.high)}"
+        if (isinstance(node, validate_in_set)):
+            return f"{self.__validateRuleText(node.term)} IN {{{', '.join([self.__validateRuleText(i) for i in node.items])}}}"
+        if (isinstance(node, validate_call)):
+            return f"{node.func}({', '.join([self.__validateRuleText(a) for a in node.args])})"
+        if (isinstance(node, validate_ref)):
+            return node.name
         if (isinstance(node, validate_literal)):
             return node.value
         return ""

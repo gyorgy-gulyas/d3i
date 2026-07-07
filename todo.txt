@@ -18,11 +18,14 @@ TODO — d3i
       `string id` (Find/Delete/Get), leaning on the implicit string conversion.
 
 [done] `validate` evaluation/codegen: parse tree -> validate_node AST (ElementBuilder);
-       lint (identifier resolution to value/sibling, known funcs len/matches + arity,
-       top-level boolean); .NET codegen -> PolyPersist.IValidable.Validate(errors) with a
-       guard per rule (own + inlined composite members; @optional -> null-guarded).
-       Known limits: len() assumes string (.Length); base-class (non-composite) validate
-       not chained; no client-side/TS validation yet.
+       TYPE-AWARE lint (identifiers resolve to value/sibling; operations must fit the field
+       type: ordering only on number/date, len only on string/list/map, matches only on
+       string, == on same category; top-level boolean); .NET codegen -> PolyPersist.IValidable
+       with readable guards (negation folded into operators, bare field names, minimal parens,
+       len -> .Length for string / .Count for list/map; @optional -> null-guarded).
+       Remaining: base-class (non-composite) validate not chained (call base.Validate);
+       no negative literals in the validate grammar (`-10` doesn't tokenize);
+       no client-side/TS validation yet.
 
 [deferred language codegen] see memory microniq-current-work.md:
     - workflow Temporal runtime implementation
