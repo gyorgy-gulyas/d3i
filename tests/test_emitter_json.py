@@ -2030,7 +2030,7 @@ domain SomeDomain {
 
 
     def tests_new_constructs_serialize_ok(self):
-        # Covers JSON serialization of the Q1-Q5 constructs that no other snapshot
+        # Covers JSON serialization of the the grammar decisions constructs that no other snapshot
         # populates: workflow/step (+compensate), ref type, integration/audit event
         # kinds, eventsourced aggregate, populated emits, validate, and a
         # value-object query operation.

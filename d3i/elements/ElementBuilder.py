@@ -28,7 +28,7 @@ class ElementBuilder(d3iGrammarVisitor):
 
     # Shared body for the `IDENTIFIER ':' type` member rules (value object / entity /
     # composite / dto / view / event member, and operation param): name, type,
-    # optional validate expr (Q4, only where the rule has one), doc lines, decorators.
+    # optional validate expr, doc lines, decorators.
     def __build_member(self, ctx, result):
         if (ctx.IDENTIFIER() != None):
             result.name = ctx.IDENTIFIER().getText()

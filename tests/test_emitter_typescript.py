@@ -74,7 +74,7 @@ domain WebShop {
 
 
     def test_emitter_ref_ok(self):
-        # Q5: a ref member must emit without crashing (typed-id codegen deferred).
+        # a ref is the referenced aggregate's id, emitted as a string on the wire.
         engine = Engine()
         session = Session(Source.CreateFromText("""
 domain WebShop {
@@ -97,7 +97,8 @@ domain WebShop {
         result = TypeScriptEmitter().Emit(session)
         types = next(f for f in result if f.fileName == "OrderIF_v1.ts")
         self.assertIn("export interface OrderDto {", types.content)
-        self.assertIn("c:Customer;", types.content)
+        # a ref is the referenced aggregate's id -> string on the wire
+        self.assertIn("c:string;", types.content)
 
 
 if __name__ == "__main__":

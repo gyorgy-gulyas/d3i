@@ -680,7 +680,7 @@ domain WebShop {
 
 
     def test_emitter_ref_ok(self):
-        # Q5: a ref to another aggregate becomes a typed id: EntityId<X> from
+        # a ref to another aggregate becomes a typed id: EntityId<X> from
         # PolyPersist.Net.Core (EntityId<Customer> != EntityId<Order>).
         engine = Engine()
         session = Session(Source.CreateFromText("""
@@ -703,7 +703,8 @@ domain WebShop {
         result = DotnetEmitter().Emit(session)
         header = next(f for f in result if f.fileName == "OrderHeader.cs")
         self.assertIn("using PolyPersist.Net.Core;", header.content)
-        self.assertIn("public EntityId<WebShop.Orders.Customer> customer { get; set; }", header.content)
+        # ref targets the aggregate's ROOT entity (CustomerRoot), not the aggregate name
+        self.assertIn("public EntityId<WebShop.Orders.Customer.CustomerRoot> customer { get; set; }", header.content)
 
     def test_emitter_optional_nullable_ok(self):
         engine = Engine()
@@ -725,7 +726,7 @@ domain WebShop {
 
         result = DotnetEmitter().Emit(session)
         content = result[0].content
-        # Q8: unmarked = required (non-nullable); @optional -> nullable
+        # unmarked = required (non-nullable); @optional -> nullable
         self.assertIn("public string email { get; set; }", content)
         self.assertIn("public string? phone { get; set; }", content)
         self.assertIn("public int? age { get; set; }", content)
@@ -752,7 +753,7 @@ domain WebShop {
         result = DotnetEmitter().Emit(session)
         self.assertEqual(1, len(result))
         content = result[0].content
-        # Q13: @deprecated -> [Obsolete] on both the class and the field
+        # @deprecated -> [Obsolete] on both the class and the field
         self.assertIn('[Obsolete("use NewAddress, since 2.3")]', content)
         self.assertIn('[Obsolete("use zip")]', content)
         # @gdpr is a marker only: it must not emit any attribute (exactly two [Obsolete]s)

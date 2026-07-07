@@ -104,7 +104,7 @@ class SemanticChecker(ElementVisitor):
             if (neighbour.name == the_value_object.name):
                 self.__error(the_value_object, f"A value object '{the_value_object.name}' conflicts with same name with element in {neighbour.locationText()}.")
 
-        # Q1: value objects are immutable, so they may only expose query operations.
+        # value objects are immutable, so they may only expose query operations.
         for op in the_value_object.operations:
             if (op.kind == operation.Kind.Command):
                 self.__error(op, f"A value object operation '{op.name}' cannot be a command; value objects are immutable and may only have query operations.")
@@ -297,7 +297,7 @@ class SemanticChecker(ElementVisitor):
             if (neighbour.name == the_step.name):
                 self.__error(the_step, f"A step '{the_step.name}' with same name is already exists in {neighbour.locationText()}.")
 
-        # Q3: `compensate` must reference an existing step in the same workflow.
+        # `compensate` must reference an existing step in the same workflow.
         if (the_step.compensate != None):
             step_names = [s.name for s in the_workflow.steps]
             if (the_step.compensate not in step_names):
@@ -310,7 +310,7 @@ class SemanticChecker(ElementVisitor):
             if (neighbour.name == operation.name):
                 self.__error(operation, f"An operation '{operation.name}' with same name is already exists in {neighbour.locationText()}.")
 
-        # Q2: only commands may emit events (a command records; the service publishes).
+        # only commands may emit events (a command records; the service publishes).
         if (operation.kind.name == "Query" and len(operation.emits) > 0):
             self.__error(operation, f"A query operation '{operation.name}' cannot emit events; only commands may declare 'emits'.")
 
@@ -329,7 +329,7 @@ class SemanticChecker(ElementVisitor):
         pass
 
     def visitPrimitiveType(self, primtiveType: primitive_type, parentData: Any, memberName: str) -> Any:
-        # Q10: `any` and `stream` may not appear on a domain-model field.
+        # `any` and `stream` may not appear on a domain-model field.
         if (primtiveType.primtiveKind == primitive_type.PrimtiveKind.Any or primtiveType.primtiveKind == primitive_type.PrimtiveKind.Stream):
             owner = primtiveType.parent
             while (isinstance(owner, type)):   # skip list/map wrappers
@@ -347,7 +347,7 @@ class SemanticChecker(ElementVisitor):
         element, message = Engine.get_referenced_element_with_message(reference_type.parent, reference_type.reference_name)
         if (element == None):
             self.__error(reference_type, message)
-        # Q5: another aggregate must be referenced by identity, not embedded.
+        # another aggregate must be referenced by identity, not embedded.
         elif (isinstance(element, aggregate)):
             name = reference_type.reference_name.getText()
             self.__error(reference_type, f"Aggregate '{name}' must be referenced by identity: use 'ref {name}'.")
@@ -360,7 +360,7 @@ class SemanticChecker(ElementVisitor):
         element, message = Engine.get_referenced_element_with_message(ref_type.parent, ref_type.reference_name)
         if (element == None):
             self.__error(ref_type, message)
-        # Q5: `ref` may only target an aggregate; embed value objects/entities directly.
+        # `ref` may only target an aggregate; embed value objects/entities directly.
         elif (isinstance(element, aggregate) == False):
             name = ref_type.reference_name.getText()
             self.__error(ref_type, f"'ref' may only reference an aggregate; '{name}' is not an aggregate (embed value objects and entities directly).")

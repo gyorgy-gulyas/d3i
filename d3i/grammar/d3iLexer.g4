@@ -53,7 +53,7 @@ EMITS : 'emits' ;
 WORKFLOW : 'workflow' ;
 STEP : 'step' ;
 COMPENSATE : 'compensate' ;
-// Q4: validate sublanguage keywords / operators
+// validate sublanguage keywords / operators
 VALIDATE : 'validate' ;
 REF : 'ref' ;
 AND : 'and' ;
