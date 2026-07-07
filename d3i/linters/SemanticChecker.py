@@ -351,6 +351,11 @@ class SemanticChecker(ElementVisitor):
         elif (isinstance(element, aggregate)):
             name = reference_type.reference_name.getText()
             self.__error(reference_type, f"Aggregate '{name}' must be referenced by identity: use 'ref {name}'.")
+        # an interface is the wire surface: it may only expose dto/enum/primitive types
+        # (plus `ref`, which is a string on the wire). Domain types must not leak onto it.
+        elif (self.__is_on_interface_surface(reference_type) and isinstance(element, (dto, enum)) == False):
+            name = reference_type.reference_name.getText()
+            self.__error(reference_type, f"An interface may only expose dto, enum and primitive types on its surface; '{name}' is a {element.__class__.__name__}. Map it to a dto for the wire contract.")
 
     def visitRefType(self, ref_type: ref_type, parentData: Any, memberName: str) -> Any:
         if (len(ref_type.reference_name.names) == 0):
@@ -399,6 +404,19 @@ class SemanticChecker(ElementVisitor):
 
     def __error(self, element: base_element, msg: str):
         self.session.ReportDiagnostic(msg, Diagnostic.Severity.Error, element.fileName, element.line, element.column)
+
+    def __is_on_interface_surface(self, element: base_element) -> bool:
+        # True when the element sits inside an interface (its dto members or its
+        # operation params/returns) — the versioned wire surface. Walking up stops at
+        # the context/domain boundary so domain fields never match.
+        node = element
+        while (node != None):
+            if (isinstance(node, interface)):
+                return True
+            if (isinstance(node, (context, domain, d3))):
+                return False
+            node = node.parent
+        return False
 
     def visitInternalScopedBaseElement(self, internal_scoped_base_element: internal_scoped_base_element, parentData: Any) -> Any:
         pass

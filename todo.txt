@@ -22,4 +22,7 @@ TODO — d3i
     - workflow Temporal runtime implementation
     - LSP: language_server.py calls main_module.lsp_initialize / lsp_did_open_text which
       are not defined in __main__.py -> broken; fix + smoke test.
-    - lint: "interface surface = only DTO/enum/primitive"
+
+[done] interface surface lint: an interface may only expose dto/enum/primitive types
+       (plus `ref` -> string, and list/map of those); domain types (value_object,
+       entity, view, composite, aggregate) may not leak onto the wire surface.
