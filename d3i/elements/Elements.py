@@ -389,6 +389,8 @@ class dto_member(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.type: type = None
+        self.validate: str = None   # DTO validate is client-side (own rule, not derived)
+        self.validate_ast: validate_node = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitDtoMember(self, parentData)

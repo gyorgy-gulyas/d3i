@@ -100,6 +100,40 @@ domain WebShop {
         # a ref is the referenced aggregate's id -> string on the wire
         self.assertIn("c:string;", types.content)
 
+    def test_emitter_dto_validation_ok(self):
+        # a DTO's own validate rules generate a client-side validator function
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain Shop {
+    context C {
+        @public_api( rest, collection = "PublicApi" )
+        interface OrderIF version 1 {
+            dto CreateOrder {
+                amount: number validate value > 0 AND value <= 1000
+                email: string validate matches(value, "^.+@.+$")
+                tags: list[string] validate len(value) <= 3
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = TypeScriptEmitter().Emit(session)
+        content = next(f for f in result if f.fileName == "OrderIF_v1.ts").content
+
+        # the shared error shape + the validator function
+        self.assertIn("export interface ValidationError {", content)
+        self.assertIn("export function validateCreateOrder( dto: CreateOrder ): ValidationError[] {", content)
+        # readable, negated conditions with dto. access
+        self.assertIn("if (dto.amount <= 0 || dto.amount > 1000)", content)
+        self.assertIn('if (!new RegExp("^.+@.+$").test(dto.email))', content)
+        # len on a list -> .length
+        self.assertIn("if (dto.tags.length > 3)", content)
+        self.assertIn('memberOfEntity: "amount"', content)
+        self.assertIn("return errors;", content)
+
 
 if __name__ == "__main__":
     unittest.main()

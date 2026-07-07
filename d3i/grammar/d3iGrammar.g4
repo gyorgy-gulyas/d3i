@@ -72,7 +72,7 @@ dto
         ;
         
         dto_member
-            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   // DTO validate is client-side
             ;
 
 composite

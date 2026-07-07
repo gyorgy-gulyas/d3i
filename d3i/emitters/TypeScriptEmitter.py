@@ -159,6 +159,18 @@ class TypeScriptEmitter:
         """
         buffer = io.StringIO()
 
+        # a shared ValidationError shape (mirrors the server IValidationError) — emitted
+        # once, before the dtos, when any dto on this interface carries validate rules
+        if (any(self.__dtoHasValidate(the_dto) for the_dto in interface.dtos)):
+            buffer.write(f"{utils.tab(indent)}export interface ValidationError {{\n")
+            buffer.write(f"{utils.tab(indent+1)}typeOfEntity: string;\n")
+            buffer.write(f"{utils.tab(indent+1)}memberOfEntity: string;\n")
+            buffer.write(f"{utils.tab(indent+1)}errorText: string;\n")
+            buffer.write(f"{utils.tab(indent)}}}\n\n")
+            code.content += buffer.getvalue()
+            buffer.seek(0)
+            buffer.truncate(0)
+
         for enum in interface.enums:
             code = self.enumText(enum, code, indent)
 
@@ -167,6 +179,24 @@ class TypeScriptEmitter:
 
         code.content += buffer.getvalue()
         return code
+
+    def __dtoHasValidate(self, the_dto: dto) -> bool:
+        base_composites: List[composite] = []
+        for inherit in the_dto.inherits:
+            base = Engine.get_referenced_element(the_dto.parent, inherit)
+            if (isinstance(base, composite)):
+                utils.collectBaseCompositsRecursive(base, base_composites)
+        for base_composite in base_composites:
+            for member in base_composite.members:
+                if (getattr(member, "validate_ast", None) != None):
+                    return True
+        for member in the_dto.members:
+            if (getattr(member, "validate_ast", None) != None):
+                return True
+        for nested in the_dto.dtos:
+            if (self.__dtoHasValidate(nested)):
+                return True
+        return False
 
     def interfaceRestPublicClientText(self, interface: interface, code: ts_code, apiCollectionName:str, indent: int = 0) -> ts_code:
         """
@@ -364,7 +394,145 @@ class TypeScriptEmitter:
             buffer.write(f"{utils.tab(indent)}}}\n")
 
         code.content += buffer.getvalue()
+
+        # client-side validator for the dto's own + inlined composite validate rules
+        validate_members: List[hinted_base_element] = []
+        for base_composite in base_composites:
+            for composite_member in base_composite.members:
+                if (getattr(composite_member, "validate_ast", None) != None):
+                    validate_members.append(composite_member)
+        for own_member in dto.members:
+            if (getattr(own_member, "validate_ast", None) != None):
+                validate_members.append(own_member)
+        if (len(validate_members) > 0):
+            code.content += self.dtoValidatorText(dto.name, validate_members, code, indent)
+
         return code
+
+    def dtoValidatorText(self, name: str, validate_members: List[hinted_base_element], code: ts_code, indent: int = 1) -> str:
+        # client-side validator: returns the list of violated rules (empty = valid).
+        # The server always re-validates; this is a UX convenience.
+        buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}export function validate{name}( dto: {name} ): ValidationError[] {{\n")
+        buffer.write(f"{utils.tab(indent+1)}const errors: ValidationError[] = [];\n")
+        for member in validate_members:
+            violated = self.__tsViolation(member.validate_ast, member, code)
+            if (member.find_decorator("optional") != None):
+                violated = f"dto.{member.name} != null && ({violated})"
+            message = self.__tsRuleText(member.validate_ast).replace("\\", "\\\\").replace("\"", "\\\"")
+            buffer.write(f"{utils.tab(indent+1)}if ({violated})\n")
+            buffer.write(f"{utils.tab(indent+2)}errors.push({{ typeOfEntity: \"{name}\", memberOfEntity: \"{member.name}\", errorText: \"{member.name} must satisfy: {message}\" }});\n")
+        buffer.write(f"{utils.tab(indent+1)}return errors;\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        return buffer.getvalue()
+
+    # --- client-side validate codegen (same readable/negated shape as the .NET emitter) ---
+    def __tsViolation(self, node: validate_node, member: hinted_base_element, code: ts_code) -> str:
+        if (isinstance(node, validate_binary)):
+            if (node.op == "and"):
+                return f"{self.__tsViolationOperand(node.left, member, code)} || {self.__tsViolationOperand(node.right, member, code)}"
+            if (node.op == "or"):
+                return f"{self.__tsViolationOperand(node.left, member, code)} && {self.__tsViolationOperand(node.right, member, code)}"
+            flipped = {"<": ">=", "<=": ">", ">": "<=", ">=": "<", "==": "!==", "!=": "==="}[node.op]
+            return f"{self.__tsValue(node.left, member, code)} {flipped} {self.__tsValue(node.right, member, code)}"
+        if (isinstance(node, validate_not)):
+            return self.__tsTruth(node.operand, member, code)
+        if (isinstance(node, validate_in_range) or isinstance(node, validate_between)):
+            term = self.__tsValue(node.term, member, code)
+            return f"{term} < {self.__tsValue(node.low, member, code)} || {term} > {self.__tsValue(node.high, member, code)}"
+        if (isinstance(node, validate_in_set)):
+            term = self.__tsValue(node.term, member, code)
+            return " && ".join([f"{term} !== {self.__tsValue(item, member, code)}" for item in node.items])
+        if (isinstance(node, validate_call)):
+            return f"!{self.__tsTruth(node, member, code)}"
+        if (isinstance(node, validate_ref)):
+            return f"!{self.__tsValue(node, member, code)}"
+        return f"!({self.__tsTruth(node, member, code)})"
+
+    def __tsViolationOperand(self, node: validate_node, member: hinted_base_element, code: ts_code) -> str:
+        text = self.__tsViolation(node, member, code)
+        return f"({text})" if self.__tsCompound(node) else text
+
+    def __tsTruth(self, node: validate_node, member: hinted_base_element, code: ts_code) -> str:
+        if (isinstance(node, validate_binary)):
+            if (node.op == "and" or node.op == "or"):
+                op = "&&" if (node.op == "and") else "||"
+                return f"{self.__tsTruthOperand(node.left, member, code)} {op} {self.__tsTruthOperand(node.right, member, code)}"
+            op = {"==": "===", "!=": "!=="}.get(node.op, node.op)
+            return f"{self.__tsValue(node.left, member, code)} {op} {self.__tsValue(node.right, member, code)}"
+        if (isinstance(node, validate_not)):
+            return f"!({self.__tsTruth(node.operand, member, code)})"
+        if (isinstance(node, validate_in_range) or isinstance(node, validate_between)):
+            term = self.__tsValue(node.term, member, code)
+            return f"{term} >= {self.__tsValue(node.low, member, code)} && {term} <= {self.__tsValue(node.high, member, code)}"
+        if (isinstance(node, validate_in_set)):
+            term = self.__tsValue(node.term, member, code)
+            return " || ".join([f"{term} === {self.__tsValue(item, member, code)}" for item in node.items])
+        return self.__tsValue(node, member, code)
+
+    def __tsTruthOperand(self, node: validate_node, member: hinted_base_element, code: ts_code) -> str:
+        text = self.__tsTruth(node, member, code)
+        return f"({text})" if self.__tsCompound(node) else text
+
+    def __tsCompound(self, node: validate_node) -> bool:
+        if (isinstance(node, validate_binary)):
+            return node.op == "and" or node.op == "or"
+        if (isinstance(node, validate_in_range) or isinstance(node, validate_between)):
+            return True
+        if (isinstance(node, validate_in_set)):
+            return len(node.items) > 1
+        return False
+
+    def __tsValue(self, node: validate_node, member: hinted_base_element, code: ts_code) -> str:
+        if (isinstance(node, validate_ref)):
+            target = member.name if (node.name == "value") else node.name
+            return f"dto.{target}"
+        if (isinstance(node, validate_literal)):
+            return node.value
+        if (isinstance(node, validate_call)):
+            if (node.func == "len"):
+                target = self.__tsValue(node.args[0], member, code)
+                if (self.__tsIsMap(node.args[0], member)):
+                    return f"Object.keys({target}).length"
+                return f"{target}.length"   # string and array both use .length
+            if (node.func == "matches"):
+                return f"new RegExp({self.__tsValue(node.args[1], member, code)}).test({self.__tsValue(node.args[0], member, code)})"
+        return self.__tsTruth(node, member, code)
+
+    def __tsIsMap(self, node: validate_node, member: hinted_base_element) -> bool:
+        if (isinstance(node, validate_ref) == False):
+            return False
+        target = member
+        if (node.name != "value"):
+            target = None
+            for candidate in member.parent.members:
+                if (candidate.name == node.name):
+                    target = candidate
+                    break
+        if (target == None or target.type == None):
+            return False
+        return target.type.kind == type.Kind.Map
+
+    def __tsRuleText(self, node: validate_node) -> str:
+        if (isinstance(node, validate_binary)):
+            op = node.op.upper() if (node.op == "and" or node.op == "or") else node.op
+            return f"{self.__tsRuleText(node.left)} {op} {self.__tsRuleText(node.right)}"
+        if (isinstance(node, validate_not)):
+            return f"NOT ({self.__tsRuleText(node.operand)})"
+        if (isinstance(node, validate_in_range)):
+            return f"{self.__tsRuleText(node.term)} IN {self.__tsRuleText(node.low)}..{self.__tsRuleText(node.high)}"
+        if (isinstance(node, validate_between)):
+            return f"{self.__tsRuleText(node.term)} BETWEEN {self.__tsRuleText(node.low)} AND {self.__tsRuleText(node.high)}"
+        if (isinstance(node, validate_in_set)):
+            return f"{self.__tsRuleText(node.term)} IN {{{', '.join([self.__tsRuleText(i) for i in node.items])}}}"
+        if (isinstance(node, validate_call)):
+            return f"{node.func}({', '.join([self.__tsRuleText(a) for a in node.args])})"
+        if (isinstance(node, validate_ref)):
+            return node.name
+        if (isinstance(node, validate_literal)):
+            return node.value
+        return ""
 
     def propertyText(self, member: hinted_base_element, code: ts_code, indent: int) -> str:
         return f"{utils.tab(indent)}{member.name}:{self.typeText(member.type, code)};\n"
