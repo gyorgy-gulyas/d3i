@@ -1347,6 +1347,27 @@ domain D {
         self.assertTrue("'len'" in session.diagnostics[0].toText())
         self.assertTrue("string or a list/map" in session.diagnostics[0].toText())
 
+    def test_validate_dto_type_mismatch_fail(self):
+        # DTO validate is type-checked too: `> 0` on a string dto member is an error
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain D {
+    context C {
+        interface OrderIF version 1 {
+            dto CreateOrder {
+                name: string validate value > 0
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("needs ordered values" in session.diagnostics[0].toText())
+
     def test_validate_not_boolean_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""

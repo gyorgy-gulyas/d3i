@@ -27,6 +27,19 @@ TODO — d3i
        no negative literals in the validate grammar (`-10` doesn't tokenize);
        no client-side/TS validation yet.
 
+[done] DTO client-side validation: a dto's OWN `validate` rules (not derived from the
+    domain) generate a TypeScript validator `validate<Dto>(dto): ValidationError[]` in the
+    TS emitter, same readable/negated shape as the .NET side (dto. access, len -> .length /
+    Object.keys().length, matches -> new RegExp().test). Same type-aware lint applies.
+    The server (domain IValidable) is still the authoritative validator. Needed a grammar
+    fix: dto_member now allows `(VALIDATE validate_expr)?` (regenerated the parser).
+
+[future] LANGUAGE INDEPENDENCE (multi-target codegen): the validate codegen now has TWO
+    backends (C# IValidable + TS validator) built from the same validate AST, but the
+    violation/truth/value logic is DUPLICATED in each emitter. Factor it into one
+    language-parametrized generator so validation (and the rest) can add Java/etc. without
+    re-implementing. The element tree + validate AST are already language-neutral.
+
 [deferred language codegen] see memory microniq-current-work.md:
     - workflow Temporal runtime implementation
     - LSP: language_server.py calls main_module.lsp_initialize / lsp_did_open_text which

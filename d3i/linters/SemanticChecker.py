@@ -141,6 +141,7 @@ class SemanticChecker(ElementVisitor):
                 continue
             if (neighbour.name == member.name):
                 self.__error(member, f"An member '{member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+        self.__check_validate(member)
 
     def visitComposite(self, the_composite: composite, parentData: Any) -> Any:
         scope = Engine.get_current_scope(the_composite.parent)
