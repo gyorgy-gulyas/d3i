@@ -1,1 +1,25 @@
+TODO — d3i
 
+[typed ids] DONE — `ref X` now generates a strongly-typed id
+    - EntityId<TEntity> added to PolyPersist/interfaces/dotnet/PolyPersist/Core/EntityId.cs
+      (readonly record struct over a string, implicit string operators, IParsable,
+      one open-generic JsonConverterFactory). UNCONSTRAINED — intentional: entities get
+      their base by MODELING it (e.g. `inherits Core.Base.BaseEntity`), not from a
+      hardcoded PolyPersist.IEntity, so a `where TEntity : IEntity` constraint would not
+      fit the modeled-base approach.
+    - .NET emitter: `ref <Aggregate>` -> `EntityId<<root entity>>`, resolved to the
+      aggregate's ROOT entity (the class that actually carries the @id), fully qualified,
+      + using PolyPersist.Net.Core.
+    - Proto/TS emitters: a ref is the referenced aggregate's id -> `string` on the wire.
+  Optional future (PolyPersist adaptation):
+    - If the platform ever standardizes all persistable entities on one base interface,
+      add the matching `where TEntity : ...` constraint to EntityId<TEntity>.
+    - Consider PolyPersist store/collection apis accepting EntityId<T> (typed) alongside
+      `string id` (Find/Delete/Get), leaning on the implicit string conversion.
+
+[deferred language codegen] see memory microniq-current-work.md:
+    - `validate` evaluation/codegen (expression text is captured only)
+    - workflow Temporal runtime implementation
+    - LSP: language_server.py calls main_module.lsp_initialize / lsp_did_open_text which
+      are not defined in __main__.py -> broken; fix + smoke test.
+    - lint: "interface surface = only DTO/enum/primitive"

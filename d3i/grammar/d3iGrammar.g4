@@ -22,7 +22,7 @@ import_rule
     ;
 
 domain
-    : DOCUMENT_LINE* decorator* 'domain' IDENTIFIER '{' domain_element* '}'   // Q12: directive removed
+    : DOCUMENT_LINE* decorator* 'domain' IDENTIFIER '{' domain_element* '}'   // directive removed
     ;
 
     domain_element
@@ -54,11 +54,11 @@ value_object
         : value_object_member
         | enum
         | value_object
-        | operation      // Q1: value objects may expose pure query operations
+        | operation      // value objects may expose pure query operations
         ;
         
         value_object_member
-            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   // Q4
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   //
             ;
 
 dto
@@ -86,14 +86,14 @@ composite
         ;
         
         composite_member
-            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   // Q4
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   //
             ;
 
 event
     :  DOCUMENT_LINE* decorator* event_kind? 'event' IDENTIFIER 'version' INTEGER_CONSTANS inherits? '{' event_element* '}'
     ;
 
-    // Q2: three explicit event kinds. No prefix (or 'domain') = domain event.
+    // three explicit event kinds. No prefix (or 'domain') = domain event.
     event_kind
         : 'domain'
         | 'integration'
@@ -121,15 +121,15 @@ entity
         : entity_member
         | enum
         | value_object
-        | operation      // Q1: entities (incl. aggregate root) may have command/query operations
+        | operation      // entities (incl. aggregate root) may have command/query operations
         ;
 
         entity_member
-            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   // Q4
+            : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   //
             ;
         
 aggregate
-    :  DOCUMENT_LINE* decorator* 'eventsourced'? 'aggregate' IDENTIFIER '{' aggregate_element* '}'   // Q2: eventsourced marker
+    :  DOCUMENT_LINE* decorator* 'eventsourced'? 'aggregate' IDENTIFIER '{' aggregate_element* '}'   // eventsourced marker
     ;
 
     aggregate_element
@@ -175,7 +175,7 @@ service
         | eventhandler
         ;
 
-// Q3: workflow — first-class now, Temporal implementation later.
+// workflow — first-class now, Temporal implementation later.
 workflow
     :  DOCUMENT_LINE* decorator* 'workflow' IDENTIFIER '{' workflow_element*  '}'
     ;
@@ -209,7 +209,7 @@ operation
     : DOCUMENT_LINE* decorator* ('command' | 'query' ) IDENTIFIER '(' (operation_param? (',' operation_param)*) ')' (':' operation_return )? emits_clause?
     ;
 
-    // Q2: a command may declare the events it produces (the command records; the service publishes).
+    // a command may declare the events it produces (the command records; the service publishes).
     emits_clause
         : 'emits' qualifiedName (',' qualifiedName)*
         ;
@@ -268,7 +268,7 @@ type
         : 'map' '[' type ',' type ']'
         ;
 
-    // Q5: reference to another aggregate by identity (generates a typed id in codegen).
+    // reference to another aggregate by identity (generates a typed id in codegen).
     ref_type
         : REF qualifiedName
         ;
@@ -277,7 +277,7 @@ qualifiedName
     : IDENTIFIER ('.' IDENTIFIER)*
     ;
 
-// Q4: small, lintable validate expression sublanguage.
+// small, lintable validate expression sublanguage.
 // `value` is the field itself; a bare IDENTIFIER may reference a sibling field.
 validate_expr
     : validate_or

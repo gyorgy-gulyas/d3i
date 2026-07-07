@@ -95,7 +95,7 @@ domain WebShop {
 
 
     def test_emitter_ref_ok(self):
-        # Q5: a ref member must emit without crashing (typed-id codegen deferred).
+        # a ref is the referenced aggregate's id, emitted as a string on the wire.
         engine = Engine()
         session = Session(Source.CreateFromText("""
 domain WebShop {
@@ -117,7 +117,8 @@ domain WebShop {
         result = ProtoEmitter().Emit(session)
         content = result[0].content
         self.assertIn("message OrderDto {", content)
-        self.assertIn("Customer c = 1;", content)
+        # a ref is the referenced aggregate's id -> string on the wire
+        self.assertIn("string c = 1;", content)
 
 
 if __name__ == "__main__":

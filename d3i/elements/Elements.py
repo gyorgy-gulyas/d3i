@@ -311,7 +311,7 @@ class value_object_member(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.type: type = None
-        self.validate: str = None   # Q4: validate expression text, or None
+        self.validate: str = None   # validate expression text, or None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitValueObjectMember(self, parentData)
@@ -366,7 +366,7 @@ class composite_member(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.type: type = None
-        self.validate: str = None   # Q4: validate expression text, or None
+        self.validate: str = None   # validate expression text, or None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitCompositeMember(self, parentData)
@@ -376,7 +376,7 @@ class composite_member(hinted_base_element):
 
 
 class event(internal_scoped_base_element):
-    # Q2: three explicit event kinds (no prefix / 'domain' = Domain).
+    # three explicit event kinds (no prefix / 'domain' = Domain).
     class Kind(Enum):
         Domain = 1
         Integration = 2
@@ -442,7 +442,7 @@ class entity_member(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.type: type = None
-        self.validate: str = None   # Q4: validate expression text, or None
+        self.validate: str = None   # validate expression text, or None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEntityMember(self, parentData)
@@ -456,7 +456,7 @@ class aggregate(internal_scoped_base_element):
         super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False)
         self.name: str = None
         self.internal_entities: List[aggregate_entity] = []
-        self.eventsourced: bool = False   # Q2: 'eventsourced aggregate' marker
+        self.eventsourced: bool = False   # 'eventsourced aggregate' marker
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitAggregate(self, parentData)
@@ -586,7 +586,7 @@ class interface(functional_element):
 
 
 class workflow(functional_element):
-    # Q3: workflow — reuses command/query (functional_element.operations) and
+    # workflow — reuses command/query (functional_element.operations) and
     # eventhandlers, plus first-class steps (Temporal activities).
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False, withEvent=False, withEventHandler=True)
@@ -601,7 +601,7 @@ class workflow(functional_element):
 
 
 class step(hinted_base_element):
-    # Q3: a step is a (Temporal) activity; `compensate` names the step that reverses it.
+    # a step is a (Temporal) activity; `compensate` names the step that reverses it.
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
@@ -629,7 +629,7 @@ class operation(hinted_base_element):
         self.operation_params: List[operation_param] = []
         self.operation_return: operation_return = None
         self.kind: operation.Kind = operation.Kind.Command
-        self.emits: List[qualified_name] = []   # Q2: events a command records
+        self.emits: List[qualified_name] = []   # events a command records
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitOperation(self, parentData)
@@ -739,7 +739,7 @@ class reference_type(type):
 
 
 class ref_type(type):
-    # Q5: reference to another aggregate by identity (kind == Ref).
+    # reference to another aggregate by identity (kind == Ref).
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.reference_name: qualified_name = None
