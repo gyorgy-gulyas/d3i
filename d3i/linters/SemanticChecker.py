@@ -412,46 +412,121 @@ class SemanticChecker(ElementVisitor):
     __VALIDATE_FUNCS = {"len": 1, "matches": 2}
 
     def __check_validate(self, member: base_element):
-        node = member.validate_ast
-        if (node == None):
+        # Type-checks the validate expression against the field types: a rule may only use
+        # operations that make sense for the type (e.g. no `> 0` on a string), and the whole
+        # expression must be boolean. Categories: number, string, bool, temporal (date/time),
+        # collection (list/map), enum, id (ref), unknown.
+        if (member.validate_ast == None):
             return
-        # the whole expression must be a boolean condition, not a bare value/literal.
-        if (isinstance(node, (validate_ref, validate_literal))):
-            self.__error(member, f"The 'validate' expression on '{member.name}' must be a boolean condition.")
-        sibling_names = [m.name for m in member.parent.members]
-        self.__walk_validate(node, member, sibling_names)
+        category = self.__validate_type(member.validate_ast, member)
+        if (category != "bool" and category != "error"):
+            self.__error(member, f"The 'validate' expression on '{member.name}' must be a boolean condition, but it is a '{category}'.")
 
-    def __walk_validate(self, node, member: base_element, sibling_names: list):
-        if (isinstance(node, validate_binary)):
-            self.__walk_validate(node.left, member, sibling_names)
-            self.__walk_validate(node.right, member, sibling_names)
-        elif (isinstance(node, validate_not)):
-            self.__walk_validate(node.operand, member, sibling_names)
-        elif (isinstance(node, validate_in_range)):
-            self.__walk_validate(node.term, member, sibling_names)
-            self.__walk_validate(node.low, member, sibling_names)
-            self.__walk_validate(node.high, member, sibling_names)
-        elif (isinstance(node, validate_in_set)):
-            self.__walk_validate(node.term, member, sibling_names)
-            for item in node.items:
-                self.__walk_validate(item, member, sibling_names)
-        elif (isinstance(node, validate_between)):
-            self.__walk_validate(node.term, member, sibling_names)
-            self.__walk_validate(node.low, member, sibling_names)
-            self.__walk_validate(node.high, member, sibling_names)
-        elif (isinstance(node, validate_call)):
-            if (node.func not in self.__VALIDATE_FUNCS):
-                self.__error(member, f"Unknown function '{node.func}' in the 'validate' on '{member.name}' (known: len, matches).")
-            elif (len(node.args) != self.__VALIDATE_FUNCS[node.func]):
-                self.__error(member, f"Function '{node.func}' in the 'validate' on '{member.name}' expects {self.__VALIDATE_FUNCS[node.func]} argument(s), got {len(node.args)}.")
-            elif (node.func == "matches" and (isinstance(node.args[1], validate_literal) == False or node.args[1].kind != "string")):
-                self.__error(member, f"The second argument of 'matches' in the 'validate' on '{member.name}' must be a string regex literal.")
-            for arg in node.args:
-                self.__walk_validate(arg, member, sibling_names)
-        elif (isinstance(node, validate_ref)):
-            if (node.name != "value" and node.name not in sibling_names):
+    def __validate_type(self, node, member: base_element) -> str:
+        if (isinstance(node, validate_literal)):
+            return "number" if (node.kind == "int" or node.kind == "number") else "string"
+
+        if (isinstance(node, validate_ref)):
+            if (node.name == "value"):
+                return self.__type_category(member.type)
+            sibling = None
+            for candidate in member.parent.members:
+                if (candidate.name == node.name):
+                    sibling = candidate
+                    break
+            if (sibling == None):
                 self.__error(member, f"'{node.name}' in the 'validate' on '{member.name}' is not 'value' nor a sibling field.")
-        # validate_literal: nothing to check
+                return "error"
+            return self.__type_category(sibling.type)
+
+        if (isinstance(node, validate_call)):
+            return self.__validate_call_type(node, member)
+
+        if (isinstance(node, validate_not)):
+            inner = self.__validate_type(node.operand, member)
+            if (inner != "bool" and inner != "error"):
+                self.__error(member, f"'not' in the 'validate' on '{member.name}' needs a boolean operand, not a '{inner}'.")
+            return "bool"
+
+        if (isinstance(node, validate_binary)):
+            left = self.__validate_type(node.left, member)
+            right = self.__validate_type(node.right, member)
+            if (node.op == "and" or node.op == "or"):
+                for side in (left, right):
+                    if (side != "bool" and side != "error"):
+                        self.__error(member, f"'{node.op}' in the 'validate' on '{member.name}' needs boolean operands, not a '{side}'.")
+                return "bool"
+            if (node.op in ("<", "<=", ">", ">=")):
+                for side in (left, right):
+                    if (side != "error" and side != "number" and side != "temporal"):
+                        self.__error(member, f"'{node.op}' in the 'validate' on '{member.name}' needs ordered values (number or date), not a '{side}'.")
+                return "bool"
+            # == or !=
+            if (left != "error" and right != "error" and left != right):
+                self.__error(member, f"'{node.op}' in the 'validate' on '{member.name}' compares incompatible types '{left}' and '{right}'.")
+            return "bool"
+
+        if (isinstance(node, validate_in_range) or isinstance(node, validate_between)):
+            term = self.__validate_type(node.term, member)
+            self.__validate_type(node.low, member)
+            self.__validate_type(node.high, member)
+            if (term != "error" and term != "number" and term != "temporal"):
+                self.__error(member, f"the range check in the 'validate' on '{member.name}' needs an ordered value (number or date), not a '{term}'.")
+            return "bool"
+
+        if (isinstance(node, validate_in_set)):
+            term = self.__validate_type(node.term, member)
+            for item in node.items:
+                item_category = self.__validate_type(item, member)
+                if (term != "error" and item_category != "error" and term != item_category):
+                    self.__error(member, f"the set check in the 'validate' on '{member.name}' mixes a '{term}' with a '{item_category}'.")
+            return "bool"
+
+        return "error"
+
+    def __validate_call_type(self, node, member: base_element) -> str:
+        if (node.func not in self.__VALIDATE_FUNCS):
+            self.__error(member, f"Unknown function '{node.func}' in the 'validate' on '{member.name}' (known: len, matches).")
+            return "error"
+        if (len(node.args) != self.__VALIDATE_FUNCS[node.func]):
+            self.__error(member, f"Function '{node.func}' in the 'validate' on '{member.name}' expects {self.__VALIDATE_FUNCS[node.func]} argument(s), got {len(node.args)}.")
+            return "error"
+        arg_categories = [self.__validate_type(arg, member) for arg in node.args]
+        if (node.func == "len"):
+            if (arg_categories[0] != "error" and arg_categories[0] != "string" and arg_categories[0] != "collection"):
+                self.__error(member, f"'len' in the 'validate' on '{member.name}' needs a string or a list/map, not a '{arg_categories[0]}'.")
+            return "number"
+        # matches
+        if (arg_categories[0] != "error" and arg_categories[0] != "string"):
+            self.__error(member, f"'matches' in the 'validate' on '{member.name}' needs a string, not a '{arg_categories[0]}'.")
+        if (isinstance(node.args[1], validate_literal) == False or node.args[1].kind != "string"):
+            self.__error(member, f"the second argument of 'matches' in the 'validate' on '{member.name}' must be a string regex literal.")
+        return "bool"
+
+    def __type_category(self, the_type) -> str:
+        if (the_type == None):
+            return "unknown"
+        if (the_type.kind == type.Kind.List or the_type.kind == type.Kind.Map):
+            return "collection"
+        if (the_type.kind == type.Kind.Ref):
+            return "id"
+        if (the_type.kind == type.Kind.Reference):
+            element = Engine.get_referenced_element(the_type.parent, the_type.reference_name)
+            if (isinstance(element, enum)):
+                return "enum"
+            return "unknown"
+        if (the_type.kind == type.Kind.Primitive):
+            kind = the_type.primtiveKind
+            if (kind == primitive_type.PrimtiveKind.Integer or kind == primitive_type.PrimtiveKind.Number):
+                return "number"
+            if (kind == primitive_type.PrimtiveKind.Date or kind == primitive_type.PrimtiveKind.Time or kind == primitive_type.PrimtiveKind.DateTime):
+                return "temporal"
+            if (kind == primitive_type.PrimtiveKind.String or kind == primitive_type.PrimtiveKind.I18NString):
+                return "string"
+            if (kind == primitive_type.PrimtiveKind.Boolean):
+                return "bool"
+            return "unknown"
+        return "unknown"
 
     def __is_on_interface_surface(self, element: base_element) -> bool:
         # True when the element sits inside an interface (its dto members or its

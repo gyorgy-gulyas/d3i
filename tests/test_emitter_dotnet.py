@@ -787,13 +787,32 @@ domain Shop {
         self.assertIn("using PolyPersist.Net.Common;", content)
         self.assertIn(", IValidable", content)
         self.assertIn("public bool Validate( IList<IValidationError> errors )", content)
-        # own rule
-        self.assertIn("(this.amount > 0) && (this.amount <= 1000)", content)
-        # inlined composite rule (zipCode) lands in Order.Validate
+        # own rule: readable, negation folded into the operators, bare field names
+        self.assertIn("if (amount <= 0 || amount > 1000)", content)
+        # inlined composite rule (zipCode) lands in Order.Validate; string len -> .Length
         self.assertIn('MemberOfEntity = "zipCode"', content)
-        self.assertIn("(this.zipCode).Length == 4", content)
+        self.assertIn("if (zipCode.Length != 4)", content)
         # @optional member is guarded by a null-check
-        self.assertIn("this.note != null && !(", content)
+        self.assertIn("note != null && (", content)
+
+    def test_emitter_validate_collection_len_count(self):
+        # len() on a list/map maps to .Count (not .Length)
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain Shop {
+    context C {
+        valueobject Cart {
+            items: list[string] validate len(value) <= 3
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        content = next(f for f in result if f.fileName == "Cart.cs").content
+        self.assertIn("if (items.Count > 3)", content)
 
 
 if __name__ == "__main__":
