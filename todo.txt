@@ -1,1 +1,24 @@
+TODO — d3i
 
+[Q5 typed ids] PolyPersist adaptation (follow-up to `ref X` -> EntityId<X>)
+  Done:
+    - EntityId<TEntity> added to PolyPersist/interfaces/dotnet/PolyPersist/Core/EntityId.cs
+      (readonly record struct over a string, implicit string operators, IParsable,
+      one open-generic JsonConverterFactory). Currently UNCONSTRAINED.
+    - d3i .NET emitter: `ref X` now generates `EntityId<X>` (+ using PolyPersist.Net.Core).
+  Still to do (adapt PolyPersist / d3i accordingly):
+    - Make d3i-generated aggregate ROOT entities implement PolyPersist.IEntity, then
+      add the `where TEntity : IEntity` constraint back on EntityId<TEntity>.
+    - Decide the marker type: `EntityId<Customer>` should reference the aggregate root
+      class that actually exists (aggregate name vs root-entity name) so it compiles.
+    - Consider PolyPersist store/collection apis accepting EntityId<T> (typed) in
+      addition to `string id` (Find/Delete/Get), leaning on implicit string conversion.
+    - Proto/TS emitters: a ref is a `string` on the wire (currently emits the referenced
+      type name) — align to string for the typed-id model.
+
+[deferred language codegen] see memory microniq-current-work.md:
+    - Q4 `validate` evaluation/codegen (expression text is captured only)
+    - Q3 workflow Temporal runtime implementation
+    - LSP: language_server.py calls main_module.lsp_initialize / lsp_did_open_text which
+      are not defined in __main__.py -> broken; fix + smoke test.
+    - lint: "interface surface = only DTO/enum/primitive"

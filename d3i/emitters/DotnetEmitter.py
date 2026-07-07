@@ -2049,7 +2049,9 @@ class DotnetEmitter:
             case type.Kind.Primitive:
                 return self.typeTextPrimitive(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
             case type.Kind.Ref:
-                return self.typeTextReference(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
+                # Q5: a ref to another aggregate becomes a typed id: EntityId<X> (PolyPersist.Net.Core).
+                code.usings.add("PolyPersist.Net.Core")
+                return f"EntityId<{self.typeTextReference(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)}>"
             case type.Kind.Reference:
                 return self.typeTextReference(type, code, fullName=fullName, isInFunctionParam=isInFunctionParam)
             case type.Kind.List:
