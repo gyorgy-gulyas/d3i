@@ -99,9 +99,11 @@ class ElementBuilder(d3iGrammarVisitor):
             args = [self.__build_validate_term(t) for t in ctx.validate_term()]
             return validate_call(ctx.IDENTIFIER().getText(), args)
         if (ctx.INTEGER_CONSTANS() != None):
-            return validate_literal("int", ctx.INTEGER_CONSTANS().getText())
+            sign = "-" if (ctx.MINUS() != None) else ""
+            return validate_literal("int", sign + ctx.INTEGER_CONSTANS().getText())
         if (ctx.NUMBER_CONSTANS() != None):
-            return validate_literal("number", ctx.NUMBER_CONSTANS().getText())
+            sign = "-" if (ctx.MINUS() != None) else ""
+            return validate_literal("number", sign + ctx.NUMBER_CONSTANS().getText())
         if (ctx.STRING_LITERAL() != None):
             return validate_literal("string", ctx.STRING_LITERAL().getText())
         return self.__build_validate_expr(ctx.validate_expr())

@@ -68,6 +68,7 @@ EQ : '==' ;
 LT : '<' ;
 GT : '>' ;
 DOTDOT : '..' ;
+MINUS : '-' ;   // negative numeric literals in validate expressions
 
 // built-in types
 INTEGER : 'integer' ;

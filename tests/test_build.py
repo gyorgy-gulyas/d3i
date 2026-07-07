@@ -1346,6 +1346,26 @@ domain D {
         self.assertEqual(code.left.func, "len")
         self.assertEqual(len(code.left.args), 1)
 
+    def test_validate_negative_literal_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain D {
+    context C {
+        valueobject Reading {
+            temp: number validate value >= -273
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+        temp = root.domains[0].contexts[0].value_objects[0].members[0].validate_ast
+        # value >= -273  -> comparison with a negative literal
+        self.assertIsInstance(temp, validate_binary)
+        self.assertEqual(temp.op, ">=")
+        self.assertIsInstance(temp.right, validate_literal)
+        self.assertEqual(temp.right.value, "-273")
+
 
 if __name__ == "__main__":
     unittest.main()
