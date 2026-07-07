@@ -53,11 +53,6 @@ class TestCliEmitterTargets(unittest.TestCase):
             resolve_emitter("java:backend")
         self.assertIn("planned but not implemented", str(cm.exception))
 
-    def test_planned_rust_client(self):
-        with self.assertRaises(SystemExit) as cm:
-            resolve_emitter("rust:client")
-        self.assertIn("planned but not implemented", str(cm.exception))
-
     # --- bare language name needs a side --------------------------------------
 
     def test_bare_language_needs_side(self):

@@ -22,8 +22,6 @@ EMITTER_TARGETS = {
     "typescript:backend": (None,                             "typescript", "backend",  "invalid",   "TypeScript is client-only; there is no server runtime (Node is not supported)"),
     "java:backend":       (None,                             "java",       "backend",  "planned",   ""),
     "java:client":        (None,                             "java",       "client",   "planned",   ""),
-    "rust:backend":       (None,                             "rust",       "backend",  "planned",   ""),
-    "rust:client":        (None,                             "rust",       "client",   "planned",   ""),
     # Side-agnostic contract emitters (needed by every implementation).
     "proto":              ("d3i.emitters.ProtoEmitter",      "proto",      "contract", "supported", ""),
     "json":               ("d3i.emitters.JsonEmitter",       "json",       "contract", "supported", ""),
