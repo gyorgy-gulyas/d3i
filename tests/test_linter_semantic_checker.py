@@ -1176,5 +1176,80 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("Value of map can only contain" in session.diagnostics[0].toText())
 
+    def test_interface_surface_valueobject_member_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Money { amount:number }
+        interface OrderIF version 1 {
+            dto OrderDto {
+                total: Money
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("may only expose dto, enum and primitive" in session.diagnostics[0].toText())
+        self.assertTrue("Money" in session.diagnostics[0].toText())
+
+    def test_interface_surface_operation_param_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        valueobject Money { amount:number }
+        interface OrderIF version 1 {
+            query convert( m: Money ) : string
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("may only expose dto, enum and primitive" in session.diagnostics[0].toText())
+
+    def test_interface_surface_ok(self):
+        # dto/enum/primitive members and a ref (string on the wire) are all allowed.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        aggregate Customer {
+            root entity CustomerRoot { id:string }
+        }
+        interface OrderIF version 1 {
+            enum Status { New, Done }
+            dto Line { sku:string }
+            dto OrderDto {
+                id: string
+                status: Status
+                line: Line
+                owner: ref Customer
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 0)
+
 if __name__ == "__main__":
     unittest.main()
