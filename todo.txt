@@ -17,8 +17,14 @@ TODO — d3i
     - Consider PolyPersist store/collection apis accepting EntityId<T> (typed) alongside
       `string id` (Find/Delete/Get), leaning on the implicit string conversion.
 
+[done] `validate` evaluation/codegen: parse tree -> validate_node AST (ElementBuilder);
+       lint (identifier resolution to value/sibling, known funcs len/matches + arity,
+       top-level boolean); .NET codegen -> PolyPersist.IValidable.Validate(errors) with a
+       guard per rule (own + inlined composite members; @optional -> null-guarded).
+       Known limits: len() assumes string (.Length); base-class (non-composite) validate
+       not chained; no client-side/TS validation yet.
+
 [deferred language codegen] see memory microniq-current-work.md:
-    - `validate` evaluation/codegen (expression text is captured only)
     - workflow Temporal runtime implementation
     - LSP: language_server.py calls main_module.lsp_initialize / lsp_did_open_text which
       are not defined in __main__.py -> broken; fix + smoke test.

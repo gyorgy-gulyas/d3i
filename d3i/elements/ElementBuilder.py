@@ -35,10 +35,76 @@ class ElementBuilder(d3iGrammarVisitor):
         if (ctx.type_() != None):
             result.type = self.visit(ctx.type_())
             result.type.parent = result
-        if (hasattr(ctx, "validate_expr") and ctx.validate_expr() != None):
+        if (hasattr(ctx, "validate_expr") and ctx.validate_expr() != None and hasattr(result, "validate")):
             result.validate = ctx.validate_expr().getText()
+            result.validate_ast = self.__build_validate_expr(ctx.validate_expr())
         self.__build_document_lines(ctx, result)
         self.__build_decorators(ctx, result)
+
+    # --- validate expression sublanguage: parse tree -> validate_node AST ------------
+    def __build_validate_expr(self, ctx) -> validate_node:
+        if (ctx.validate_or() != None):
+            return self.__build_validate_or(ctx.validate_or())
+        return self.__build_validate_expr(ctx.validate_expr())
+
+    def __build_validate_or(self, ctx) -> validate_node:
+        ands = ctx.validate_and()
+        node = self.__build_validate_and(ands[0])
+        i = 1
+        while (i < len(ands)):
+            node = validate_binary("or", node, self.__build_validate_and(ands[i]))
+            i = i + 1
+        return node
+
+    def __build_validate_and(self, ctx) -> validate_node:
+        unaries = ctx.validate_unary()
+        node = self.__build_validate_unary(unaries[0])
+        i = 1
+        while (i < len(unaries)):
+            node = validate_binary("and", node, self.__build_validate_unary(unaries[i]))
+            i = i + 1
+        return node
+
+    def __build_validate_unary(self, ctx) -> validate_node:
+        if (ctx.NOT() != None):
+            return validate_not(self.__build_validate_unary(ctx.validate_unary()))
+        return self.__build_validate_predicate(ctx.validate_predicate())
+
+    def __build_validate_predicate(self, ctx) -> validate_node:
+        terms = ctx.validate_term()
+        left = self.__build_validate_term(terms[0])
+        if (ctx.IN() != None):
+            if (ctx.validate_range() != None):
+                rterms = ctx.validate_range().validate_term()
+                return validate_in_range(left, self.__build_validate_term(rterms[0]), self.__build_validate_term(rterms[1]))
+            items = [self.__build_validate_term(t) for t in ctx.validate_set().validate_term()]
+            return validate_in_set(left, items)
+        if (ctx.BETWEEN() != None):
+            return validate_between(left, self.__build_validate_term(terms[1]), self.__build_validate_term(terms[2]))
+        op = None
+        if (ctx.LT() != None): op = "<"
+        elif (ctx.LE() != None): op = "<="
+        elif (ctx.GT() != None): op = ">"
+        elif (ctx.GE() != None): op = ">="
+        elif (ctx.EQ() != None): op = "=="
+        elif (ctx.NEQ() != None): op = "!="
+        if (op != None):
+            return validate_binary(op, left, self.__build_validate_term(terms[1]))
+        return left
+
+    def __build_validate_term(self, ctx) -> validate_node:
+        if (ctx.IDENTIFIER() != None):
+            if (ctx.getChildCount() == 1):
+                return validate_ref(ctx.IDENTIFIER().getText())
+            args = [self.__build_validate_term(t) for t in ctx.validate_term()]
+            return validate_call(ctx.IDENTIFIER().getText(), args)
+        if (ctx.INTEGER_CONSTANS() != None):
+            return validate_literal("int", ctx.INTEGER_CONSTANS().getText())
+        if (ctx.NUMBER_CONSTANS() != None):
+            return validate_literal("number", ctx.NUMBER_CONSTANS().getText())
+        if (ctx.STRING_LITERAL() != None):
+            return validate_literal("string", ctx.STRING_LITERAL().getText())
+        return self.__build_validate_expr(ctx.validate_expr())
 
     # Visit a parse tree produced by d3iGrammar#d3i.
     def visitD3(self, ctx: d3iGrammar.D3Context):

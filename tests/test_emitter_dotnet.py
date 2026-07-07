@@ -759,6 +759,42 @@ domain WebShop {
         # @gdpr is a marker only: it must not emit any attribute (exactly two [Obsolete]s)
         self.assertEqual(content.count("[Obsolete"), 2)
 
+    def test_emitter_validate_ok(self):
+        # a `validate` rule generates PolyPersist.IValidable.Validate with a guard per
+        # rule; inlined composite rules and @optional null-guards are handled too.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain Shop {
+    context C {
+        composite WithZip {
+            zipCode: string validate len(value) == 4
+        }
+        valueobject Order inherits WithZip {
+            amount: number validate value > 0 AND value <= 1000
+            @optional
+            note: string validate len(value) <= 50
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        content = next(f for f in result if f.fileName == "Order.cs").content
+
+        self.assertIn("using PolyPersist;", content)
+        self.assertIn("using PolyPersist.Net.Common;", content)
+        self.assertIn(", IValidable", content)
+        self.assertIn("public bool Validate( IList<IValidationError> errors )", content)
+        # own rule
+        self.assertIn("(this.amount > 0) && (this.amount <= 1000)", content)
+        # inlined composite rule (zipCode) lands in Order.Validate
+        self.assertIn('MemberOfEntity = "zipCode"', content)
+        self.assertIn("(this.zipCode).Length == 4", content)
+        # @optional member is guarded by a null-check
+        self.assertIn("this.note != null && !(", content)
+
 
 if __name__ == "__main__":
     unittest.main()

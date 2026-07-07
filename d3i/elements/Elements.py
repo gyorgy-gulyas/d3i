@@ -306,12 +306,62 @@ class value_object(internal_scoped_base_element):
             operation.visit(visitor, data)
 
 
+# --- validate expression AST (the `validate <expr>` sublanguage) ------------------
+# Built by ElementBuilder from the parse tree, consumed by the linter and the .NET
+# emitter. `validate` on a member keeps the raw text; `validate_ast` the structured form.
+class validate_node:
+    pass
+
+class validate_binary(validate_node):
+    # op in: 'or', 'and', '<', '<=', '>', '>=', '==', '!='
+    def __init__(self, op: str, left: validate_node, right: validate_node):
+        self.op = op
+        self.left = left
+        self.right = right
+
+class validate_not(validate_node):
+    def __init__(self, operand: validate_node):
+        self.operand = operand
+
+class validate_in_range(validate_node):   # term IN low..high
+    def __init__(self, term: validate_node, low: validate_node, high: validate_node):
+        self.term = term
+        self.low = low
+        self.high = high
+
+class validate_in_set(validate_node):     # term IN { a, b, c }
+    def __init__(self, term: validate_node, items: list):
+        self.term = term
+        self.items = items
+
+class validate_between(validate_node):    # term BETWEEN low AND high
+    def __init__(self, term: validate_node, low: validate_node, high: validate_node):
+        self.term = term
+        self.low = low
+        self.high = high
+
+class validate_call(validate_node):       # func(args...) e.g. len(value), matches(value, "..")
+    def __init__(self, func: str, args: list):
+        self.func = func
+        self.args = args
+
+class validate_ref(validate_node):        # 'value' (the member itself) or a sibling field name
+    def __init__(self, name: str):
+        self.name = name
+
+class validate_literal(validate_node):    # kind in 'int','number','string'
+    def __init__(self, kind: str, value: str):
+        self.kind = kind
+        self.value = value
+
+
 class value_object_member(hinted_base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
         self.name: str = None
         self.type: type = None
         self.validate: str = None   # validate expression text, or None
+        self.validate_ast: validate_node = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitValueObjectMember(self, parentData)
@@ -367,6 +417,7 @@ class composite_member(hinted_base_element):
         self.name: str = None
         self.type: type = None
         self.validate: str = None   # validate expression text, or None
+        self.validate_ast: validate_node = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitCompositeMember(self, parentData)
@@ -443,6 +494,7 @@ class entity_member(hinted_base_element):
         self.name: str = None
         self.type: type = None
         self.validate: str = None   # validate expression text, or None
+        self.validate_ast: validate_node = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEntityMember(self, parentData)

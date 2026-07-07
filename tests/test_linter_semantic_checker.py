@@ -1251,5 +1251,81 @@ domain SomeDomain {
         session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 0)
 
+    def test_validate_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain D {
+    context C {
+        valueobject V {
+            start: number
+            end: number validate value > start
+            name: string validate len(value) <= 10 AND matches(value, "^a")
+            grade: integer validate value IN 1..5
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_validate_unknown_identifier_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain D {
+    context C {
+        valueobject V {
+            x: number validate value > nope
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("nope" in session.diagnostics[0].toText())
+        self.assertTrue("not 'value' nor a sibling field" in session.diagnostics[0].toText())
+
+    def test_validate_unknown_function_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain D {
+    context C {
+        valueobject V {
+            x: string validate size(value) > 0
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("Unknown function 'size'" in session.diagnostics[0].toText())
+
+    def test_validate_not_boolean_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain D {
+    context C {
+        valueobject V {
+            x: number validate 5
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must be a boolean condition" in session.diagnostics[0].toText())
+
 if __name__ == "__main__":
     unittest.main()
