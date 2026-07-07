@@ -844,6 +844,27 @@ domain Shop {
         content = next(f for f in result if f.fileName == "Cart.cs").content
         self.assertIn("if (items.Count > 3)", content)
 
+    def test_emitter_validate_negative_bounds(self):
+        # negative numeric literals work in validate rules (ranges/comparisons)
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain D {
+    context C {
+        valueobject Reading {
+            temp: number validate value >= -273
+            lon: number validate value IN -180..180
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        content = next(f for f in result if f.fileName == "Reading.cs").content
+        self.assertIn("if (temp < -273)", content)
+        self.assertIn("if (lon < -180 || lon > 180)", content)
+
 
 if __name__ == "__main__":
     unittest.main()

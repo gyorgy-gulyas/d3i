@@ -314,8 +314,8 @@ validate_expr
     validate_term
         : IDENTIFIER '(' (validate_term (',' validate_term)*)? ')'   // function call: len(...), matches(...)
         | IDENTIFIER                                                 // 'value' or a sibling field
-        | INTEGER_CONSTANS
-        | NUMBER_CONSTANS
+        | MINUS? INTEGER_CONSTANS                                    // integer, optionally negative
+        | MINUS? NUMBER_CONSTANS                                     // number, optionally negative
         | STRING_LITERAL
         | '(' validate_expr ')'
         ;

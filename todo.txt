@@ -27,7 +27,9 @@ TODO — d3i
        emits `override` + `base.Validate(errors)` first (base is `virtual`); multi-level
        chains. NOTE: DTOs cannot inherit in the grammar (the `dto` rule has no `inherits`),
        so there is no TS-side chaining to do — DTO validators are flat.
-       Remaining: no negative literals in the validate grammar (`-10` doesn't tokenize).
+       Negative numeric literals in validate: DONE (added MINUS token + `MINUS? INTEGER/NUMBER`
+       in validate_term; e.g. `value >= -273`, `value IN -180..180`).
+       The `validate` feature is now complete.
 
 [done] DTO client-side validation: a dto's OWN `validate` rules (not derived from the
     domain) generate a TypeScript validator `validate<Dto>(dto): ValidationError[]` in the
