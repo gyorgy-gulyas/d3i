@@ -1312,6 +1312,40 @@ domain SomeDomain {
         self.assertEqual(members["relatedCustomers"].type.kind, type.Kind.List)
         self.assertEqual(members["relatedCustomers"].type.item_type.kind, type.Kind.Ref)
 
+    def test_validate_ast_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain D {
+    context C {
+        valueobject V {
+            amount: number validate value > 0 AND value <= 100
+            code: string validate len(value) == 4
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        members = {m.name: m for m in root.domains[0].contexts[0].value_objects[0].members}
+
+        # amount: an AND of two comparisons
+        amount = members["amount"].validate_ast
+        self.assertIsInstance(amount, validate_binary)
+        self.assertEqual(amount.op, "and")
+        self.assertIsInstance(amount.left, validate_binary)
+        self.assertEqual(amount.left.op, ">")
+        self.assertIsInstance(amount.left.left, validate_ref)
+        self.assertEqual(amount.left.left.name, "value")
+        self.assertIsInstance(amount.left.right, validate_literal)
+        self.assertEqual(amount.left.right.value, "0")
+
+        # code: a function call len(value) == 4
+        code = members["code"].validate_ast
+        self.assertIsInstance(code, validate_binary)
+        self.assertEqual(code.op, "==")
+        self.assertIsInstance(code.left, validate_call)
+        self.assertEqual(code.left.func, "len")
+        self.assertEqual(len(code.left.args), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

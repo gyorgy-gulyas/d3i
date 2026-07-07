@@ -116,6 +116,7 @@ class SemanticChecker(ElementVisitor):
                 continue
             if (neighbour.name == member.name):
                 self.__error(member, f"An member '{member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+        self.__check_validate(member)
 
     def visitDto(self, the_dto: dto, parentData: Any) -> Any:
         scope = Engine.get_current_scope(the_dto.parent)
@@ -164,6 +165,7 @@ class SemanticChecker(ElementVisitor):
                 continue
             if (neighbour.name == member.name):
                 self.__error(member, f"An member '{member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+        self.__check_validate(member)
 
     def visitEntity(self, the_entity: entity, parentData: Any) -> Any:
         parent_aggregate: aggregate = the_entity.parent.parent
@@ -191,6 +193,7 @@ class SemanticChecker(ElementVisitor):
                 continue
             if (neighbour.name == entity_member.name):
                 self.__error(entity_member, f"A member '{entity_member.name}' conflicts with same name with element in {neighbour.locationText()}.")
+        self.__check_validate(entity_member)
 
     def visitAggregate(self, aggregate: aggregate, parentData: Any) -> Any:
         scope = Engine.get_current_scope(aggregate.parent)
@@ -404,6 +407,51 @@ class SemanticChecker(ElementVisitor):
 
     def __error(self, element: base_element, msg: str):
         self.session.ReportDiagnostic(msg, Diagnostic.Severity.Error, element.fileName, element.line, element.column)
+
+    # known validate functions -> required argument count
+    __VALIDATE_FUNCS = {"len": 1, "matches": 2}
+
+    def __check_validate(self, member: base_element):
+        node = member.validate_ast
+        if (node == None):
+            return
+        # the whole expression must be a boolean condition, not a bare value/literal.
+        if (isinstance(node, (validate_ref, validate_literal))):
+            self.__error(member, f"The 'validate' expression on '{member.name}' must be a boolean condition.")
+        sibling_names = [m.name for m in member.parent.members]
+        self.__walk_validate(node, member, sibling_names)
+
+    def __walk_validate(self, node, member: base_element, sibling_names: list):
+        if (isinstance(node, validate_binary)):
+            self.__walk_validate(node.left, member, sibling_names)
+            self.__walk_validate(node.right, member, sibling_names)
+        elif (isinstance(node, validate_not)):
+            self.__walk_validate(node.operand, member, sibling_names)
+        elif (isinstance(node, validate_in_range)):
+            self.__walk_validate(node.term, member, sibling_names)
+            self.__walk_validate(node.low, member, sibling_names)
+            self.__walk_validate(node.high, member, sibling_names)
+        elif (isinstance(node, validate_in_set)):
+            self.__walk_validate(node.term, member, sibling_names)
+            for item in node.items:
+                self.__walk_validate(item, member, sibling_names)
+        elif (isinstance(node, validate_between)):
+            self.__walk_validate(node.term, member, sibling_names)
+            self.__walk_validate(node.low, member, sibling_names)
+            self.__walk_validate(node.high, member, sibling_names)
+        elif (isinstance(node, validate_call)):
+            if (node.func not in self.__VALIDATE_FUNCS):
+                self.__error(member, f"Unknown function '{node.func}' in the 'validate' on '{member.name}' (known: len, matches).")
+            elif (len(node.args) != self.__VALIDATE_FUNCS[node.func]):
+                self.__error(member, f"Function '{node.func}' in the 'validate' on '{member.name}' expects {self.__VALIDATE_FUNCS[node.func]} argument(s), got {len(node.args)}.")
+            elif (node.func == "matches" and (isinstance(node.args[1], validate_literal) == False or node.args[1].kind != "string")):
+                self.__error(member, f"The second argument of 'matches' in the 'validate' on '{member.name}' must be a string regex literal.")
+            for arg in node.args:
+                self.__walk_validate(arg, member, sibling_names)
+        elif (isinstance(node, validate_ref)):
+            if (node.name != "value" and node.name not in sibling_names):
+                self.__error(member, f"'{node.name}' in the 'validate' on '{member.name}' is not 'value' nor a sibling field.")
+        # validate_literal: nothing to check
 
     def __is_on_interface_surface(self, element: base_element) -> bool:
         # True when the element sits inside an interface (its dto members or its

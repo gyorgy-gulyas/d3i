@@ -323,7 +323,21 @@ class DotnetEmitter:
             else:
                 inherit_names.append(inherit.getText())
         inherit_names.append( f"IEquatable<{name}>")
-        
+
+        # collect members carrying a `validate` rule (inlined composite members + own members)
+        validate_members: List[hinted_base_element] = []
+        for base_composite in base_composites:
+            for composite_member in base_composite.members:
+                if (getattr(composite_member, "validate_ast", None) != None):
+                    validate_members.append(composite_member)
+        for own_member in members:
+            if (getattr(own_member, "validate_ast", None) != None):
+                validate_members.append(own_member)
+        if (len(validate_members) > 0):
+            inherit_names.append("IValidable")
+            code.usings.add("PolyPersist")
+            code.usings.add("PolyPersist.Net.Common")
+
         buffer = io.StringIO()
         # Add documentation lines for the composite
         buffer.write(self.documentLines(element, indent))
@@ -389,6 +403,10 @@ class DotnetEmitter:
         # Equal and HashCode
         buffer.write(self.dataClassEqualsAndHashCodeText(element, inherits, name, members, code, indent+1))
 
+        # Validation (IValidable) — only when some member carries a `validate` rule
+        if (len(validate_members) > 0):
+            buffer.write(self.dataClassValidateText(name, validate_members, code, indent+1))
+
         if ( utils.isPublishedOn(element.getInterface(), "grpc" ) == True and isinstance(element,dto)):
             buffer.write(self.dtoGrpcMappingText(element, code, indent+1))
 
@@ -397,6 +415,62 @@ class DotnetEmitter:
 
         code.content += buffer.getvalue()
         return code
+
+    def dataClassValidateText(self, name: str, validate_members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> str:
+        # Generates `bool Validate(IList<IValidationError> errors)` (PolyPersist.IValidable):
+        # one guard per member rule; a failing rule appends a ValidationError.
+        buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}#region Validation\n")
+        buffer.write(f"{utils.tab(indent)}public bool Validate( IList<IValidationError> errors )\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}int __start = errors.Count;\n")
+        for member in validate_members:
+            condition = self.validateExprText(member.validate_ast, member.name, code)
+            # an @optional (nullable) member is only validated when present
+            if (member.find_decorator("optional") != None):
+                guard = f"this.{member.name} != null && !({condition})"
+            else:
+                guard = f"!({condition})"
+            errorText = member.validate.replace("\\", "\\\\").replace("\"", "\\\"")
+            buffer.write(f"{utils.tab(indent+1)}if ({guard})\n")
+            buffer.write(f"{utils.tab(indent+2)}errors.Add( new ValidationError {{ TypeOfEntity = \"{name}\", MemberOfEntity = \"{member.name}\", ErrorText = \"validation failed: {errorText}\" }} );\n")
+        buffer.write(f"{utils.tab(indent+1)}return errors.Count == __start;\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}#endregion Validation\n")
+        return buffer.getvalue()
+
+    def validateExprText(self, node: validate_node, member_name: str, code: dotnet_code) -> str:
+        # maps a validate AST node to a C# boolean/value expression
+        if (isinstance(node, validate_binary)):
+            left = self.validateExprText(node.left, member_name, code)
+            right = self.validateExprText(node.right, member_name, code)
+            op = {"and": "&&", "or": "||"}.get(node.op, node.op)   # comparisons pass through
+            return f"({left} {op} {right})"
+        if (isinstance(node, validate_not)):
+            return f"(!({self.validateExprText(node.operand, member_name, code)}))"
+        if (isinstance(node, validate_in_range) or isinstance(node, validate_between)):
+            term = self.validateExprText(node.term, member_name, code)
+            low = self.validateExprText(node.low, member_name, code)
+            high = self.validateExprText(node.high, member_name, code)
+            return f"({term} >= {low} && {term} <= {high})"
+        if (isinstance(node, validate_in_set)):
+            term = self.validateExprText(node.term, member_name, code)
+            parts = [f"{term} == {self.validateExprText(item, member_name, code)}" for item in node.items]
+            return "(" + " || ".join(parts) + ")"
+        if (isinstance(node, validate_call)):
+            args = [self.validateExprText(arg, member_name, code) for arg in node.args]
+            if (node.func == "len"):
+                return f"({args[0]}).Length"
+            if (node.func == "matches"):
+                return f"System.Text.RegularExpressions.Regex.IsMatch({args[0]}, {args[1]})"
+            return f"{node.func}({', '.join(args)})"
+        if (isinstance(node, validate_ref)):
+            target = member_name if (node.name == "value") else node.name
+            return f"this.{target}"
+        if (isinstance(node, validate_literal)):
+            return node.value
+        return ""
 
     def dataClassEqualsAndHashCodeText(self, element: internal_scoped_base_element, inherits: List[qualified_name], name: str, members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> str:
         bases: List[internal_scoped_base_element] = []
