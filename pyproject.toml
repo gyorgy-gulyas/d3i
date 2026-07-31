@@ -25,7 +25,8 @@ dependencies = [
 
 [project.optional-dependencies]
 # Language Server (language_server.py) — install with:  pip install d3i[lsp]
-lsp = ["pygls>=1.3.1"]
+# pygls 2 moved LanguageServer to pygls.lsp.server, which is the API used here.
+lsp = ["pygls>=2.0"]
 # Test/dev tooling. pythonnet+clr-loader compile & verify generated C# in the
 # dotnet emitter tests; jsondiff compares emitter output in tests.
 dev = [

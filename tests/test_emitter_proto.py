@@ -121,5 +121,29 @@ domain WebShop {
         self.assertIn("string c = 1;", content)
 
 
+    def test_emitter_any_is_a_string_on_the_wire(self):
+        # Protobuf has no 'object' type; emitting one produced a .proto protoc rejects.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        interface OrderIF version 1 {
+            dto OrderDto {
+                bag: any
+                bags: list[any]
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        content = ProtoEmitter().Emit(session)[0].content
+        self.assertNotIn("object", content)
+        self.assertIn("string bag = 1;", content)
+        self.assertIn("repeated string bags = 2;", content)
+
+
 if __name__ == "__main__":
     unittest.main()
