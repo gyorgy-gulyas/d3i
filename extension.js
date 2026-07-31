@@ -9,10 +9,9 @@ const {
 let client;
 
 function activate(context) {
-    // A language server Python script elérési útja
-    const serverModule = context.asAbsolutePath(
-        path.join('server', 'language_server.py')
-    );
+    // A language server Python script elérési útja. A fájl a gyökérben van, nem egy 'server'
+    // alkönyvtárban - a régi útvonalon a bővítmény sosem találta meg a szervert.
+    const serverModule = context.asAbsolutePath('language_server.py');
 
     // A Python parancs (rendszertől függően lehet python3 is)
     const pythonCommand = 'python';

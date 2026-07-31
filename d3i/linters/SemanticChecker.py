@@ -4,6 +4,14 @@ from d3i.elements.Elements import *
 from d3i.elements.ElementVisitor import *
 
 
+# The fields the 'any' ban covers. (An event or view member is arguably domain model too, but
+# widening that rule is a language decision of its own and is deliberately left alone here.)
+DOMAIN_MODEL_MEMBERS = (value_object_member, entity_member, composite_member)
+# Every kind of field there is - what the 'stream' ban covers, since 'stream' belongs in an
+# operation signature and nowhere else.
+ALL_MEMBERS = DOMAIN_MODEL_MEMBERS + (dto_member, event_member, view_member)
+
+
 def DoLint(session: Session, output_dir: str, args: Dict[str, str]):
     linter = SemanticChecker(session)
     data = session.main.visit(linter, None)
@@ -333,16 +341,24 @@ class SemanticChecker(ElementVisitor):
         pass
 
     def visitPrimitiveType(self, primtiveType: primitive_type, parentData: Any, memberName: str) -> Any:
-        # `any` and `stream` may not appear on a domain-model field.
-        if (primtiveType.primtiveKind == primitive_type.PrimtiveKind.Any or primtiveType.primtiveKind == primitive_type.PrimtiveKind.Stream):
-            owner = primtiveType.parent
-            while (isinstance(owner, type)):   # skip list/map wrappers
-                owner = owner.parent
-            if (isinstance(owner, value_object_member) or isinstance(owner, entity_member) or isinstance(owner, composite_member)):
-                if (primtiveType.primtiveKind == primitive_type.PrimtiveKind.Any):
-                    self.__error(primtiveType, f"The 'any' type is not allowed on a domain model field; use a concrete type (an ACL at the boundary may use 'any').")
-                else:
-                    self.__error(primtiveType, f"The 'stream' type is not allowed on a field; it may only appear in an operation signature (command/query/step param or return).")
+        if (primtiveType.primtiveKind != primitive_type.PrimtiveKind.Any and primtiveType.primtiveKind != primitive_type.PrimtiveKind.Stream):
+            return
+
+        owner = primtiveType.parent
+        while (isinstance(owner, type)):   # skip list/map wrappers
+            owner = owner.parent
+
+        if (primtiveType.primtiveKind == primitive_type.PrimtiveKind.Any):
+            # `any` erases the type, which the domain model may not do. A DTO or an ACL may: that
+            # is where the system meets foreign data it does not describe.
+            if (isinstance(owner, DOMAIN_MODEL_MEMBERS)):
+                self.__error(primtiveType, f"The 'any' type is not allowed on a domain model field; use a concrete type (a DTO or an ACL at the boundary may use 'any').")
+        else:
+            # `stream` is a transport concept, not a data shape - not even on a DTO, which is a
+            # transferred VALUE. A file belongs in the operation's signature; what a DTO can carry
+            # about it is a reference or its metadata.
+            if (isinstance(owner, ALL_MEMBERS)):
+                self.__error(primtiveType, f"The 'stream' type is not allowed on a field; it may only appear in an operation signature (command/query/step param or return).")
 
     def visitReferenceType(self, reference_type: reference_type, parentData: Any, memberName: str) -> Any:
         if (len(reference_type.reference_name.names) == 0):

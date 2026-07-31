@@ -874,13 +874,14 @@ class TestEmitterDotnetPrimitiveConversions(unittest.TestCase):
     the value on the way home.
     """
 
+    # 'stream' is only legal in an operation signature, so it is exercised as a command parameter
+    # rather than as a DTO member.
     _MODEL = """
 domain WebShop {
     context Sales {
         @public_api( grpc )
         interface SalesIF version 1 {
             dto PayloadDTO {
-                blob:stream
                 bag:any
                 amount:integer
                 ratio:float
@@ -889,7 +890,7 @@ domain WebShop {
                 raw:bytes
                 text:string
             }
-            command Pay( payload:PayloadDTO ) : PayloadDTO
+            command Pay( payload:PayloadDTO, blob:stream ) : PayloadDTO
         }
     }
 }
@@ -918,12 +919,10 @@ domain WebShop {
         # outbound
         self.assertIn('result.When = @this.when.ToString("HH:mm:ss");', content)
         self.assertIn("result.Raw = Google.Protobuf.ByteString.CopyFrom(@this.raw);", content)
-        self.assertIn("result.Blob = Google.Protobuf.ByteString.FromStream(@this.blob);", content)
         self.assertIn("result.Bag = JsonSerializer.Serialize(@this.bag);", content)
         # inbound - each of these used to be a copy of the outbound expression
         self.assertIn("result.when = TimeOnly.Parse(@from.When, CultureInfo.InvariantCulture);", content)
         self.assertIn("result.raw = @from.Raw.ToByteArray();", content)
-        self.assertIn("result.blob = new MemoryStream(@from.Blob.ToByteArray());", content)
         self.assertIn("result.bag = JsonSerializer.Deserialize<object>(@from.Bag);", content)
 
     def test_grpc_datetime_is_made_utc_before_conversion(self):
@@ -933,17 +932,17 @@ domain WebShop {
 
     def test_grpc_mapping_brings_the_usings_it_needs(self):
         content = self._emit()
-        for using in ("using System.IO;", "using System.Globalization;", "using System.Text.Json;"):
+        for using in ("using System.Globalization;", "using System.Text.Json;"):
             self.assertIn(using, content)
 
-    def test_clone_copies_the_handle_for_stream_and_any(self):
-        # A stream is a live handle and 'any' is object: neither can be deep-copied, so the clone
-        # carries the reference over. What matters is that it is a single valid expression.
+    def test_clone_copies_the_handle_for_any(self):
+        # 'any' is object: there is no generic way to duplicate an arbitrary instance, so the clone
+        # carries the reference over. What matters is that it is a single valid expression - this
+        # branch used to emit nothing at all, producing "clone.bag = ;".
         content = self._emit()
-        self.assertIn("clone.blob = blob;", content)
         self.assertIn("clone.bag = bag;", content)
+        self.assertNotIn("= ;", content)
         self.assertNotIn("temptemp", content)
-        self.assertNotIn("using var tempblob", content)
 
 
 if __name__ == "__main__":

@@ -1024,6 +1024,93 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("'stream' type is not allowed on a field" in session.diagnostics[0].toText())
 
+    def test_stream_on_dto_member_fail(self):
+        # A DTO is a transferred VALUE, not a channel: a file belongs in the operation's signature,
+        # and what a DTO can carry about it is a reference or its metadata.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            dto UploadDto {
+                content: stream
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'stream' type is not allowed on a field" in session.diagnostics[0].toText())
+
+    def test_stream_in_a_list_on_a_dto_member_fail(self):
+        # The list/map wrapper must not hide the stream from the rule.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            dto UploadDto {
+                contents: list[stream]
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'stream' type is not allowed on a field" in session.diagnostics[0].toText())
+
+    def test_stream_on_event_member_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        service TheService {
+            event Uploaded version 1 {
+                content: stream
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'stream' type is not allowed on a field" in session.diagnostics[0].toText())
+
+    def test_any_on_dto_member_ok(self):
+        # A DTO is the boundary: 'any' stays allowed there, only 'stream' is refused.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            dto BagDto {
+                data: any
+            }
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        self.assertEqual(len(session.diagnostics), 0)
+
     def test_any_stream_in_operation_ok(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
