@@ -44,7 +44,9 @@ public class TextDocumentHandler : DidOpenTextDocumentHandlerBase
             DocumentSelector = new TextDocumentSelector(
                  new TextDocumentFilter
                  {
-                     Pattern = "**/*.d3i"
+                     // The DSL files are .d3 - '.d3i' is the tool's name, not the file extension,
+                     // so the server never activated on a real file.
+                     Pattern = "**/*.d3"
                  }
              )
         };

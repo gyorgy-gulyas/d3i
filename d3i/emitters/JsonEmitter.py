@@ -5,20 +5,32 @@ from d3i.elements.Elements import *
 from d3i.Engine import *
 
 
+def _as_bool(value: Any) -> bool:
+    """
+    Configuration values may arrive as strings (from the config file or the command line), and
+    bool("False") is True - so a string has to be read by its content, not by its truthiness.
+    """
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes", "on")
+    return bool(value)
+
+
 def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
     jsonEmmiter = JsonEmitter()
 
+    # The documented keys are namespaced ("json.indent"); reading the bare name here meant that
+    # setting a documented key raised a KeyError instead of taking effect.
     indent = 4
     if "json.indent" in configuration:
-        indent = int(configuration["indent"])
+        indent = int(configuration["json.indent"])
 
     ensure_ascii = True
     if "json.ensure_ascii" in configuration:
-        ensure_ascii = bool(configuration["ensure_ascii"])
+        ensure_ascii = _as_bool(configuration["json.ensure_ascii"])
 
     sort_keys = False
     if "json.sort_keys" in configuration:
-        sort_keys = bool(configuration["sort_keys"])
+        sort_keys = _as_bool(configuration["json.sort_keys"])
 
     json_result = jsonEmmiter.Emit(session, indent, ensure_ascii, sort_keys)
     with open(os.path.join(output_dir, "main.json"), "w") as file:
@@ -291,7 +303,7 @@ class JsonEmitter(ElementVisitor):
             "operations": [],
             "events": [],
         }
-        parentData["services"].append(data)
+        parentData["interfaces"].append(data)
         return data
 
     def visitWorkflow(self, workflow: workflow, parentData: Any) -> Any:

@@ -866,5 +866,85 @@ domain D {
         self.assertIn("if (lon < -180 || lon > 180)", content)
 
 
+class TestEmitterDotnetPrimitiveConversions(unittest.TestCase):
+    """
+    Clone and the gRPC mapping are built from EXPRESSIONS that the caller embeds in an assignment
+    or a lambda. A branch that returned a statement, or nothing at all, produced C# that does not
+    compile - and a branch copied from the outbound direction produced C# that compiles but loses
+    the value on the way home.
+    """
+
+    _MODEL = """
+domain WebShop {
+    context Sales {
+        @public_api( grpc )
+        interface SalesIF version 1 {
+            dto PayloadDTO {
+                blob:stream
+                bag:any
+                amount:integer
+                ratio:float
+                at:dateTime
+                when:time
+                raw:bytes
+                text:string
+            }
+            command Pay( payload:PayloadDTO ) : PayloadDTO
+        }
+    }
+}
+"""
+
+    def _emit(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText(self._MODEL))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+        result = DotnetEmitter().Emit(session)
+        return next(f for f in result if f.fileName == "ISalesIF_v1.cs").content
+
+    def test_grpc_mapping_has_no_stray_statement_terminator(self):
+        content = self._emit()
+        # integer/float used to come back as "x;\n", so the caller emitted "= x;\n;".
+        self.assertNotIn(";\n\t\t\t\t;", content)
+        self.assertNotIn("= ;", content)
+        self.assertIn("result.Amount = @this.amount;", content)
+        self.assertIn("result.amount = @from.Amount;", content)
+        self.assertIn("result.Ratio = @this.ratio;", content)
+        self.assertIn("result.ratio = @from.Ratio;", content)
+
+    def test_grpc_mapping_converts_back_and_not_forward_again(self):
+        content = self._emit()
+        # outbound
+        self.assertIn('result.When = @this.when.ToString("HH:mm:ss");', content)
+        self.assertIn("result.Raw = Google.Protobuf.ByteString.CopyFrom(@this.raw);", content)
+        self.assertIn("result.Blob = Google.Protobuf.ByteString.FromStream(@this.blob);", content)
+        self.assertIn("result.Bag = JsonSerializer.Serialize(@this.bag);", content)
+        # inbound - each of these used to be a copy of the outbound expression
+        self.assertIn("result.when = TimeOnly.Parse(@from.When, CultureInfo.InvariantCulture);", content)
+        self.assertIn("result.raw = @from.Raw.ToByteArray();", content)
+        self.assertIn("result.blob = new MemoryStream(@from.Blob.ToByteArray());", content)
+        self.assertIn("result.bag = JsonSerializer.Deserialize<object>(@from.Bag);", content)
+
+    def test_grpc_datetime_is_made_utc_before_conversion(self):
+        # Timestamp.FromDateTime throws on anything that is not DateTimeKind.Utc.
+        content = self._emit()
+        self.assertIn("Timestamp.FromDateTime(@this.at.ToUniversalTime());", content)
+
+    def test_grpc_mapping_brings_the_usings_it_needs(self):
+        content = self._emit()
+        for using in ("using System.IO;", "using System.Globalization;", "using System.Text.Json;"):
+            self.assertIn(using, content)
+
+    def test_clone_copies_the_handle_for_stream_and_any(self):
+        # A stream is a live handle and 'any' is object: neither can be deep-copied, so the clone
+        # carries the reference over. What matters is that it is a single valid expression.
+        content = self._emit()
+        self.assertIn("clone.blob = blob;", content)
+        self.assertIn("clone.bag = bag;", content)
+        self.assertNotIn("temptemp", content)
+        self.assertNotIn("using var tempblob", content)
+
+
 if __name__ == "__main__":
     unittest.main()

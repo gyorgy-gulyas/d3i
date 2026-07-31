@@ -374,7 +374,11 @@ class ProtoEmitter:
     def typeTextPrimitive(self, type: primitive_type,code:proto_code) -> str:
         match type.primtiveKind:
             case primitive_type.PrimtiveKind.Any:
-                return "object"
+                # Protobuf has no 'object'; emitting it produced a .proto that protoc rejects.
+                # 'any' travels as a JSON string, the same way i18nstring does - google.protobuf.Any
+                # is not usable here because it can only pack a generated message, not an arbitrary
+                # value.
+                return "string"
             case primitive_type.PrimtiveKind.Integer:
                 return "int32"
             case primitive_type.PrimtiveKind.Number:

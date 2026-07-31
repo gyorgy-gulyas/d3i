@@ -218,7 +218,10 @@ def __call_linters(session: Session, args, configuration: Dict[str, str]):
         spec.loader.exec_module(module)
         if (args.verbose):
             print(f"information: calling linter:'{linter_file}'")
-        module.DoLint(session, configuration)
+        # Same shape as an emitter's DoEmit(session, output_dir, configuration), which is also what
+        # the built-in SemanticChecker.DoLint declares; calling it with two arguments raised a
+        # TypeError on every external linter.
+        module.DoLint(session, args.output_dir, configuration)
 
 # Resolves a CLI emitter argument against the capability matrix.
 def __resolve_emitter(emitter_name: str):

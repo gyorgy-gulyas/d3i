@@ -1380,7 +1380,8 @@ domain SomeDomain {
                     "views": [],
                     "repositories": [],
                     "acls": [],
-                    "services": [
+                    "services": [],
+                    "interfaces": [
                         {
                             "$type": "d3i.interface",
                             "name": "OrderInterface",
@@ -1405,7 +1406,6 @@ domain SomeDomain {
                             ]
                         }
                     ],
-                    "interfaces": [],
                     "workflows": [],
                     "enums": [
                         {
@@ -1743,7 +1743,8 @@ domain SomeDomain {
                     "views": [],
                     "repositories": [],
                     "acls": [],
-                    "services": [
+                    "services": [],
+                    "interfaces": [
                         {
                             "$type": "d3i.interface",
                             "name": "TheInterface",
@@ -1790,7 +1791,6 @@ domain SomeDomain {
                             "decorators": []
                         }
                     ],
-                    "interfaces": [],
                     "workflows": [],
                     "enums": [],
                     "value_objects": [],

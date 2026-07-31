@@ -167,3 +167,8 @@ cython_debug/
 
 .node_modules/
 /node_modules
+
+# .NET build output (the language server project). The template above is the Python one, so
+# these were never ignored and the compiled binaries ended up in version control.
+[Bb]in/
+[Oo]bj/

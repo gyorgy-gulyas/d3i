@@ -810,11 +810,21 @@ class DotnetEmitter:
         return f"{utils.tab(indent)}{dst}{memberName} = {self.dataClassMemberCloneExpression( f"{src}{memberName}", memberType, code )};\n"
     
     def dataClassMemberCloneExpression(self, memberName: str, memberType: type, code:dotnet_code ) -> str:
+        """
+        Returns a single C# EXPRESSION that clones one primitive value. Every caller embeds it -
+        in an assignment, inside a .Select( v => ... ) lambda, or as a dictionary value - so it
+        must never be a statement or span more than one expression.
+
+        Two kinds cannot be deep-copied and are carried over by reference on purpose:
+          - 'any' is 'object'; there is no generic way to duplicate an arbitrary instance;
+          - 'stream' is a live handle, not data. Duplicating it would mean reading the source
+            to the end, which consumes it - a clone must not damage the original.
+        """
         buffer = io.StringIO()
 
         match memberType.primtiveKind:
-            case primitive_type.PrimtiveKind.Any:
-                pass
+            case primitive_type.PrimtiveKind.Any | primitive_type.PrimtiveKind.Stream:
+                buffer.write( f"{memberName}")
             case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Float | primitive_type.PrimtiveKind.Number | primitive_type.PrimtiveKind.Boolean:
                 buffer.write( f"{memberName}")
             case primitive_type.PrimtiveKind.Date | primitive_type.PrimtiveKind.Time | primitive_type.PrimtiveKind.DateTime:
@@ -825,11 +835,7 @@ class DotnetEmitter:
                 buffer.write( f"new i18nstring({memberName})")
             case primitive_type.PrimtiveKind.Bytes:
                 buffer.write( f"(byte[]){memberName}.Clone()")
-            case primitive_type.PrimtiveKind.Stream:
-                buffer.write( f"using var temp{memberName} = new MemoryStream();\n")
-                buffer.write( f"{memberName}.CopyTo(temp{memberName});\n")
-                buffer.write( f"new MemoryStream(temptemp{memberName}.ToArray());\n")
-    
+
         return buffer.getvalue()
 
     def dataClassMemberCloneText_Reference(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
@@ -1000,11 +1006,20 @@ class DotnetEmitter:
         return f"{utils.tab(indent)}{dst}{memberName} = {self.convertExpressionFromGrpcRepresentation(f"{src}{utils.camel_to_pascal(memberName)}", memberType, code)};\n"
 
     def convertExpressionToGrpcRepresentation(self, memberName: str, memberType: type, code: dotnet_code):
+        """
+        Returns a single C# EXPRESSION converting a domain value to its gRPC representation. Every
+        caller embeds it in an assignment or a lambda, so it must not carry a ';' or a newline of
+        its own - doing so produced '= x;\\n;', which does not compile.
+
+        The wire types come from the proto emitter: 'any' and i18nstring travel as a JSON string,
+        date/time as their ISO text, bytes and stream as ByteString.
+        """
         match memberType.primtiveKind:
             case primitive_type.PrimtiveKind.Any:
-                pass
+                code.usings.add("System.Text.Json")
+                return f"JsonSerializer.Serialize({memberName})"
             case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Float:
-                return f"{memberName};\n"
+                return f"{memberName}"
             case primitive_type.PrimtiveKind.Number:
                 code.usings.add("System.Globalization")
                 return f"{memberName}.ToString(CultureInfo.InvariantCulture)"
@@ -1015,7 +1030,9 @@ class DotnetEmitter:
                 return f"{memberName}.ToString(\"HH:mm:ss\")"
             case primitive_type.PrimtiveKind.DateTime:
                 code.usings.add("Google.Protobuf.WellKnownTypes")
-                return f"Timestamp.FromDateTime({memberName})"
+                # Timestamp.FromDateTime rejects anything that is not DateTimeKind.Utc, so a local
+                # or unspecified DateTime threw at runtime instead of being converted.
+                return f"Timestamp.FromDateTime({memberName}.ToUniversalTime())"
             case primitive_type.PrimtiveKind.String:
                 return f"{memberName}"
             case primitive_type.PrimtiveKind.I18NString:
@@ -1029,11 +1046,19 @@ class DotnetEmitter:
                 return f"Google.Protobuf.ByteString.FromStream({memberName})"
 
     def convertExpressionFromGrpcRepresentation(self, memberName: str, memberType: type, code: dotnet_code):
+        """
+        The inverse of convertExpressionToGrpcRepresentation: a single C# EXPRESSION turning a gRPC
+        value back into the domain value. Several branches used to be copies of the outbound
+        direction, so the value never made it home: a time came back as a re-formatted string, an
+        i18nstring was serialized a second time, and bytes / stream were re-wrapped into a
+        ByteString instead of being unwrapped.
+        """
         match memberType.primtiveKind:
             case primitive_type.PrimtiveKind.Any:
-                pass
+                code.usings.add("System.Text.Json")
+                return f"JsonSerializer.Deserialize<object>({memberName})"
             case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Float:
-                return f"{memberName};\n"
+                return f"{memberName}"
             case primitive_type.PrimtiveKind.Number:
                 code.usings.add("System.Globalization")
                 return f"decimal.Parse({memberName}, CultureInfo.InvariantCulture)"
@@ -1041,7 +1066,8 @@ class DotnetEmitter:
                 code.usings.add("System.Globalization")
                 return f"DateOnly.Parse({memberName}, CultureInfo.InvariantCulture)"
             case primitive_type.PrimtiveKind.Time:
-                return f"{memberName}.ToString(\"HH:mm\")"
+                code.usings.add("System.Globalization")
+                return f"TimeOnly.Parse({memberName}, CultureInfo.InvariantCulture)"
             case primitive_type.PrimtiveKind.DateTime:
                 code.usings.add("Google.Protobuf.WellKnownTypes")
                 return f"{memberName}.ToDateTime()"
@@ -1049,13 +1075,14 @@ class DotnetEmitter:
                 return f"{memberName}"
             case primitive_type.PrimtiveKind.I18NString:
                 code.usings.add("System.Text.Json")
-                return f"JsonSerializer.Serialize({memberName})"
+                return f"JsonSerializer.Deserialize<i18nstring>({memberName})"
             case primitive_type.PrimtiveKind.Boolean:
                 return f"{memberName}"
             case primitive_type.PrimtiveKind.Bytes:
-                return f"Google.Protobuf.ByteString.CopyFrom({memberName})"
+                return f"{memberName}.ToByteArray()"
             case primitive_type.PrimtiveKind.Stream:
-                return f"Google.Protobuf.ByteString.FromStream({memberName})"
+                code.usings.add("System.IO")
+                return f"new MemoryStream({memberName}.ToByteArray())"
 
     def dataClassMemberToGrpcMappingText_Reference(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int):
         referenced_element: base_element = Engine.get_referenced_element(memberType.parent, memberType.reference_name)
