@@ -1,4 +1,5 @@
-from typing import Any, Dict
+import re
+from typing import Any, Dict, List
 from d3i.Engine import *
 from d3i.elements.Elements import *
 from d3i.elements.ElementVisitor import *
@@ -10,6 +11,16 @@ DOMAIN_MODEL_MEMBERS = (value_object_member, entity_member, composite_member)
 # Every kind of field there is - what the 'stream' ban covers, since 'stream' belongs in an
 # operation signature and nowhere else.
 ALL_MEMBERS = DOMAIN_MODEL_MEMBERS + (dto_member, event_member, view_member)
+
+# A step is an activity: its arguments and its return value are serialized into the workflow
+# history, so the signature may only carry transferable values. (W9/W11/W13)
+# A dto is deliberately NOT among them: a dto is the wire shape of an interface, and a workflow is
+# not a transport surface - a step takes a domain value.
+STEP_SURFACE_ELEMENTS = (enum, value_object)
+# Digits followed by a unit, one or more times: "5m", "1h30m", "500ms". 'ms' is listed first so
+# it wins over 'm' in the alternation.
+DURATION_PATTERN = re.compile(r"^(\d+(?:ms|s|m|h|d))+$")
+DURATION_PARTS = re.compile(r"(\d+)(?:ms|s|m|h|d)")
 
 
 def DoLint(session: Session, output_dir: str, args: Dict[str, str]):
@@ -301,6 +312,36 @@ class SemanticChecker(ElementVisitor):
             if (neighbour.name == the_workflow.name):
                 self.__error(the_workflow, f"A workflow '{the_workflow.name}' with same name is already exists in {neighbour.locationText()}.")
 
+        self.__check_start_command(the_workflow)
+        # `@retry` / `@timeout` may sit on the workflow as the default for all of its steps.
+        self.__check_timing_decorators(the_workflow, f"workflow '{the_workflow.name}'")
+
+    def __check_start_command(self, the_workflow: workflow):
+        # Exactly one command is the entry point. The marker may be left off when the workflow
+        # has a single command - there is nothing to be ambiguous about.
+        commands = [op for op in the_workflow.operations if op.kind == operation.Kind.Command]
+        starts = [op for op in the_workflow.operations if op.find_decorator("start") != None]
+
+        for started in starts:
+            if (started.kind != operation.Kind.Command):
+                self.__error(started, f"'@start' may only mark a command; the query '{started.name}' cannot be the entry point of workflow '{the_workflow.name}'.")
+
+        started_commands = [op for op in starts if op.kind == operation.Kind.Command]
+        if (len(started_commands) > 1):
+            first = started_commands[0]
+            for duplicate in started_commands[1:]:
+                self.__error(duplicate, f"A workflow may have only one '@start' command; '{first.name}' is already the entry point of workflow '{the_workflow.name}' in {first.locationText()}.")
+            return
+
+        if (len(started_commands) == 1):
+            return
+
+        if (len(commands) == 0):
+            self.__error(the_workflow, f"The workflow '{the_workflow.name}' has no command; exactly one command is its entry point.")
+        elif (len(commands) > 1):
+            names = ", ".join(f"'{cmd.name}'" for cmd in commands)
+            self.__error(the_workflow, f"The workflow '{the_workflow.name}' has {len(commands)} commands ({names}) and none is marked with '@start'; the entry point is only implicit when there is exactly one command.")
+
     def visitStep(self, the_step: step, parentData: Any) -> Any:
         the_workflow: workflow = the_step.parent
         for neighbour in the_workflow.steps:
@@ -310,10 +351,140 @@ class SemanticChecker(ElementVisitor):
                 self.__error(the_step, f"A step '{the_step.name}' with same name is already exists in {neighbour.locationText()}.")
 
         # `compensate` must reference an existing step in the same workflow.
+        compensating_step: step = None
         if (the_step.compensate != None):
-            step_names = [s.name for s in the_workflow.steps]
-            if (the_step.compensate not in step_names):
+            compensating_step = self.__find_step(the_workflow, the_step.compensate)
+            if (compensating_step == None):
                 self.__error(the_step, f"The compensating step '{the_step.compensate}' referenced by step '{the_step.name}' is not found in workflow '{the_workflow.name}'.")
+
+        if (compensating_step != None):
+            self.__check_compensation_binding(the_step, compensating_step)
+
+        # What this step compensates, if anything. Asked from this step's side so a step that
+        # rolls back two forward steps is still only reported once.
+        rolled_back = [forward for forward in the_workflow.steps if forward.compensate == the_step.name]
+        if (len(rolled_back) > 0):
+            if (the_step.compensate != None):
+                owners = ", ".join(f"'{forward.name}'" for forward in rolled_back)
+                self.__error(the_step, f"The step '{the_step.name}' compensates {owners}, so it cannot declare a 'compensate' of its own; a rollback is not itself rolled back.")
+            if (the_step.operation_return != None):
+                owners = ", ".join(f"'{forward.name}'" for forward in rolled_back)
+                self.__warning(the_step, f"The return value of step '{the_step.name}' is ignored: it compensates {owners}, and the result of a rollback is never read.")
+
+        for param in the_step.operation_params:
+            self.__check_step_surface(param.type, the_step, f"the parameter '{param.name}'")
+        if (the_step.operation_return != None):
+            self.__check_step_surface(the_step.operation_return.type, the_step, "the return value")
+
+        self.__check_timing_decorators(the_step, f"step '{the_step.name}'")
+
+    def __find_step(self, the_workflow: workflow, name: str) -> step:
+        for candidate in the_workflow.steps:
+            if (candidate.name == name):
+                return candidate
+        return None
+
+    def __check_compensation_binding(self, forward: step, compensation: step):
+        # Every parameter of the compensating step must be derivable from the forward step, so
+        # the rollback can be issued automatically: either from a forward parameter (name AND
+        # type), or from the forward return value (unambiguous type match).
+        forward_params = {param.name: param for param in forward.operation_params}
+        return_type = forward.operation_return.type if (forward.operation_return != None) else None
+
+        unbound: List[operation_param] = []
+        for param in compensation.operation_params:
+            twin = forward_params.get(param.name)
+            if (twin != None):
+                if (self.__same_type(param.type, twin.type) == False):
+                    self.__error(param, f"The parameter '{param.name}' of the compensating step '{compensation.name}' has the name of a parameter of '{forward.name}' but a different type, so it cannot be bound; give it the same type or a different name.")
+                continue
+            unbound.append(param)
+
+        if (return_type == None):
+            for param in unbound:
+                self.__error(param, f"The parameter '{param.name}' of the compensating step '{compensation.name}' cannot be bound: no parameter of '{forward.name}' has that name and type, and '{forward.name}' returns nothing.")
+            return
+
+        from_return = [param for param in unbound if self.__same_type(param.type, return_type)]
+        if (len(from_return) > 1):
+            names = ", ".join(f"'{param.name}'" for param in from_return)
+            self.__error(compensation, f"The parameters {names} of the compensating step '{compensation.name}' could all be bound to the return value of '{forward.name}'; the binding must be unambiguous, so name all but one after a parameter of '{forward.name}'.")
+
+        for param in unbound:
+            if (param in from_return):
+                continue
+            self.__error(param, f"The parameter '{param.name}' of the compensating step '{compensation.name}' cannot be bound: no parameter of '{forward.name}' has that name and type, and its type does not match the return value of '{forward.name}'.")
+
+    def __check_step_surface(self, the_type, the_step: step, where: str):
+        # A step signature carries transferable values only: enum / value_object / primitive /
+        # ref, and lists and maps of those.
+        if (the_type == None):
+            return
+
+        if (the_type.kind == type.Kind.Primitive):
+            if (the_type.primtiveKind == primitive_type.PrimtiveKind.Stream):
+                self.__error(the_type, f"The 'stream' type is not allowed in a step signature ({where} of step '{the_step.name}'): a step argument is serialized into the workflow history, and a live stream is not. Pass a reference (an id or a URI) and open the stream in the activity.")
+            elif (the_type.primtiveKind == primitive_type.PrimtiveKind.Any):
+                self.__error(the_type, f"The 'any' type is not allowed in a step signature ({where} of step '{the_step.name}'): the workflow history must stay typed. Use a concrete type, or a value object with a string field when the payload really is opaque.")
+            return
+
+        if (the_type.kind == type.Kind.Reference):
+            element = Engine.get_referenced_element(the_type.parent, the_type.reference_name)
+            if (element == None):
+                return   # visitReferenceType already reported that it cannot be resolved
+            if (isinstance(element, aggregate)):
+                return   # visitReferenceType already says it: reference it as 'ref X'
+            if (isinstance(element, STEP_SURFACE_ELEMENTS) == False):
+                name = the_type.reference_name.getText()
+                self.__error(the_type, f"A step signature may only carry enum, value object, primitive and 'ref' types; {where} of step '{the_step.name}' is a {element.__class__.__name__} ('{name}'). Map it to a value object (an aggregate goes as 'ref X').")
+            return
+
+        if (the_type.kind == type.Kind.List):
+            self.__check_step_surface(the_type.item_type, the_step, where)
+        elif (the_type.kind == type.Kind.Map):
+            self.__check_step_surface(the_type.key_type, the_step, where)
+            self.__check_step_surface(the_type.value_type, the_step, where)
+        # Kind.Ref is an identity - a string on the wire; visitRefType checks what it points at.
+
+    def __same_type(self, left, right) -> bool:
+        if (left == None or right == None):
+            return left is right
+        if (left.kind != right.kind):
+            return False
+
+        if (left.kind == type.Kind.Primitive):
+            return left.primtiveKind == right.primtiveKind
+        if (left.kind == type.Kind.Reference or left.kind == type.Kind.Ref):
+            left_element = Engine.get_referenced_element(left.parent, left.reference_name)
+            right_element = Engine.get_referenced_element(right.parent, right.reference_name)
+            if (left_element != None and right_element != None):
+                return left_element is right_element
+            # unresolvable on either side: fall back to what was written
+            return left.reference_name.getText() == right.reference_name.getText()
+        if (left.kind == type.Kind.List):
+            return self.__same_type(left.item_type, right.item_type)
+        if (left.kind == type.Kind.Map):
+            return self.__same_type(left.key_type, right.key_type) and self.__same_type(left.value_type, right.value_type)
+        return False
+
+    def __check_timing_decorators(self, element: hinted_base_element, where: str):
+        retry = element.find_decorator("retry")
+        if (retry != None):
+            if (len(retry.params) != 1 or retry.params[0].kind != decorator_param.Kind.Integer):
+                self.__error(retry, f"'@retry' on {where} takes exactly one integer argument, e.g. '@retry( 3 )'.")
+            elif (retry.params[0].value < 1):
+                self.__error(retry, f"'@retry( {retry.params[0].value} )' on {where} must be at least 1: it counts ALL attempts, so '@retry( 1 )' already means 'do not retry'.")
+
+        timeout = element.find_decorator("timeout")
+        if (timeout != None):
+            if (len(timeout.params) != 1 or timeout.params[0].kind != decorator_param.Kind.String):
+                self.__error(timeout, f"'@timeout' on {where} takes exactly one string argument, e.g. '@timeout( \"5m\" )'.")
+                return
+            text = timeout.params[0].value
+            if (DURATION_PATTERN.match(text) == None):
+                self.__error(timeout, f"'@timeout( \"{text}\" )' on {where} is not a duration; write digits followed by a unit (ms, s, m, h, d), e.g. '5m' or '1h30m'.")
+            elif (all(int(amount) == 0 for amount in DURATION_PARTS.findall(text))):
+                self.__error(timeout, f"'@timeout( \"{text}\" )' on {where} is zero; a step with no time to run can never succeed.")
 
     def visitOperation(self, operation: operation, parentData: Any) -> Any:
         for neighbour in operation.parent.operations:
@@ -358,7 +529,7 @@ class SemanticChecker(ElementVisitor):
             # transferred VALUE. A file belongs in the operation's signature; what a DTO can carry
             # about it is a reference or its metadata.
             if (isinstance(owner, ALL_MEMBERS)):
-                self.__error(primtiveType, f"The 'stream' type is not allowed on a field; it may only appear in an operation signature (command/query/step param or return).")
+                self.__error(primtiveType, f"The 'stream' type is not allowed on a field; it may only appear in a command or query signature (a step signature is checked separately - see W11).")
 
     def visitReferenceType(self, reference_type: reference_type, parentData: Any, memberName: str) -> Any:
         if (len(reference_type.reference_name.names) == 0):

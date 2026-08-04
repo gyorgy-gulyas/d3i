@@ -1,11 +1,18 @@
 from __future__ import annotations
 import io
+import re
 from typing import Dict
 from typing import List
 from typing import NamedTuple
 from d3i.elements.Elements import *
 from d3i.Engine import *
 from d3i.emitters.utils import *
+
+
+# '@timeout( "1h30m" )' - the pieces of a duration and what each unit is worth in milliseconds.
+# 'ms' comes first in the alternation so it wins over 'm'.
+DURATION_PARTS = re.compile(r"(\d+)(ms|s|m|h|d)")
+DURATION_UNITS = {"ms": 1, "s": 1000, "m": 60 * 1000, "h": 60 * 60 * 1000, "d": 24 * 60 * 60 * 1000}
 
 
 def DoEmit(session: Session, output_dir: str, configuration: Dict[str, str]):
@@ -165,6 +172,33 @@ class DotnetEmitter:
                         code = self.interfaceRestPublicClientText(interface, code)
                         code = self.endFile(code)
                         result.append(code)
+
+                # Process all workflow in the context. Only the .NET backend emits workflows: a
+                # workflow is not a transport surface, so proto and TypeScript stay out of it.
+                for the_workflow in context.workflows:
+                    if (len(the_workflow.steps) > 0):
+                        # activity interface - the implementation is the developer's
+                        code = self.beginFile(output_path, the_workflow, "Context/Workflows", prefix="I", postfix="Activities")
+                        code = self.workflowActivitiesInterfaceText(the_workflow, code)
+                        code = self.endFile(code)
+                        result.append(code)
+                        # per step activity options built from @retry / @timeout
+                        code = self.beginFile(output_path, the_workflow, "Context/Workflows", postfix="Defaults")
+                        code = self.workflowDefaultsText(the_workflow, code)
+                        code = self.endFile(code)
+                        result.append(code)
+
+                    # the workflow class itself, plus the saga-aware step facade
+                    code = self.beginFile(output_path, the_workflow, "Context/Workflows", postfix="Workflow")
+                    code = self.workflowClassText(the_workflow, code)
+                    code = self.endFile(code)
+                    result.append(code)
+
+                    # worker and DI registration, task queue = "<context>.<workflow>"
+                    code = self.beginFile(output_path, the_workflow, "Context/Workflows", postfix="Registration")
+                    code = self.workflowRegistrationText(the_workflow, code)
+                    code = self.endFile(code)
+                    result.append(code)
 
         return result
 
@@ -2224,6 +2258,405 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
 
+    def workflowActivitiesInterfaceText(self, the_workflow: workflow, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        Generates the activity interface of a workflow: one [Activity] method per step. The
+        implementation belongs to the developer, so it is never generated.
+        """
+        buffer = io.StringIO()
+        code.usings.add("Temporalio.Activities")
+
+        buffer.write("\n")
+        buffer.write(f"{utils.tab(indent)}/// <summary>\n")
+        buffer.write(f"{utils.tab(indent)}/// The activities of workflow '{the_workflow.name}'. Implement this interface and register the\n")
+        buffer.write(f"{utils.tab(indent)}/// implementation as a singleton - the worker resolves it from the service container.\n")
+        buffer.write(f"{utils.tab(indent)}/// </summary>\n")
+        buffer.write(f"{utils.tab(indent)}public partial interface I{the_workflow.name}Activities\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+
+        for index, the_step in enumerate(the_workflow.steps):
+            if (index > 0):
+                buffer.write("\n")
+            buffer.write(self.documentLines(the_step, indent+1))
+            buffer.write(f"{utils.tab(indent+1)}[Activity]\n")
+            buffer.write(f"{utils.tab(indent+1)}{self.__stepReturnTypeText(the_step, code)} {the_step.name}({self.__stepParamsText(the_step, code)});\n")
+
+        buffer.write(f"{utils.tab(indent)}}}\n")
+
+        code.content += buffer.getvalue()
+        return code
+
+    def workflowClassText(self, the_workflow: workflow, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        Generates the workflow class and, next to it, the saga-aware step facade.
+
+        The model declares a SET of steps, not an order, so the body cannot be generated. What is
+        generated is the saga guarantee: the developer writes the sequence, and every step that
+        declares a compensation registers it for reverse-order rollback.
+        """
+        buffer = io.StringIO()
+        code.usings.add("ServiceKit.Net")
+        code.usings.add("Temporalio.Workflows")
+
+        has_steps: bool = len(the_workflow.steps) > 0
+        start_command: operation = self.__workflowStartCommand(the_workflow)
+        # The developer side of every partial, collected while the public surface is written and
+        # emitted in one block at the end.
+        hooks: List[str] = []
+
+        buffer.write("\n")
+        buffer.write(self.documentLines(the_workflow, indent))
+        buffer.write(f"{utils.tab(indent)}[Workflow]\n")
+        buffer.write(f"{utils.tab(indent)}public partial class {the_workflow.name}Workflow\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}private readonly WorkflowSaga _saga = new();\n")
+
+        if (has_steps == True):
+            buffer.write("\n")
+            buffer.write(f"{utils.tab(indent+1)}/// <summary>Call the steps through this: it runs the activity AND records its rollback.</summary>\n")
+            buffer.write(f"{utils.tab(indent+1)}protected {the_workflow.name}Steps Steps {{ get; }}\n")
+            buffer.write("\n")
+            buffer.write(f"{utils.tab(indent+1)}public {the_workflow.name}Workflow()\n")
+            buffer.write(f"{utils.tab(indent+1)}{{\n")
+            buffer.write(f"{utils.tab(indent+2)}Steps = new {the_workflow.name}Steps(_saga);\n")
+            buffer.write(f"{utils.tab(indent+1)}}}\n")
+
+        for the_operation in the_workflow.operations:
+            params_text: str = self.__operationParamsText(the_operation, code)
+            args_text: str = ", ".join([param.name for param in the_operation.operation_params])
+            hook_name: str = "On" + utils.camel_to_pascal(the_operation.name)
+            returns: operation_return = the_operation.operation_return
+
+            buffer.write("\n")
+            buffer.write(self.documentLines(the_operation, indent+1))
+
+            if (the_operation is start_command):
+                # The entry point. Everything it throws rolls the saga back, in reverse order.
+                return_text = "Task" if (returns == None) else f"Task<{self.typeText(returns.type, code, fullName=True)}>"
+                buffer.write(f"{utils.tab(indent+1)}[WorkflowRun]\n")
+                buffer.write(f"{utils.tab(indent+1)}public async {return_text} {the_operation.name}({params_text})\n")
+                buffer.write(f"{utils.tab(indent+1)}{{\n")
+                buffer.write(f"{utils.tab(indent+2)}try\n")
+                buffer.write(f"{utils.tab(indent+2)}{{\n")
+                if (returns == None):
+                    buffer.write(f"{utils.tab(indent+3)}await {hook_name}({args_text});\n")
+                else:
+                    buffer.write(f"{utils.tab(indent+3)}return await {hook_name}({args_text});\n")
+                buffer.write(f"{utils.tab(indent+2)}}}\n")
+                buffer.write(f"{utils.tab(indent+2)}catch (Exception failure)\n")
+                buffer.write(f"{utils.tab(indent+2)}{{\n")
+                buffer.write(f"{utils.tab(indent+3)}// the failure is handed over, so it survives as the InnerException even when a compensation fails too\n")
+                buffer.write(f"{utils.tab(indent+3)}await _saga.CompensateAsync(failure);\n")
+                buffer.write(f"{utils.tab(indent+3)}throw;\n")
+                buffer.write(f"{utils.tab(indent+2)}}}\n")
+                buffer.write(f"{utils.tab(indent+1)}}}\n")
+                hooks.append(f"private partial {return_text} {hook_name}({params_text});")
+
+            elif (the_operation.kind == operation.Kind.Query):
+                # A Temporal query is read-only and synchronous - it may not await anything
+                return_text = "void" if (returns == None) else self.typeText(returns.type, code, fullName=True)
+                buffer.write(f"{utils.tab(indent+1)}[WorkflowQuery]\n")
+                buffer.write(f"{utils.tab(indent+1)}public {return_text} {the_operation.name}({params_text}) => {hook_name}({args_text});\n")
+                hooks.append(f"private partial {return_text} {hook_name}({params_text});")
+
+            elif (returns == None):
+                # A command with nothing to return cannot answer the caller either: that is a signal
+                buffer.write(f"{utils.tab(indent+1)}[WorkflowSignal]\n")
+                buffer.write(f"{utils.tab(indent+1)}public Task {the_operation.name}({params_text}) => {hook_name}({args_text});\n")
+                hooks.append(f"private partial Task {hook_name}({params_text});")
+
+            else:
+                # It returns something, so the caller waits for it - and may be turned down: update
+                return_text = f"Task<{self.typeText(returns.type, code, fullName=True)}>"
+                buffer.write(f"{utils.tab(indent+1)}[WorkflowUpdate]\n")
+                buffer.write(f"{utils.tab(indent+1)}public {return_text} {the_operation.name}({params_text}) => {hook_name}({args_text});\n")
+                hooks.append(f"private partial {return_text} {hook_name}({params_text});")
+
+        for the_eventhandler in the_workflow.eventhandlers:
+            handled_event: event = Engine.get_referenced_element(the_eventhandler, the_eventhandler.handledEvent)
+            if (handled_event == None):
+                continue
+            event_text: str = code.getDotnetFullName(handled_event)
+            hook_name: str = "Handle" + utils.camel_to_pascal(the_eventhandler.name)
+
+            buffer.write("\n")
+            buffer.write(self.documentLines(the_eventhandler, indent+1))
+            buffer.write(f"{utils.tab(indent+1)}[WorkflowSignal]\n")
+            buffer.write(f"{utils.tab(indent+1)}public Task {the_eventhandler.name}({event_text} @event) => {hook_name}(@event);\n")
+            hooks.append(f"private partial Task {hook_name}({event_text} @event);")
+
+        if (len(hooks) > 0):
+            buffer.write("\n")
+            buffer.write(f"{utils.tab(indent+1)}// The other half of the partial: this is what you write. The model declares which steps\n")
+            buffer.write(f"{utils.tab(indent+1)}// exist, not in what order - so the body is yours, and the compiler will not let you forget it.\n")
+            for hook in hooks:
+                buffer.write(f"{utils.tab(indent+1)}{hook}\n")
+
+        if (len(the_workflow.enums) > 0 or len(the_workflow.value_objects) > 0):
+            buffer.write("\n")
+
+        code.content += buffer.getvalue()
+        buffer.seek(0)
+        buffer.truncate(0)
+
+        # types declared inside the workflow live inside the generated class
+        for the_enum in the_workflow.enums:
+            code = self.enumText(the_enum, code, indent+1)
+        for the_valueobject in the_workflow.value_objects:
+            code = self.valueobjectText(the_valueobject, code, indent+1)
+
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        code.content += buffer.getvalue()
+
+        if (has_steps == True):
+            code = self.workflowStepsFacadeText(the_workflow, code, indent)
+
+        return code
+
+    def workflowStepsFacadeText(self, the_workflow: workflow, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        Generates the typed step facade - the piece that turns a declared 'compensate' into an
+        actual rollback.
+        """
+        buffer = io.StringIO()
+        activities_name: str = f"I{the_workflow.name}Activities"
+        defaults_name: str = f"{the_workflow.name}Defaults"
+
+        buffer.write("\n")
+        buffer.write(f"{utils.tab(indent)}/// <summary>\n")
+        buffer.write(f"{utils.tab(indent)}/// The typed, saga-aware steps of workflow '{the_workflow.name}'. Calling a step here runs the\n")
+        buffer.write(f"{utils.tab(indent)}/// activity and records its compensation, so a later failure rolls it back automatically.\n")
+        buffer.write(f"{utils.tab(indent)}/// </summary>\n")
+        buffer.write(f"{utils.tab(indent)}public sealed partial class {the_workflow.name}Steps\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}private readonly WorkflowSaga _saga;\n")
+        buffer.write("\n")
+        buffer.write(f"{utils.tab(indent+1)}internal {the_workflow.name}Steps(WorkflowSaga saga)\n")
+        buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}_saga = saga;\n")
+        buffer.write(f"{utils.tab(indent+1)}}}\n")
+
+        for the_step in the_workflow.steps:
+            compensation: step = self.__findStep(the_workflow, the_step.compensate)
+            return_text: str = self.__stepReturnTypeText(the_step, code)
+            params_text: str = self.__stepParamsText(the_step, code)
+            args_text: str = ", ".join([param.name for param in the_step.operation_params])
+            call_text: str = f"({activities_name} activities) => activities.{the_step.name}({args_text})"
+
+            buffer.write("\n")
+            buffer.write(self.documentLines(the_step, indent+1))
+
+            if (compensation == None):
+                # nothing declared to roll it back, so the call goes straight through
+                buffer.write(f"{utils.tab(indent+1)}public {return_text} {the_step.name}({params_text})\n")
+                buffer.write(f"{utils.tab(indent+1)}{{\n")
+                buffer.write(f"{utils.tab(indent+2)}return Workflow.ExecuteActivityAsync(\n")
+                buffer.write(f"{utils.tab(indent+3)}{call_text},\n")
+                buffer.write(f"{utils.tab(indent+3)}{defaults_name}.For(nameof({the_step.name})));\n")
+                buffer.write(f"{utils.tab(indent+1)}}}\n")
+                continue
+
+            result_name: str = self.__resultLocalName(the_step)
+            compensation_args: str = ", ".join(self.__compensationArgumentNames(the_step, compensation, result_name))
+            compensation_call: str = f"({activities_name} activities) => activities.{compensation.name}({compensation_args})"
+
+            buffer.write(f"{utils.tab(indent+1)}public async {return_text} {the_step.name}({params_text})\n")
+            buffer.write(f"{utils.tab(indent+1)}{{\n")
+            if (the_step.operation_return == None):
+                buffer.write(f"{utils.tab(indent+2)}await Workflow.ExecuteActivityAsync(\n")
+            else:
+                buffer.write(f"{utils.tab(indent+2)}var {result_name} = await Workflow.ExecuteActivityAsync(\n")
+            buffer.write(f"{utils.tab(indent+3)}{call_text},\n")
+            buffer.write(f"{utils.tab(indent+3)}{defaults_name}.For(nameof({the_step.name})));\n")
+            buffer.write("\n")
+            buffer.write(f"{utils.tab(indent+2)}// the compensation arguments are bound from the step's own parameters and return value\n")
+            buffer.write(f"{utils.tab(indent+2)}_saga.Push(nameof({the_step.name}), () => Workflow.ExecuteActivityAsync(\n")
+            buffer.write(f"{utils.tab(indent+3)}{compensation_call},\n")
+            buffer.write(f"{utils.tab(indent+3)}{defaults_name}.For(nameof({activities_name}.{compensation.name}))));\n")
+            if (the_step.operation_return != None):
+                buffer.write("\n")
+                buffer.write(f"{utils.tab(indent+2)}return {result_name};\n")
+            buffer.write(f"{utils.tab(indent+1)}}}\n")
+
+        buffer.write(f"{utils.tab(indent)}}}\n")
+
+        code.content += buffer.getvalue()
+        return code
+
+    def workflowDefaultsText(self, the_workflow: workflow, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        Generates the per step activity options. '@timeout' is the whole business budget
+        (ScheduleToClose, retries included); the ceiling of one attempt (StartToClose) is technical,
+        so it stays out of the model and lives here as an overridable default.
+        """
+        buffer = io.StringIO()
+        code.usings.add("Temporalio.Common")
+        code.usings.add("Temporalio.Workflows")
+
+        # (step name, retry attempts, timeout text) for every step that has anything to say
+        timings: List[NamedTuple] = []
+        for the_step in the_workflow.steps:
+            attempts = self.__timingRetryAttempts(the_step, the_workflow)
+            timeout_text = self.__timingTimeoutText(the_step, the_workflow)
+            if (attempts != None or timeout_text != None):
+                timings.append((the_step.name, attempts, timeout_text))
+
+        buffer.write("\n")
+        buffer.write(f"{utils.tab(indent)}/// <summary>\n")
+        buffer.write(f"{utils.tab(indent)}/// The activity options of the steps of workflow '{the_workflow.name}'.\n")
+        buffer.write(f"{utils.tab(indent)}/// </summary>\n")
+        buffer.write(f"{utils.tab(indent)}public static partial class {the_workflow.name}Defaults\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}/// <summary>The ceiling of a single attempt. Technical, not a business property, so it is not modelled.</summary>\n")
+        buffer.write(f"{utils.tab(indent+1)}public static TimeSpan DefaultStartToCloseTimeout {{ get; set; }} = TimeSpan.FromMinutes(1);\n")
+        buffer.write("\n")
+        buffer.write(f"{utils.tab(indent+1)}public static ActivityOptions For(string stepName)\n")
+        buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}var options = new ActivityOptions\n")
+        buffer.write(f"{utils.tab(indent+2)}{{\n")
+        buffer.write(f"{utils.tab(indent+3)}StartToCloseTimeout = DefaultStartToCloseTimeout,\n")
+        buffer.write(f"{utils.tab(indent+2)}}};\n")
+
+        if (len(timings) > 0):
+            buffer.write("\n")
+            buffer.write(f"{utils.tab(indent+2)}switch (stepName)\n")
+            buffer.write(f"{utils.tab(indent+2)}{{\n")
+            for name, attempts, timeout_text in timings:
+                buffer.write(f"{utils.tab(indent+3)}case \"{name}\":\n")
+                if (timeout_text != None):
+                    buffer.write(f"{utils.tab(indent+4)}options.ScheduleToCloseTimeout = {timeout_text};\n")
+                if (attempts != None):
+                    buffer.write(f"{utils.tab(indent+4)}options.RetryPolicy = new RetryPolicy {{ MaximumAttempts = {attempts} }};\n")
+                buffer.write(f"{utils.tab(indent+4)}break;\n")
+            buffer.write(f"{utils.tab(indent+2)}}}\n")
+
+        buffer.write("\n")
+        buffer.write(f"{utils.tab(indent+2)}Customize(stepName, options);\n")
+        buffer.write(f"{utils.tab(indent+2)}return options;\n")
+        buffer.write(f"{utils.tab(indent+1)}}}\n")
+        buffer.write("\n")
+        buffer.write(f"{utils.tab(indent+1)}/// <summary>Implement this in your own partial to override anything above.</summary>\n")
+        buffer.write(f"{utils.tab(indent+1)}static partial void Customize(string stepName, ActivityOptions options);\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+
+        code.content += buffer.getvalue()
+        return code
+
+    def workflowRegistrationText(self, the_workflow: workflow, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        Generates the worker registration. The task queue is derived per workflow; several workflows
+        pointed at the same name end up in a single worker, so the coarser layout costs nothing.
+        """
+        buffer = io.StringIO()
+        code.usings.add("ServiceKit.Net")
+
+        context: context = the_workflow.getContext()
+        task_queue: str = f"{context.name}.{the_workflow.name}"
+        activities: str = "" if (len(the_workflow.steps) == 0) else f", typeof(I{the_workflow.name}Activities)"
+
+        buffer.write("\n")
+        buffer.write(f"{utils.tab(indent)}/// <summary>\n")
+        buffer.write(f"{utils.tab(indent)}/// Registers workflow '{the_workflow.name}' with the worker host.\n")
+        buffer.write(f"{utils.tab(indent)}/// </summary>\n")
+        buffer.write(f"{utils.tab(indent)}public static partial class {the_workflow.name}Registration\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}/// <summary>\n")
+        buffer.write(f"{utils.tab(indent+1)}/// Derived per workflow. Hand two workflows the same name and one worker serves both -\n")
+        buffer.write(f"{utils.tab(indent+1)}/// splitting a shared queue later is a migration, merging separate ones is free.\n")
+        buffer.write(f"{utils.tab(indent+1)}/// </summary>\n")
+        buffer.write(f"{utils.tab(indent+1)}public const string TaskQueue = \"{task_queue}\";\n")
+        buffer.write("\n")
+        buffer.write(f"{utils.tab(indent+1)}public static WorkflowRegistry Register(WorkflowRegistry registry, string taskQueue = TaskQueue)\n")
+        buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}return registry.Register<{the_workflow.name}Workflow>(taskQueue{activities});\n")
+        buffer.write(f"{utils.tab(indent+1)}}}\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+
+        code.content += buffer.getvalue()
+        return code
+
+    def __workflowStartCommand(self, the_workflow: workflow) -> operation:
+        # The entry point: the '@start' command, or the only command there is.
+        commands = [candidate for candidate in the_workflow.operations if candidate.kind == operation.Kind.Command]
+        for candidate in commands:
+            if (candidate.find_decorator("start") != None):
+                return candidate
+        if (len(commands) == 1):
+            return commands[0]
+        return None
+
+    def __findStep(self, the_workflow: workflow, name: str) -> step:
+        if (name == None):
+            return None
+        for candidate in the_workflow.steps:
+            if (candidate.name == name):
+                return candidate
+        return None
+
+    def __stepReturnTypeText(self, the_step: step, code: dotnet_code) -> str:
+        if (the_step.operation_return == None):
+            return "Task"
+        return f"Task<{self.typeText(the_step.operation_return.type, code, fullName=True)}>"
+
+    def __stepParamsText(self, the_step: step, code: dotnet_code) -> str:
+        return ", ".join([self.typeText(param.type, code, fullName=True, isInFunctionParam=True) + " " + param.name for param in the_step.operation_params])
+
+    def __operationParamsText(self, the_operation: operation, code: dotnet_code) -> str:
+        return ", ".join([self.typeText(param.type, code, fullName=True, isInFunctionParam=True) + " " + param.name for param in the_operation.operation_params])
+
+    def __resultLocalName(self, the_step: step) -> str:
+        # the step's own parameters are in scope, so the local must not collide with them
+        taken = [param.name for param in the_step.operation_params]
+        name = "result"
+        while (name in taken):
+            name = name + "_"
+        return name
+
+    def __compensationArgumentNames(self, forward: step, compensation: step, result_name: str) -> List[str]:
+        # Every compensation parameter binds either to a forward parameter (name and type) or to the
+        # forward return value. The linter refuses anything that does not bind, so by the time we get
+        # here the mapping exists.
+        forward_params = [param.name for param in forward.operation_params]
+        arguments: List[str] = []
+        for param in compensation.operation_params:
+            if (param.name in forward_params):
+                arguments.append(param.name)
+            elif (forward.operation_return != None):
+                arguments.append(result_name)
+            else:
+                arguments.append(param.name)
+        return arguments
+
+    def __timingRetryAttempts(self, the_step: step, the_workflow: workflow) -> int:
+        # the step's own decorator wins over the workflow-wide default
+        retry = the_step.find_decorator("retry")
+        if (retry == None):
+            retry = the_workflow.find_decorator("retry")
+        if (retry == None or len(retry.params) != 1):
+            return None
+        return retry.params[0].value
+
+    def __timingTimeoutText(self, the_step: step, the_workflow: workflow) -> str:
+        timeout = the_step.find_decorator("timeout")
+        if (timeout == None):
+            timeout = the_workflow.find_decorator("timeout")
+        if (timeout == None or len(timeout.params) != 1):
+            return None
+        return self.__durationToTimeSpanText(timeout.params[0].value)
+
+    def __durationToTimeSpanText(self, text: str) -> str:
+        if (isinstance(text, str) == False):
+            return None
+        parts = DURATION_PARTS.findall(text)
+        if (len(parts) == 0):
+            return None
+        total_ms: int = 0
+        for value, unit in parts:
+            total_ms = total_ms + int(value) * DURATION_UNITS[unit]
+        if (total_ms % 1000 == 0):
+            return f"TimeSpan.FromSeconds({total_ms // 1000})"
+        return f"TimeSpan.FromMilliseconds({total_ms})"
+
     def deprecatedText(self, element: hinted_base_element, indent: int) -> str:
         # @deprecated(...) -> C# [Obsolete("message")]. The optional first
         # decorator param is the message (e.g. @deprecated("use X, since 2.3")).
@@ -2431,6 +2864,10 @@ class dotnet_code:
                     dotnetNames.insert(0, f"{element.name}_v{element.version}")
             elif( isinstance( element, service ) or isinstance( element, acl )):
                     dotnetNames.insert(0, f"I{element.name}")
+            elif( isinstance( element, workflow )):
+                    # the generated class is <Name>Workflow, so anything nested in the workflow is
+                    # reached through that name
+                    dotnetNames.insert(0, f"{element.name}Workflow")
             elif( isinstance( element, aggregate_entity )):
                 # skip 
                 pass

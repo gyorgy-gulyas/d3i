@@ -1185,6 +1185,7 @@ domain SomeDomain {
 domain SomeDomain {
     context Order {
         workflow OrderSaga {
+            command start( orderId:string )
             step reserveStock( orderId:string ) compensate nonExistentStep
         }
     }
@@ -1472,6 +1473,293 @@ domain D {
         session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("must be a boolean condition" in session.diagnostics[0].toText())
+
+    # ------------------------------------------------------------------
+    # workflow rules — L1 (@start), L3/L4 (compensation), L5 (step surface),
+    # L6/L7 (@retry/@timeout), L8 (ignored compensation return)
+    # ------------------------------------------------------------------
+
+    def __lint(self, source: str):
+        engine = Engine()
+        session = Session(Source.CreateFromText(source))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError(), "the source must parse before it can be linted")
+        root.visit(SemanticChecker(session), None)
+        session.PrintDiagnostics()
+        return session
+
+    def __wrap(self, workflow_body: str) -> str:
+        return """
+domain SomeDomain {
+    context Order {
+        enum Currency { HUF, EUR }
+        valueobject Money { amount:number }
+        composite Auditable { createdAt:dateTime }
+        aggregate OrderAggregate {
+            root entity OrderHeader { id:string }
+        }
+        workflow OrderSaga {
+%s
+        }
+    }
+}
+""" % workflow_body
+
+    def test_workflow_single_command_is_implicit_start_ok(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            query status( orderId:string ) : string
+"""))
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_workflow_no_command_fail(self):
+        session = self.__lint(self.__wrap("""
+            step reserveStock( orderId:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("has no command" in session.diagnostics[0].toText())
+
+    def test_workflow_many_commands_without_start_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            command cancel( reason:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("none is marked with '@start'" in session.diagnostics[0].toText())
+        self.assertTrue("'place', 'cancel'" in session.diagnostics[0].toText())
+
+    def test_workflow_many_commands_with_start_ok(self):
+        session = self.__lint(self.__wrap("""
+            @start
+            command place( orderId:string )
+            command cancel( reason:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_workflow_two_starts_fail(self):
+        session = self.__lint(self.__wrap("""
+            @start
+            command place( orderId:string )
+            @start
+            command replace( orderId:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("only one '@start' command" in session.diagnostics[0].toText())
+        self.assertTrue("'place'" in session.diagnostics[0].toText())
+
+    def test_workflow_start_on_query_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            @start
+            query status( orderId:string ) : string
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("may only mark a command" in session.diagnostics[0].toText())
+
+    def test_compensation_binding_ok(self):
+        # orderId binds by name+type, chargeId by the unambiguous return type
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step chargeCard( orderId:string, amount:number ) : string compensate refundCard
+            step refundCard( orderId:string, chargeId:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_compensation_unbindable_param_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step chargeCard( orderId:string, amount:number ) : string compensate refundCard
+            step refundCard( orderId:string, reasonCode:integer )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'reasonCode'" in session.diagnostics[0].toText())
+        self.assertTrue("cannot be bound" in session.diagnostics[0].toText())
+
+    def test_compensation_without_return_unbindable_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step reserveStock( orderId:string ) compensate releaseStock
+            step releaseStock( orderId:string, sku:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'sku'" in session.diagnostics[0].toText())
+        self.assertTrue("returns nothing" in session.diagnostics[0].toText())
+
+    def test_compensation_name_matches_but_type_differs_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step reserveStock( orderId:string ) compensate releaseStock
+            step releaseStock( orderId:integer )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("but a different type" in session.diagnostics[0].toText())
+
+    def test_compensation_ambiguous_return_binding_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step chargeCard( amount:number ) : string compensate refundCard
+            step refundCard( chargeId:string, receiptId:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("could all be bound to the return value" in session.diagnostics[0].toText())
+        self.assertTrue("'chargeId', 'receiptId'" in session.diagnostics[0].toText())
+
+    def test_compensation_binds_value_object_by_name_ok(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step chargeCard( price:Money ) compensate refundCard
+            step refundCard( price:Money )
+"""))
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_nested_compensation_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step chargeCard( orderId:string ) compensate refundCard
+            step refundCard( orderId:string ) compensate notifyFailure
+            step notifyFailure( orderId:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("cannot declare a 'compensate' of its own" in session.diagnostics[0].toText())
+
+    def test_compensation_return_is_ignored_warning(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step chargeCard( orderId:string ) compensate refundCard
+            step refundCard( orderId:string ) : boolean
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertEqual(session.diagnostics[0].severity, Diagnostic.Severity.Warning)
+        self.assertTrue("is ignored" in session.diagnostics[0].toText())
+
+    def test_step_surface_allowed_types_ok(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step charge( price:Money, currency:Currency, order: ref OrderAggregate, tags:list[string], meta:map[string,integer] ) : Money
+"""))
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_step_stream_param_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step upload( content:stream )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'stream' type is not allowed in a step signature" in session.diagnostics[0].toText())
+        self.assertTrue("the parameter 'content'" in session.diagnostics[0].toText())
+
+    def test_step_any_return_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step callExternal( id:string ) : any
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'any' type is not allowed in a step signature" in session.diagnostics[0].toText())
+        self.assertTrue("the return value" in session.diagnostics[0].toText())
+
+    def test_step_any_inside_list_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step callExternal( payloads:list[any] )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("'any' type is not allowed in a step signature" in session.diagnostics[0].toText())
+
+    def test_command_may_still_take_stream_and_any_ok(self):
+        # W11/W13 narrow the step only; the command/query surface is untouched (Q10).
+        session = self.__lint(self.__wrap("""
+            command place( content:stream, extra:any )
+"""))
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_step_composite_param_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            step writeAuditTrail( entry:Auditable )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("may only carry enum, value object" in session.diagnostics[0].toText())
+        self.assertTrue("composite" in session.diagnostics[0].toText())
+
+    def test_retry_and_timeout_ok(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        @retry( 3 )
+        @timeout( "2m" )
+        workflow OrderSaga {
+            command place( orderId:string )
+            @retry( 1 )
+            @timeout( "1h30m" )
+            step sendReceipt( orderId:string )
+            @timeout( "500ms" )
+            step ping( orderId:string )
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_retry_zero_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            @retry( 0 )
+            step charge( orderId:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must be at least 1" in session.diagnostics[0].toText())
+
+    def test_retry_non_integer_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            @retry( "3" )
+            step charge( orderId:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("takes exactly one integer argument" in session.diagnostics[0].toText())
+
+    def test_workflow_retry_invalid_fail(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        @retry( 0 )
+        workflow OrderSaga {
+            command place( orderId:string )
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("workflow 'OrderSaga'" in session.diagnostics[0].toText())
+        self.assertTrue("must be at least 1" in session.diagnostics[0].toText())
+
+    def test_timeout_not_a_duration_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            @timeout( "5 minutes" )
+            step charge( orderId:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("is not a duration" in session.diagnostics[0].toText())
+
+    def test_timeout_zero_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            @timeout( "0s" )
+            step charge( orderId:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("is zero" in session.diagnostics[0].toText())
+
+    def test_timeout_non_string_fail(self):
+        session = self.__lint(self.__wrap("""
+            command place( orderId:string )
+            @timeout( 5 )
+            step charge( orderId:string )
+"""))
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("takes exactly one string argument" in session.diagnostics[0].toText())
+
 
 if __name__ == "__main__":
     unittest.main()

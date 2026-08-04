@@ -945,5 +945,228 @@ domain WebShop {
         self.assertNotIn("temptemp", content)
 
 
+class TestEmitterDotnetWorkflow(unittest.TestCase):
+    # A workflow declares a SET of steps, not an order, so the body cannot be generated. What the
+    # emitter produces is the saga guarantee: every step that declares a compensation records it,
+    # and a failure rolls the lot back in reverse order.
+
+    SOURCE = """
+domain WebShop {
+    context Orders {
+        valueobject Money {
+            amount:number
+            currency:string
+        }
+
+        service Payments {
+            event OrderPaid version 1 {
+                orderId:string
+            }
+        }
+
+        @retry( 3 )
+        @timeout( "2m" )
+        workflow FulfilOrder {
+            @start
+            command place( orderId:string, total:Money ) : string
+
+            command cancel( reason:string )
+
+            command approve( by:string ) : boolean
+
+            query status( orderId:string ) : string
+
+            eventhandler onPaid for event Payments.OrderPaid.v1
+
+            step reserveStock( orderId:string, sku:string ) compensate releaseStock
+
+            step releaseStock( orderId:string, sku:string )
+
+            @retry( 1 )
+            @timeout( "30s" )
+            step chargeCard( orderId:string, total:Money ) : string compensate refundCard
+
+            step refundCard( orderId:string, chargeId:string )
+
+            step sendReceipt( orderId:string )
+
+            enum Channel {
+                Web,
+                Store
+            }
+        }
+    }
+}
+"""
+
+    def __emit(self, source: str = None):
+        engine = Engine()
+        session = Session(Source.CreateFromText(source if source != None else self.SOURCE))
+        engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
+        result = DotnetEmitter().Emit(session)
+        return {code.fileName: code.content for code in result}
+
+    def __file(self, name: str, source: str = None) -> str:
+        files = self.__emit(source)
+        self.assertIn(name, files)
+        return files[name]
+
+    def test_workflow_emits_four_files(self):
+        files = self.__emit()
+        for name in ("IFulfilOrderActivities.cs", "FulfilOrderWorkflow.cs", "FulfilOrderDefaults.cs", "FulfilOrderRegistration.cs"):
+            self.assertIn(name, files)
+
+    def test_every_step_becomes_an_activity(self):
+        content = self.__file("IFulfilOrderActivities.cs")
+        self.assertIn("public partial interface IFulfilOrderActivities", content)
+        self.assertIn("[Activity]\n\t\tTask reserveStock(string orderId, string sku);", content)
+        self.assertIn("[Activity]\n\t\tTask<string> chargeCard(string orderId, Money total);", content)
+        self.assertIn("using Temporalio.Activities;", content)
+
+    def test_the_start_command_is_the_workflow_run(self):
+        content = self.__file("FulfilOrderWorkflow.cs")
+        self.assertIn("[Workflow]\n\tpublic partial class FulfilOrderWorkflow", content)
+        self.assertIn("[WorkflowRun]\n\t\tpublic async Task<string> place(string orderId, Money total)", content)
+
+    def test_the_run_hands_the_failure_to_the_saga(self):
+        # Without handing the failure over, a failing compensation would hide the real cause.
+        content = self.__file("FulfilOrderWorkflow.cs")
+        self.assertIn("catch (Exception failure)", content)
+        self.assertIn("await _saga.CompensateAsync(failure);", content)
+        self.assertIn("throw;", content)
+
+    def test_a_command_is_a_signal_without_a_return_and_an_update_with_one(self):
+        content = self.__file("FulfilOrderWorkflow.cs")
+        self.assertIn("[WorkflowSignal]\n\t\tpublic Task cancel(string reason) => OnCancel(reason);", content)
+        self.assertIn("[WorkflowUpdate]\n\t\tpublic Task<bool> approve(string by) => OnApprove(by);", content)
+
+    def test_a_query_is_synchronous(self):
+        # A Temporal query may not await anything, so it is not a Task
+        content = self.__file("FulfilOrderWorkflow.cs")
+        self.assertIn("[WorkflowQuery]\n\t\tpublic string status(string orderId) => OnStatus(orderId);", content)
+
+    def test_an_eventhandler_is_a_signal(self):
+        content = self.__file("FulfilOrderWorkflow.cs")
+        self.assertIn("[WorkflowSignal]\n\t\tpublic Task onPaid(IPayments.OrderPaid_v1 @event) => HandleOnPaid(@event);", content)
+
+    def test_the_developer_half_is_declared_but_not_written(self):
+        # partial declarations with a return value MUST be implemented, so the compiler is what
+        # tells the developer which bodies are missing
+        content = self.__file("FulfilOrderWorkflow.cs")
+        self.assertIn("private partial Task<string> OnPlace(string orderId, Money total);", content)
+        self.assertIn("private partial Task OnCancel(string reason);", content)
+        self.assertIn("private partial Task<bool> OnApprove(string by);", content)
+        self.assertIn("private partial string OnStatus(string orderId);", content)
+        self.assertIn("private partial Task HandleOnPaid(IPayments.OrderPaid_v1 @event);", content)
+        # the run body itself is never generated
+        self.assertNotIn("private partial Task<string> OnPlace(string orderId, Money total)\n", content)
+
+    def test_a_step_with_a_compensation_records_it(self):
+        content = self.__file("FulfilOrderWorkflow.cs")
+        self.assertIn("_saga.Push(nameof(reserveStock), () => Workflow.ExecuteActivityAsync(", content)
+        self.assertIn("(IFulfilOrderActivities activities) => activities.releaseStock(orderId, sku),", content)
+
+    def test_a_step_without_a_compensation_records_nothing(self):
+        content = self.__file("FulfilOrderWorkflow.cs")
+        facade = content.split("public sealed partial class FulfilOrderSteps")[1]
+        send_receipt = facade.split("public Task sendReceipt(string orderId)")[1]
+        self.assertNotIn("_saga.Push", send_receipt)
+
+    def test_the_compensation_arguments_are_bound_by_name_and_from_the_return(self):
+        # refundCard( orderId, chargeId ): orderId comes from the forward parameter of the same name,
+        # chargeId from what chargeCard returned
+        content = self.__file("FulfilOrderWorkflow.cs")
+        self.assertIn("var result = await Workflow.ExecuteActivityAsync(", content)
+        self.assertIn("(IFulfilOrderActivities activities) => activities.refundCard(orderId, result),", content)
+        self.assertIn("return result;", content)
+
+    def test_a_step_decorator_overrides_the_workflow_default(self):
+        content = self.__file("FulfilOrderDefaults.cs")
+        self.assertIn('case "reserveStock":\n\t\t\t\t\toptions.ScheduleToCloseTimeout = TimeSpan.FromSeconds(120);', content)
+        self.assertIn("options.RetryPolicy = new RetryPolicy { MaximumAttempts = 3 };", content)
+        self.assertIn('case "chargeCard":\n\t\t\t\t\toptions.ScheduleToCloseTimeout = TimeSpan.FromSeconds(30);', content)
+        self.assertIn("options.RetryPolicy = new RetryPolicy { MaximumAttempts = 1 };", content)
+
+    def test_the_single_attempt_ceiling_stays_out_of_the_model(self):
+        # @timeout is the whole business budget (ScheduleToClose); the ceiling of one attempt is
+        # technical, so it is a generated default the developer can move
+        content = self.__file("FulfilOrderDefaults.cs")
+        self.assertIn("public static TimeSpan DefaultStartToCloseTimeout { get; set; } = TimeSpan.FromMinutes(1);", content)
+        self.assertIn("StartToCloseTimeout = DefaultStartToCloseTimeout,", content)
+        self.assertIn("static partial void Customize(string stepName, ActivityOptions options);", content)
+
+    def test_durations_are_converted(self):
+        source = self.SOURCE.replace('@timeout( "30s" )', '@timeout( "1h30m" )').replace('@timeout( "2m" )', '@timeout( "500ms" )')
+        content = self.__file("FulfilOrderDefaults.cs", source)
+        self.assertIn("TimeSpan.FromSeconds(5400)", content)
+        self.assertIn("TimeSpan.FromMilliseconds(500)", content)
+
+    def test_the_task_queue_is_derived_per_workflow(self):
+        content = self.__file("FulfilOrderRegistration.cs")
+        self.assertIn('public const string TaskQueue = "Orders.FulfilOrder";', content)
+        self.assertIn("return registry.Register<FulfilOrderWorkflow>(taskQueue, typeof(IFulfilOrderActivities));", content)
+
+    def test_types_declared_in_the_workflow_land_inside_the_class(self):
+        content = self.__file("FulfilOrderWorkflow.cs")
+        workflow_class = content.split("public partial class FulfilOrderWorkflow")[1].split("public sealed partial class")[0]
+        self.assertIn("public enum Channel", workflow_class)
+
+    SOURCE_WITHOUT_STEPS = """
+domain WebShop {
+    context Orders {
+        workflow Approval {
+            command start( orderId:string )
+        }
+    }
+}
+"""
+
+    def test_a_workflow_without_steps_needs_no_activities(self):
+        files = self.__emit(self.SOURCE_WITHOUT_STEPS)
+        self.assertNotIn("IApprovalActivities.cs", files)
+        self.assertNotIn("ApprovalDefaults.cs", files)
+        self.assertIn("ApprovalWorkflow.cs", files)
+        self.assertIn("ApprovalRegistration.cs", files)
+        self.assertNotIn("public sealed partial class ApprovalSteps", files["ApprovalWorkflow.cs"])
+        self.assertIn("return registry.Register<ApprovalWorkflow>(taskQueue);", files["ApprovalRegistration.cs"])
+
+    def test_the_only_command_is_the_entry_point_without_a_decorator(self):
+        files = self.__emit(self.SOURCE_WITHOUT_STEPS)
+        self.assertIn("[WorkflowRun]\n\t\tpublic async Task start(string orderId)", files["ApprovalWorkflow.cs"])
+
+
+class TestEmitterWorkflowIsBackendOnly(unittest.TestCase):
+    # A workflow is not a transport surface, so only the .NET backend emits anything for it.
+
+    SOURCE = """
+domain WebShop {
+    context Orders {
+        workflow Approval {
+            command start( orderId:string )
+            step notify( orderId:string )
+        }
+    }
+}
+"""
+
+    def __session(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText(self.SOURCE))
+        engine.Build(session)
+        self.assertFalse(session.HasDiagnostic())
+        return session
+
+    def test_the_proto_emitter_ignores_workflows(self):
+        from d3i.emitters.ProtoEmitter import ProtoEmitter
+        self.assertEqual(0, len(ProtoEmitter().Emit(self.__session())))
+
+    def test_the_typescript_emitter_ignores_workflows(self):
+        from d3i.emitters.TypeScriptEmitter import TypeScriptEmitter
+        self.assertEqual(0, len(TypeScriptEmitter().Emit(self.__session())))
+
+
 if __name__ == "__main__":
     unittest.main()

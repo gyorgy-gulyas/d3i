@@ -263,7 +263,7 @@ class context(internal_scoped_base_element):
             workflow.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return super().getChildren() + self.composites + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces
+        return super().getChildren() + self.composites + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces + self.workflows
 
 
 class enum(hinted_base_element):
