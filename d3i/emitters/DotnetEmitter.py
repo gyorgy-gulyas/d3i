@@ -832,7 +832,7 @@ class DotnetEmitter:
             case type.Kind.Primitive:
                 return self.dataClassMemberCloneText_Primitive(memberName, memberType, code, dst, src, indent)
             case type.Kind.Ref:
-                return self.dataClassMemberCloneText_Reference(memberName, memberType, code, dst, src, indent)
+                return self.dataClassMemberCloneText_Ref(memberName, memberType, code, dst, src, indent)
             case type.Kind.Reference:
                 return self.dataClassMemberCloneText_Reference(memberName, memberType, code, dst, src, indent)
             case type.Kind.List:
@@ -871,6 +871,12 @@ class DotnetEmitter:
                 buffer.write( f"(byte[]){memberName}.Clone()")
 
         return buffer.getvalue()
+
+    def dataClassMemberCloneText_Ref(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
+        # A 'ref X' is an EntityId<X>, a readonly record struct over a string. It is a VALUE, so the
+        # assignment already copies it - and '?.Clone()' does not even compile on a struct, which is
+        # what this branch used to emit.
+        return f"{utils.tab(indent)}{dst}{memberName} = {src}{memberName};\n"
 
     def dataClassMemberCloneText_Reference(self, memberName: str, memberType: type, code: dotnet_code, dst: str, src: str, indent: int) -> str:
         referenced_element: base_element = Engine.get_referenced_element(memberType.parent, memberType.reference_name)

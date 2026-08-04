@@ -4,6 +4,31 @@ from d3i.elements.Elements import *
 from d3i.Engine import *
 
 
+class TestEmitterProtoOutputPath(unittest.TestCase):
+    def test_output_directory_without_a_trailing_slash_is_still_a_directory(self):
+        # Without the separator the output directory was glued onto the first subdirectory, so
+        # '-o out' wrote to 'outWebShop/...' NEXT TO the target instead of inside it.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        @public_api( grpc )
+        interface OrderIF version 1 {
+            query getOrder( id:string ) : string
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = ProtoEmitter("out").Emit(session)
+        self.assertEqual(1, len(result))
+        self.assertTrue(
+            result[0].fullPath.replace("\\", "/").startswith("out/WebShop/"),
+            result[0].fullPath)
+
+
 class TestEmitterProto(unittest.TestCase):
 
     def test_emitter_interface_ok(self):

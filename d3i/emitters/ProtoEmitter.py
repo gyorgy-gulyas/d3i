@@ -467,9 +467,12 @@ class proto_code:
         """
         Initializes a proto_code instance with the file path, file name.
         """
-        self.output_path = output_path
+        # The separator is not optional: without it an output directory given without a trailing
+        # slash was glued straight onto the first subdirectory, so '-o out' wrote to 'outSales'
+        # NEXT TO the target instead of inside it.
+        self.output_path = output_path if output_path.endswith("/") else output_path + "/"
         self.fileName: str = name + ".proto"
-        self.fullPath: str = os.path.join(output_path + "/".join(subdirs), self.fileName)
+        self.fullPath: str = os.path.join(self.output_path + "/".join(subdirs), self.fileName)
         self.imports: set[str] = set()
         self.additionalMessages: map[str,str] = {}
         self.content: str = ""

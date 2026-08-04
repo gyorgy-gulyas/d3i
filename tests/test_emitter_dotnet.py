@@ -1138,6 +1138,38 @@ domain WebShop {
         self.assertIn("[WorkflowRun]\n\t\tpublic async Task start(string orderId)", files["ApprovalWorkflow.cs"])
 
 
+class TestEmitterDotnetRefClone(unittest.TestCase):
+    def test_a_ref_member_is_copied_not_cloned(self):
+        # 'ref X' becomes EntityId<X>, a readonly record struct over a string. It is a VALUE, so the
+        # assignment already copies it - and '?.Clone()' does not even compile on a struct, which is
+        # what the reference branch used to emit for it.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        aggregate Customer {
+            root entity CustomerAccount {
+                name:string
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                customer:ref Customer
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasDiagnostic())
+
+        files = {code.fileName: code.content for code in DotnetEmitter().Emit(session)}
+        content = files["OrderHeader.cs"]
+        self.assertIn("clone.customer = customer;", content)
+        self.assertNotIn("customer?.Clone()", content)
+
+
 class TestEmitterDotnetCallingContext(unittest.TestCase):
     # The calling context is a plain per-request object: a service may hand it to background work
     # (the audit trail keeps a reference and reads the identity off it when the entry is written),
