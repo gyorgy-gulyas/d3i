@@ -1138,6 +1138,44 @@ domain WebShop {
         self.assertIn("[WorkflowRun]\n\t\tpublic async Task start(string orderId)", files["ApprovalWorkflow.cs"])
 
 
+class TestEmitterDotnetCallingContext(unittest.TestCase):
+    # The calling context is a plain per-request object: a service may hand it to background work
+    # (the audit trail keeps a reference and reads the identity off it when the entry is written),
+    # so a controller must not release it when the action returns.
+
+    SOURCE = """
+domain WebShop {
+    context Orders {
+        @public_api( rest, grpc, collection = "PublicApi" )
+        interface OrderIF version 1 {
+            query getOrder( id:string ) : string
+        }
+    }
+}
+"""
+
+    def __controllers(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText(self.SOURCE))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        return {code.fileName: code.content for code in result if "Controller" in code.fileName}
+
+    def test_controllers_build_the_context_without_a_pool(self):
+        controllers = self.__controllers()
+        self.assertIn("OrderIF_v1.RestController.cs", controllers)
+        self.assertIn("OrderIF_v1.GrpcController.cs", controllers)
+        self.assertIn("CallingContext.FromHttpContext( HttpContext, _logger );", controllers["OrderIF_v1.RestController.cs"])
+        self.assertIn("CallingContext.FromGrpcContext( grpcContext, _logger );", controllers["OrderIF_v1.GrpcController.cs"])
+
+    def test_no_controller_releases_the_context(self):
+        for name, content in self.__controllers().items():
+            self.assertNotIn("ReturnToPool", content, name)
+            self.assertNotIn("PoolFrom", content, name)
+
+
 class TestEmitterWorkflowIsBackendOnly(unittest.TestCase):
     # A workflow is not a transport surface, so only the .NET backend emits anything for it.
 

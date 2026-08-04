@@ -1691,7 +1691,7 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+1)}{{\n")
             buffer.write(f"{utils.tab(indent+2)}using(LogContext.PushProperty( \"Scope\", \"{versionedName}.{operation.name}\" ))\n")
             buffer.write(f"{utils.tab(indent+2)}{{\n")
-            buffer.write(f"{utils.tab(indent+3)}CallingContext ctx = CallingContext.PoolFromGrpcContext( grpcContext, _logger );\n")
+            buffer.write(f"{utils.tab(indent+3)}CallingContext ctx = CallingContext.FromGrpcContext( grpcContext, _logger );\n")
             buffer.write(f"{utils.tab(indent+3)}try\n")
             buffer.write(f"{utils.tab(indent+3)}{{\n")
             index: int = 1
@@ -1768,10 +1768,9 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+5)}}}\n")
             buffer.write(f"{utils.tab(indent+4)}}};\n")
             buffer.write(f"{utils.tab(indent+3)}}}\n")
-            buffer.write(f"{utils.tab(indent+3)}finally\n")
-            buffer.write(f"{utils.tab(indent+3)}{{\n")
-            buffer.write(f"{utils.tab(indent+4)}ctx.ReturnToPool();\n")
-            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            # No 'finally' releasing the context: it may outlive the request. A service can hand it
+            # to background work - the audit trail keeps a reference and reads the identity off it
+            # when the entry is written - so the calling context is a plain per-request object now.
             buffer.write(f"{utils.tab(indent+2)}}}\n")
             buffer.write(f"{utils.tab(indent+1)}}}\n")
 
@@ -2195,7 +2194,7 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+1)}{{\n")
             buffer.write(f"{utils.tab(indent+2)}using(LogContext.PushProperty( \"Scope\", \"{versionedName}.{operation.name}\" ))\n")
             buffer.write(f"{utils.tab(indent+2)}{{\n")
-            buffer.write(f"{utils.tab(indent+3)}CallingContext ctx = CallingContext.PoolFromHttpContext( HttpContext, _logger );\n")
+            buffer.write(f"{utils.tab(indent+3)}CallingContext ctx = CallingContext.FromHttpContext( HttpContext, _logger );\n")
             buffer.write(f"{utils.tab(indent+3)}try\n")
             buffer.write(f"{utils.tab(indent+3)}{{\n")
             for http_param in http_operation.params.values():
@@ -2245,10 +2244,9 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+3)}{{\n")
             buffer.write(f"{utils.tab(indent+4)}return StatusCode(StatusCodes.Status500InternalServerError, new Error() {{ Status = Statuses.InternalError, MessageText = ex.Message, AdditionalInformation = ex.ToString()}} );\n")
             buffer.write(f"{utils.tab(indent+3)}}}\n")
-            buffer.write(f"{utils.tab(indent+3)}finally\n")
-            buffer.write(f"{utils.tab(indent+3)}{{\n")
-            buffer.write(f"{utils.tab(indent+4)}ctx.ReturnToPool();\n")
-            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            # No 'finally' releasing the context: it may outlive the request. A service can hand it
+            # to background work - the audit trail keeps a reference and reads the identity off it
+            # when the entry is written - so the calling context is a plain per-request object now.
             buffer.write(f"{utils.tab(indent+2)}}}\n")
             buffer.write(f"{utils.tab(indent+1)}}}\n")
 
