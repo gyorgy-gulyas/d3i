@@ -358,23 +358,30 @@ class DotnetEmitter:
                 inherit_names.append(inherit.getText())
         inherit_names.append( f"IEquatable<{name}>")
 
-        # collect members carrying a `validate` rule (inlined composite members + own members)
+        # collect members carrying a `validate` rule, and the members the walk has to step INTO
+        # (inlined composite members + own members). A member is stepped into only when its type
+        # really carries a rule, so a class of plain fields costs nothing.
         validate_members: List[hinted_base_element] = []
+        cascade_members: List[hinted_base_element] = []
         for base_composite in base_composites:
             for composite_member in base_composite.members:
                 if (getattr(composite_member, "validate_ast", None) != None):
                     validate_members.append(composite_member)
+                if (self.__typeHasValidate(composite_member.type, set())):
+                    cascade_members.append(composite_member)
         for own_member in members:
             if (getattr(own_member, "validate_ast", None) != None):
                 validate_members.append(own_member)
-        # does a non-composite base CLASS carry validate rules? then we override + chain base
+            if (self.__typeHasValidate(own_member.type, set())):
+                cascade_members.append(own_member)
+        # does a non-composite base CLASS validate? then we override its walk and chain base
         base_has_validate = False
         for inherit in inherits:
             base = Engine.get_referenced_element(element.parent, inherit)
             if (base != None and isinstance(base, composite) == False and self.__classHasValidate(base)):
                 base_has_validate = True
                 break
-        if (len(validate_members) > 0):
+        if (len(validate_members) > 0 or len(cascade_members) > 0):
             code.usings.add("PolyPersist")
             code.usings.add("PolyPersist.Net.Common")
             if (base_has_validate == False):
@@ -445,11 +452,10 @@ class DotnetEmitter:
         # Equal and HashCode
         buffer.write(self.dataClassEqualsAndHashCodeText(element, inherits, name, members, code, indent+1))
 
-        # Validation (IValidable) — only when some member carries a `validate` rule.
-        # If a base class also validates, override it and chain base.Validate first.
-        if (len(validate_members) > 0):
-            modifier = "override" if base_has_validate else "virtual"
-            buffer.write(self.dataClassValidateText(name, validate_members, code, modifier, base_has_validate, indent+1))
+        # Validation (IValidable) — when a member carries a `validate` rule, or holds something
+        # that does. If a base class also validates, override its walk and chain base first.
+        if (len(validate_members) > 0 or len(cascade_members) > 0):
+            buffer.write(self.dataClassValidateText(name, validate_members, cascade_members, code, base_has_validate, indent+1))
 
         if ( utils.isPublishedOn(element.getInterface(), "grpc" ) == True and isinstance(element,dto)):
             buffer.write(self.dtoGrpcMappingText(element, code, indent+1))
@@ -460,10 +466,24 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
 
-    def __classHasValidate(self, element) -> bool:
-        # True when the class (own members, inlined composites, or any base CLASS) validates
+    def __classHasValidate(self, element, seen: set = None) -> bool:
+        # True when the class carries validation at all: its own rules, the rules of an inlined
+        # composite, the rules of a base CLASS - or the rules of something it CONTAINS. The last
+        # one is what makes the value object self-validating: an order with a `quantity > 0` rule
+        # on its items validates, even though the order itself declares no rule of its own.
+        # `seen` guards the TYPE graph, so a value object that refers to itself terminates.
+        if (element == None):
+            return False
+        if (seen == None):
+            seen = set()
+        if (id(element) in seen):
+            return False
+        seen.add(id(element))
+
         for member in getattr(element, "members", []):
             if (getattr(member, "validate_ast", None) != None):
+                return True
+            if (self.__typeHasValidate(getattr(member, "type", None), seen)):
                 return True
         for inherit in getattr(element, "inherits", []):
             base = Engine.get_referenced_element(element.parent, inherit)
@@ -476,36 +496,111 @@ class DotnetEmitter:
                     for member in base_composite.members:
                         if (getattr(member, "validate_ast", None) != None):
                             return True
-            elif (self.__classHasValidate(base)):
+                        if (self.__typeHasValidate(getattr(member, "type", None), seen)):
+                            return True
+            elif (self.__classHasValidate(base, seen)):
                 return True
         return False
 
-    def dataClassValidateText(self, name: str, validate_members: List[hinted_base_element], code: dotnet_code, modifier: str, call_base: bool, indent: int = 1) -> str:
-        # Generates `bool Validate(IList<IValidationError> errors)` (PolyPersist.IValidable).
-        # Each rule becomes an `if (<violated>)` that records a readable error; the guard is
-        # the NEGATION of the rule folded into the operators (so `value > 0` reads `amount <= 0`,
-        # not `!(amount > 0)`) with bare field names and only the parentheses precedence needs.
-        # `modifier` is virtual/override; when overriding, base.Validate runs first.
+    def __typeHasValidate(self, member_type: type, seen: set) -> bool:
+        # Does a value of this type carry validation? A `ref` does not - it is an identity, not a
+        # nested object - and neither does a primitive. A list/map asks about what it holds.
+        if (member_type == None):
+            return False
+        if (member_type.kind == type.Kind.Reference):
+            return self.__classHasValidate(self.__validatableTarget(member_type), seen)
+        if (member_type.kind == type.Kind.List):
+            return self.__typeHasValidate(member_type.item_type, seen)
+        if (member_type.kind == type.Kind.Map):
+            return self.__typeHasValidate(member_type.value_type, seen)
+        return False
+
+    def __validatableTarget(self, member_type: type):
+        # The element a reference type points at, but only when it is one of the kinds that get a
+        # generated data class (and so a ValidateInto to walk into). A composite is inlined into
+        # its consumers and emitted as an interface, so there is nothing to call on it.
+        if (member_type == None or member_type.kind != type.Kind.Reference):
+            return None
+        referenced = Engine.get_referenced_element(member_type.parent, member_type.reference_name)
+        if (isinstance(referenced, (value_object, entity, dto, view, event))):
+            return referenced
+        return None
+
+    def dataClassValidateText(self, name: str, validate_members: List[hinted_base_element], cascade_members: List[hinted_base_element], code: dotnet_code, call_base: bool, indent: int = 1) -> str:
+        # Generates the validation of a data class in two parts.
+        #
+        # `Validate` is the contract (PolyPersist.IValidable) and the entry point: it starts the
+        # walk with an empty path. `ValidateInto` IS the walk - it records this object's own
+        # failures and then steps into whatever it holds, extending the path as it goes. The split
+        # is what lets an error say `items[1].quantity`: only the walk knows where it currently is,
+        # and only the entry point knows where the caller started.
+        #
+        # Inheritance declares `Validate` ONCE, on the topmost validating class; a derived class
+        # overrides the WALK, so the entry point stays a single, unambiguous method.
+        #
+        # Each rule becomes an `if (<violated>)`: the guard is the NEGATION of the rule folded into
+        # the operators (so `value > 0` reads `amount <= 0`, not `!(amount > 0)`) with bare field
+        # names and only the parentheses precedence needs.
         buffer = io.StringIO()
         buffer.write(f"\n")
         buffer.write(f"{utils.tab(indent)}#region Validation\n")
-        buffer.write(f"{utils.tab(indent)}public {modifier} bool Validate( IList<IValidationError> errors )\n")
+        if (call_base == False):
+            buffer.write(f"{utils.tab(indent)}public virtual bool Validate( IList<IValidationError> errors )\n")
+            buffer.write(f"{utils.tab(indent)}{{\n")
+            buffer.write(f"{utils.tab(indent+1)}int before = errors.Count;\n")
+            buffer.write(f"{utils.tab(indent+1)}ValidateInto( errors, string.Empty );\n")
+            buffer.write(f"{utils.tab(indent+1)}return errors.Count == before;\n")
+            buffer.write(f"{utils.tab(indent)}}}\n")
+            buffer.write(f"\n")
+
+        modifier = "override" if call_base else "virtual"
+        buffer.write(f"{utils.tab(indent)}public {modifier} void ValidateInto( IList<IValidationError> errors, string pathPrefix )\n")
         buffer.write(f"{utils.tab(indent)}{{\n")
-        buffer.write(f"{utils.tab(indent+1)}int before = errors.Count;\n")
+        written = False
         if (call_base):
-            buffer.write(f"{utils.tab(indent+1)}base.Validate( errors );\n")
+            buffer.write(f"{utils.tab(indent+1)}base.ValidateInto( errors, pathPrefix );\n")
+            written = True
+
         for member in validate_members:
             violated = self.__validateViolation(member.validate_ast, member, code)
             if (member.find_decorator("optional") != None):
                 violated = f"{member.name} != null && ({violated})"
             message = self.__validateRuleText(member.validate_ast).replace("\\", "\\\\").replace("\"", "\\\"")
-            buffer.write(f"\n")
+            if (written):
+                buffer.write(f"\n")
             buffer.write(f"{utils.tab(indent+1)}if ({violated})\n")
-            buffer.write(f"{utils.tab(indent+2)}errors.Add( new ValidationError {{ TypeOfEntity = \"{name}\", MemberOfEntity = \"{member.name}\", ErrorText = \"{member.name} must satisfy: {message}\" }} );\n")
-        buffer.write(f"\n")
-        buffer.write(f"{utils.tab(indent+1)}return errors.Count == before;\n")
+            buffer.write(f"{utils.tab(indent+2)}errors.Add( new ValidationError {{ TypeOfEntity = \"{name}\", MemberOfEntity = \"{member.name}\", Path = pathPrefix + \"{member.name}\", ErrorText = \"{member.name} must satisfy: {message}\" }} );\n")
+            written = True
+
+        for member in cascade_members:
+            if (written):
+                buffer.write(f"\n")
+            buffer.write(self.dataClassMemberValidateIntoText(member, code, indent+1))
+            written = True
+
         buffer.write(f"{utils.tab(indent)}}}\n")
         buffer.write(f"{utils.tab(indent)}#endregion Validation\n")
+        return buffer.getvalue()
+
+    def dataClassMemberValidateIntoText(self, member: hinted_base_element, code: dotnet_code, indent: int) -> str:
+        # The walk into one member. The path segment is the member's own name, so a UI reading
+        # `items[1].quantity` can bind straight to the control that is wrong.
+        buffer = io.StringIO()
+        member_type: type = member.type
+        if (member_type.kind == type.Kind.Reference):
+            buffer.write(f"{utils.tab(indent)}{member.name}?.ValidateInto( errors, pathPrefix + \"{member.name}.\" );\n")
+        elif (member_type.kind == type.Kind.List):
+            buffer.write(f"{utils.tab(indent)}if ({member.name} != null)\n")
+            buffer.write(f"{utils.tab(indent)}{{\n")
+            buffer.write(f"{utils.tab(indent+1)}for (int index = 0; index < {member.name}.Count; index++)\n")
+            buffer.write(f"{utils.tab(indent+2)}{member.name}[index]?.ValidateInto( errors, $\"{{pathPrefix}}{member.name}[{{index}}].\" );\n")
+            buffer.write(f"{utils.tab(indent)}}}\n")
+        elif (member_type.kind == type.Kind.Map):
+            buffer.write(f"{utils.tab(indent)}if ({member.name} != null)\n")
+            buffer.write(f"{utils.tab(indent)}{{\n")
+            buffer.write(f"{utils.tab(indent+1)}foreach (var pair in {member.name})\n")
+            buffer.write(f"{utils.tab(indent+2)}pair.Value?.ValidateInto( errors, $\"{{pathPrefix}}{member.name}[{{pair.Key}}].\" );\n")
+            buffer.write(f"{utils.tab(indent)}}}\n")
         return buffer.getvalue()
 
     # C# for "the rule is VIOLATED" (negation folded into the operators)
@@ -1440,81 +1535,87 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+5)}var grpc_response = await _client.{operation.name}Async( request, new CallOptions(GrpClient.GetMetadata( \"{domain.name}.{context.name}.{versionedName}.{operation.name}\" ))).ResponseAsync;\n")
             buffer.write("\n")
             buffer.write(f"{utils.tab(indent+5)}// fill response\n")
-            buffer.write(f"{utils.tab(indent+5)}switch( grpc_response.ResultCase )\n")
-            buffer.write(f"{utils.tab(indent+5)}{{\n")
-            # sucess
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+6)}case {versionedName}_{operation.name}Response.ResultOneofCase.Value:\n")
-                if( operation.operation_return.type.kind == type.Kind.List or operation.operation_return.type.kind == type.Kind.Map ):
-                    buffer.write(f"{utils.tab(indent+7)}{self.typeText( operation.operation_return.type, code, fullName=True)} value = new();\n")
-                    buffer.write(f"{utils.tab(indent+7)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.Value.", indent=0)}")
-                else:
-                    buffer.write(f"{utils.tab(indent+7)}{self.typeText( operation.operation_return.type, code, fullName=True)} value;\n")
-                    buffer.write(f"{utils.tab(indent+7)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.", indent=0)}")
-                buffer.write(f"{utils.tab(indent+7)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Success( value );\n\n")
-            else:
-                buffer.write(f"{utils.tab(indent+6)}case {versionedName}_{operation.name}Response.ResultOneofCase.Success:\n")
-                buffer.write(f"{utils.tab(indent+7)}return Response.Success();\n\n")
+            buffer.write(self.grpcClientResponseText(versionedName, operation, code, indent+5))
 
-            # error
-            buffer.write(f"{utils.tab(indent+6)}case {versionedName}_{operation.name}Response.ResultOneofCase.Error:\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+7)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+7)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+8)}Status = grpc_response.Error.Status.FromGrpc(),\n")
-            buffer.write(f"{utils.tab(indent+8)}MessageText = grpc_response.Error.MessageText,\n")
-            buffer.write(f"{utils.tab(indent+8)}AdditionalInformation = grpc_response.Error.AdditionalInformation,\n")
-            buffer.write(f"{utils.tab(indent+7)}}} );\n\n")
-
-            # None result and default
-            buffer.write(f"{utils.tab(indent+6)}case {versionedName}_{operation.name}Response.ResultOneofCase.None:\n")
-            buffer.write(f"{utils.tab(indent+6)}default:\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+7)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+7)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+8)}Status = grpc_response.Error.Status.FromGrpc(),\n")
-            buffer.write(f"{utils.tab(indent+8)}MessageText = \"Not handled reponse in GRPC client when calling '{versionedName}_{operation.name}'\",\n")
-            buffer.write(f"{utils.tab(indent+7)}}} );\n")
-
-            buffer.write(f"{utils.tab(indent+5)}}}\n") # switch
             buffer.write(f"{utils.tab(indent+4)}}}\n") # try
             buffer.write(f"{utils.tab(indent+4)}catch (RpcException ex)\n")
             buffer.write(f"{utils.tab(indent+4)}{{\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+6)}Status = ex.StatusCode.FromGrpc(),\n")
-            buffer.write(f"{utils.tab(indent+6)}MessageText = ex.Message,\n")
-            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = ex.ToString(),\n")
-            buffer.write(f"{utils.tab(indent+5)}}} );\n")
+            buffer.write(self.clientFailureText(operation, code, "ex.StatusCode.FromGrpc()", indent+5))
             buffer.write(f"{utils.tab(indent+4)}}}\n") # catch RpcException
             buffer.write(f"{utils.tab(indent+4)}catch (Exception ex)\n")
             buffer.write(f"{utils.tab(indent+4)}{{\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+6)}Status = Statuses.InternalError,\n")
-            buffer.write(f"{utils.tab(indent+6)}MessageText = ex.Message,\n")
-            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = ex.ToString(),\n")
-            buffer.write(f"{utils.tab(indent+5)}}} );\n")
+            buffer.write(self.clientFailureText(operation, code, "Statuses.InternalError", indent+5))
             buffer.write(f"{utils.tab(indent+4)}}}\n") # catch Exception
             buffer.write(f"{utils.tab(indent+3)}}}\n") # function
             buffer.write(f"\n")
 
+        buffer.write(self.fromGrpcErrorsText(code, indent+3))
         buffer.write(f"{utils.tab(indent+2)}}}\n")
         buffer.write(f"{utils.tab(indent+1)}}}\n")
         buffer.write(f"{utils.tab(indent)}}}\n")
 
         code.content += buffer.getvalue()
         return code
+
+    def fromGrpcErrorsText(self, code: dotnet_code, indent: int) -> str:
+        # The errors come home as protobuf messages; the caller only ever sees ServiceKit errors.
+        # An array, because Response.Failure takes `params Error[]`.
+        code.usings.add("System.Linq")
+        buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}private static ServiceKit.Net.Error[] _FromGrpcErrors( IEnumerable<ServiceKit.Protos.Error> errors )\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}return errors.Select( error => new ServiceKit.Net.Error() {{\n")
+        buffer.write(f"{utils.tab(indent+2)}Path = error.Path,\n")
+        buffer.write(f"{utils.tab(indent+2)}MessageText = error.MessageText,\n")
+        buffer.write(f"{utils.tab(indent+2)}AdditionalInformation = error.AdditionalInformation,\n")
+        buffer.write(f"{utils.tab(indent+1)}}} ).ToArray();\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        return buffer.getvalue()
+
+    def grpcClientResponseText(self, versionedName: str, operation: operation, code: dotnet_code, indent: int) -> str:
+        # The answer is read from the STATUS, not from which branch of a oneof happens to be set:
+        # the status is the one thing the wire is guaranteed to carry, and it is now the same fact
+        # on both sides. The value keeps its oneof only so "succeeded with no value" stays
+        # distinguishable from "succeeded with the default".
+        buffer = io.StringIO()
+        returns = operation.operation_return != None
+        responseType = f"Response<{self.typeText(operation.operation_return.type, code, fullName=True)}>" if returns else "Response"
+
+        buffer.write(f"{utils.tab(indent)}if( grpc_response.Status != ServiceKit.Protos.Statuses.Ok )\n")
+        buffer.write(f"{utils.tab(indent+1)}return {responseType}.Failure( grpc_response.Status.FromGrpc(), _FromGrpcErrors( grpc_response.Errors ) );\n")
+        buffer.write(f"\n")
+        if (returns == False):
+            buffer.write(f"{utils.tab(indent)}return Response.Success();\n")
+            return buffer.getvalue()
+
+        buffer.write(f"{utils.tab(indent)}if( grpc_response.ResultCase == {versionedName}_{operation.name}Response.ResultOneofCase.Value )\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        if( operation.operation_return.type.kind == type.Kind.List or operation.operation_return.type.kind == type.Kind.Map ):
+            buffer.write(f"{utils.tab(indent+1)}{self.typeText( operation.operation_return.type, code, fullName=True)} value = new();\n")
+            buffer.write(f"{utils.tab(indent+1)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.Value.", indent=0)}")
+        else:
+            buffer.write(f"{utils.tab(indent+1)}{self.typeText( operation.operation_return.type, code, fullName=True)} value;\n")
+            buffer.write(f"{utils.tab(indent+1)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.", indent=0)}")
+        buffer.write(f"{utils.tab(indent+1)}return {responseType}.Success( value );\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}return {responseType}.Failure( Statuses.NotImplemented, \"Not handled reponse in GRPC client when calling '{versionedName}_{operation.name}'\" );\n")
+        return buffer.getvalue()
+
+    def clientFailureText(self, operation: operation, code: dotnet_code, statusExpression: str, indent: int) -> str:
+        # One failure the caller can act on: the status of the answer, and the single thing that
+        # went wrong on the way. The transport never produces a field-level list.
+        buffer = io.StringIO()
+        if (operation.operation_return != None):
+            responseType = f"Response<{self.typeText(operation.operation_return.type, code, fullName=True)}>"
+        else:
+            responseType = "Response"
+        buffer.write(f"{utils.tab(indent)}return {responseType}.Failure( {statusExpression}, new ServiceKit.Net.Error() {{\n")
+        buffer.write(f"{utils.tab(indent+1)}MessageText = ex.Message,\n")
+        buffer.write(f"{utils.tab(indent+1)}AdditionalInformation = ex.ToString(),\n")
+        buffer.write(f"{utils.tab(indent)}}} );\n")
+        return buffer.getvalue()
 
     def interfaceGrpcInternalClientText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
@@ -1580,79 +1681,75 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+3)}var grpc_response = await _client.{operation.name}Async( request, new CallOptions(ctx.ToGrpcMetadata( \"{domain.name}.{context.name}{versionedName}\", \"{operation.name}\" ))).ResponseAsync;\n")
             buffer.write("\n")
             buffer.write(f"{utils.tab(indent+3)}// fill response\n")
-            buffer.write(f"{utils.tab(indent+3)}switch( grpc_response.ResultCase )\n")
-            buffer.write(f"{utils.tab(indent+3)}{{\n")
-            # sucess
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+4)}case {versionedName}_{operation.name}Response.ResultOneofCase.Value:\n")
-                if( operation.operation_return.type.kind == type.Kind.List or operation.operation_return.type.kind == type.Kind.Map ):
-                    buffer.write(f"{utils.tab(indent+5)}{self.typeText( operation.operation_return.type, code, fullName=True)} value = new();\n")
-                    buffer.write(f"{utils.tab(indent+5)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.Value.", indent=0)}")
-                else:
-                    buffer.write(f"{utils.tab(indent+5)}{self.typeText( operation.operation_return.type, code, fullName=True)} value;\n")
-                    buffer.write(f"{utils.tab(indent+5)}{self.dataClassMemberFromGrpcMappingText( "value", operation.operation_return.type, code, dst="", src="grpc_response.", indent=0)}")
-                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Success( value );\n\n")
-            else:
-                buffer.write(f"{utils.tab(indent+4)}case {versionedName}_{operation.name}Response.ResultOneofCase.Success:\n")
-                buffer.write(f"{utils.tab(indent+5)}return Response.Success();\n\n")
+            buffer.write(self.grpcClientResponseText(versionedName, operation, code, indent+3))
 
-            # error
-            buffer.write(f"{utils.tab(indent+4)}case {versionedName}_{operation.name}Response.ResultOneofCase.Error:\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+6)}Status = grpc_response.Error.Status.FromGrpc(),\n")
-            buffer.write(f"{utils.tab(indent+6)}MessageText = grpc_response.Error.MessageText,\n")
-            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = grpc_response.Error.AdditionalInformation,\n")
-            buffer.write(f"{utils.tab(indent+5)}}} );\n\n")
-
-            # None result and default
-            buffer.write(f"{utils.tab(indent+4)}case {versionedName}_{operation.name}Response.ResultOneofCase.None:\n")
-            buffer.write(f"{utils.tab(indent+4)}default:\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+6)}Status = grpc_response.Error.Status.FromGrpc(),\n")
-            buffer.write(f"{utils.tab(indent+6)}MessageText = \"Not handled reponse in GRPC client when calling '{versionedName}_{operation.name}'\",\n")
-            buffer.write(f"{utils.tab(indent+5)}}} );\n")
-
-            buffer.write(f"{utils.tab(indent+3)}}}\n") # switch
             buffer.write(f"{utils.tab(indent+2)}}}\n") # try
             buffer.write(f"{utils.tab(indent+2)}catch (RpcException ex)\n")
             buffer.write(f"{utils.tab(indent+2)}{{\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+3)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+3)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+4)}Status = ex.StatusCode.FromGrpc(),\n")
-            buffer.write(f"{utils.tab(indent+4)}MessageText = ex.Message,\n")
-            buffer.write(f"{utils.tab(indent+4)}AdditionalInformation = ex.ToString(),\n")
-            buffer.write(f"{utils.tab(indent+3)}}} );\n")
+            buffer.write(self.clientFailureText(operation, code, "ex.StatusCode.FromGrpc()", indent+3))
             buffer.write(f"{utils.tab(indent+2)}}}\n") # catch RpcException
             buffer.write(f"{utils.tab(indent+2)}catch (Exception ex)\n")
             buffer.write(f"{utils.tab(indent+2)}{{\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+3)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+3)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+4)}Status = Statuses.InternalError,\n")
-            buffer.write(f"{utils.tab(indent+4)}MessageText = ex.Message,\n")
-            buffer.write(f"{utils.tab(indent+4)}AdditionalInformation = ex.ToString(),\n")
-            buffer.write(f"{utils.tab(indent+3)}}} );\n")
+            buffer.write(self.clientFailureText(operation, code, "Statuses.InternalError", indent+3))
             buffer.write(f"{utils.tab(indent+2)}}}\n") # catch Exception
             buffer.write(f"{utils.tab(indent+1)}}}\n") # function
             buffer.write(f"\n")
 
+        buffer.write(self.fromGrpcErrorsText(code, indent+1))
         buffer.write(f"{utils.tab(indent)}}}\n") # classs
 
         code.content += buffer.getvalue()
         return code
+
+    def controllerMapFailureText(self, code: dotnet_code, indent: int) -> str:
+        # A controller is the only place that sees both worlds: PolyPersist raises exceptions, the
+        # wire carries a status and a list of errors. Nobody owned that translation before, so a
+        # single bad field arrived at the caller as a 500 InternalError - a server fault, when in
+        # truth the request was wrong and the caller could have fixed it. The types are written out
+        # in full so a model may name something `ValidationError` without colliding here.
+        code.usings.add("System.Linq")
+        buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}private static (Statuses Status, IList<ServiceKit.Net.Error> Errors) _MapFailure( Exception ex )\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}// a broken field is the caller's to fix, and every rule that failed is worth reporting\n")
+        buffer.write(f"{utils.tab(indent+1)}if( ex is PolyPersist.Net.Common.ValidationExeption validationExeption )\n")
+        buffer.write(f"{utils.tab(indent+2)}return (Statuses.BadRequest, validationExeption.ValidationErrors.Select( validationError => new ServiceKit.Net.Error() {{\n")
+        buffer.write(f"{utils.tab(indent+3)}Path = validationError.Path,\n")
+        buffer.write(f"{utils.tab(indent+3)}MessageText = validationError.ErrorText,\n")
+        buffer.write(f"{utils.tab(indent+3)}AdditionalInformation = $\"{{validationError.TypeOfEntity}}.{{validationError.MemberOfEntity}}\",\n")
+        buffer.write(f"{utils.tab(indent+2)}}} ).ToList<ServiceKit.Net.Error>());\n")
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent+1)}if( ex is PolyPersist.Net.Common.NotFoundException )\n")
+        buffer.write(f"{utils.tab(indent+2)}return (Statuses.NotFound, new List<ServiceKit.Net.Error>() {{ new() {{ MessageText = ex.Message }} }});\n")
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent+1)}if( ex is PolyPersist.Net.Common.DuplicateKeyException\n")
+        buffer.write(f"{utils.tab(indent+2)}|| ex is PolyPersist.Net.Common.ConcurrencyConflictException\n")
+        buffer.write(f"{utils.tab(indent+2)}|| ex is PolyPersist.Net.Common.InvalidRequestException )\n")
+        buffer.write(f"{utils.tab(indent+2)}return (Statuses.BadRequest, new List<ServiceKit.Net.Error>() {{ new() {{ MessageText = ex.Message }} }});\n")
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent+1)}// anything else really is ours: the caller can do nothing about it, so say so plainly\n")
+        buffer.write(f"{utils.tab(indent+1)}return (Statuses.InternalError, new List<ServiceKit.Net.Error>() {{ new() {{ MessageText = ex.Message, AdditionalInformation = ex.ToString() }} }});\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        return buffer.getvalue()
+
+    def grpcFailureText(self, responseType: str, operationName: str, indent: int) -> str:
+        # Every operation has its own response message type, so the failure is built per operation.
+        # One place to fill in the status and the whole error list, instead of three copies each.
+        buffer = io.StringIO()
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}private static {responseType} _GrpcFailure_{operationName}( Statuses status, IEnumerable<ServiceKit.Net.Error> errors )\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}var failure = new {responseType}() {{ Status = status.ToGrpc() }};\n")
+        buffer.write(f"{utils.tab(indent+1)}foreach( var error in errors )\n")
+        buffer.write(f"{utils.tab(indent+2)}failure.Errors.Add( new ServiceKit.Protos.Error() {{\n")
+        buffer.write(f"{utils.tab(indent+3)}Path = error.Path ?? string.Empty,\n")
+        buffer.write(f"{utils.tab(indent+3)}MessageText = error.MessageText ?? string.Empty,\n")
+        buffer.write(f"{utils.tab(indent+3)}AdditionalInformation = error.AdditionalInformation ?? string.Empty,\n")
+        buffer.write(f"{utils.tab(indent+2)}}} );\n")
+        buffer.write(f"{utils.tab(indent+1)}return failure;\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        return buffer.getvalue()
 
     def interfaceGrpcControllerText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
@@ -1686,6 +1783,8 @@ class DotnetEmitter:
         buffer.write(f"{utils.tab(indent+2)}_service = service; \n")
         buffer.write(f"{utils.tab(indent+1)}}}\n")
 
+        buffer.write(self.controllerMapFailureText(code, indent+1))
+
         # Add functions based on operations
         for operation in interface.operations:
             buffer.write(f"\n")
@@ -1712,12 +1811,12 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+4)}var response = await _service.{operation.name}( ctx {", " + ", ".join(params) if params else ""} );\n")
             buffer.write(f"\n")
             if ( operation.operation_return != None ):
-                
+
                 buffer.write(f"{utils.tab(indent+4)}if( response.IsSuccess() == true )\n")
                 buffer.write(f"{utils.tab(indent+4)}{{\n")
                 buffer.write(f"{utils.tab(indent+5)}if( response.HasValue() == true )\n")
                 buffer.write(f"{utils.tab(indent+5)}{{\n")
-                buffer.write(f"{utils.tab(indent+6)}var result = new {versionedName}_{operation.name}Response();\n")
+                buffer.write(f"{utils.tab(indent+6)}var result = new {versionedName}_{operation.name}Response() {{ Status = ServiceKit.Protos.Statuses.Ok }};\n")
                 if(operation.operation_return.type.kind == type.Kind.List or operation.operation_return.type.kind == type.Kind.Map ):
                     buffer.write(f"{utils.tab(indent+6)}{self.dataClassMemberToGrpcMappingText(f"Value", operation.operation_return.type, code, dst="result.Value.", src="response.", indent=0)}")
                 else:
@@ -1726,59 +1825,37 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent+5)}}}\n")
                 buffer.write(f"{utils.tab(indent+5)}else\n")
                 buffer.write(f"{utils.tab(indent+5)}{{\n")
-                buffer.write(f"{utils.tab(indent+6)}return new {versionedName}_{operation.name}Response {{\n")
-                buffer.write(f"{utils.tab(indent+7)}Error = new () {{\n")
-                buffer.write(f"{utils.tab(indent+8)}Status = ServiceKit.Protos.Statuses.NotImplemented,\n")
-                buffer.write(f"{utils.tab(indent+8)}MessageText = \"Not handled reponse in GRPC Controller when calling '{versionedName}.{operation.name}'\",\n")
-                buffer.write(f"{utils.tab(indent+7)}}}\n")
-                buffer.write(f"{utils.tab(indent+6)}}};\n")
+                buffer.write(f"{utils.tab(indent+6)}return _GrpcFailure_{operation.name}( Statuses.NotImplemented, new [] {{ new ServiceKit.Net.Error() {{ MessageText = \"Not handled reponse in GRPC Controller when calling '{versionedName}.{operation.name}'\" }} }} );\n")
                 buffer.write(f"{utils.tab(indent+5)}}}\n")
                 buffer.write(f"{utils.tab(indent+4)}}}\n")
                 buffer.write(f"{utils.tab(indent+4)}else\n")
                 buffer.write(f"{utils.tab(indent+4)}{{\n")
-                buffer.write(f"{utils.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
-                buffer.write(f"{utils.tab(indent+6)}Error = new () {{\n")
-                buffer.write(f"{utils.tab(indent+7)}Status = response.Error.Status.ToGrpc(),\n")
-                buffer.write(f"{utils.tab(indent+7)}MessageText = response.Error.MessageText,\n")
-                buffer.write(f"{utils.tab(indent+7)}AdditionalInformation = response.Error.AdditionalInformation\n")
-                buffer.write(f"{utils.tab(indent+6)}}}\n")
-                buffer.write(f"{utils.tab(indent+5)}}};\n")
+                buffer.write(f"{utils.tab(indent+5)}return _GrpcFailure_{operation.name}( response.Status, response.Errors );\n")
                 buffer.write(f"{utils.tab(indent+4)}}}\n")
             else:
                 buffer.write(f"{utils.tab(indent+4)}if( response.IsSuccess() == true )\n")
                 buffer.write(f"{utils.tab(indent+4)}{{\n")
-                buffer.write(f"{utils.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
-                buffer.write(f"{utils.tab(indent+6)}Success = new Empty()\n")
-                buffer.write(f"{utils.tab(indent+5)}}};\n")
+                buffer.write(f"{utils.tab(indent+5)}return new {versionedName}_{operation.name}Response() {{ Status = ServiceKit.Protos.Statuses.Ok }};\n")
                 buffer.write(f"{utils.tab(indent+4)}}}\n")
                 buffer.write(f"{utils.tab(indent+4)}else\n")
                 buffer.write(f"{utils.tab(indent+4)}{{\n")
-                buffer.write(f"{utils.tab(indent+5)}return new {versionedName}_{operation.name}Response {{\n")
-                buffer.write(f"{utils.tab(indent+6)}Error = new () {{\n")
-                buffer.write(f"{utils.tab(indent+7)}Status = response.Error.Status.ToGrpc(),\n")
-                buffer.write(f"{utils.tab(indent+7)}MessageText = response.Error.MessageText,\n")
-                buffer.write(f"{utils.tab(indent+7)}AdditionalInformation = response.Error.AdditionalInformation\n")
-                buffer.write(f"{utils.tab(indent+6)}}}\n")
-                buffer.write(f"{utils.tab(indent+5)}}};\n")
+                buffer.write(f"{utils.tab(indent+5)}return _GrpcFailure_{operation.name}( response.Status, response.Errors );\n")
                 buffer.write(f"{utils.tab(indent+4)}}}\n")
                 buffer.write(f"{utils.tab(indent+4)}\n")
 
             buffer.write(f"{utils.tab(indent+3)}}}\n")
             buffer.write(f"{utils.tab(indent+3)}catch(Exception ex)\n")
             buffer.write(f"{utils.tab(indent+3)}{{\n")
-            buffer.write(f"{utils.tab(indent+4)}return new {versionedName}_{operation.name}Response {{\n")
-            buffer.write(f"{utils.tab(indent+5)}Error = new () {{\n")
-            buffer.write(f"{utils.tab(indent+6)}Status = ServiceKit.Protos.Statuses.InternalError,\n")
-            buffer.write(f"{utils.tab(indent+6)}MessageText = ex.Message,\n")
-            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = ex.ToString()\n")
-            buffer.write(f"{utils.tab(indent+5)}}}\n")
-            buffer.write(f"{utils.tab(indent+4)}}};\n")
+            buffer.write(f"{utils.tab(indent+4)}var failure = _MapFailure( ex );\n")
+            buffer.write(f"{utils.tab(indent+4)}return _GrpcFailure_{operation.name}( failure.Status, failure.Errors );\n")
             buffer.write(f"{utils.tab(indent+3)}}}\n")
             # No 'finally' releasing the context: it may outlive the request. A service can hand it
             # to background work - the audit trail keeps a reference and reads the identity off it
             # when the entry is written - so the calling context is a plain per-request object now.
             buffer.write(f"{utils.tab(indent+2)}}}\n")
             buffer.write(f"{utils.tab(indent+1)}}}\n")
+
+            buffer.write(self.grpcFailureText(f"{versionedName}_{operation.name}Response", operation.name, indent+1))
 
         # end of class
         buffer.write(f"{utils.tab(indent)}}}\n")
@@ -1897,49 +1974,15 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent+4)}return Response.Success();\n")
                 pass
             buffer.write(f"{utils.tab(indent+3)}}}\n")
-            buffer.write(f"{utils.tab(indent+3)}else if( response.Content != null )\n")
-            buffer.write(f"{utils.tab(indent+3)}{{\n")
-            buffer.write(f"{utils.tab(indent+4)}var error = await response.Content.ReadFromJsonAsync<Error>();\n")
-            if( operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+4)}return Response<{self.typeText( operation.operation_return.type, code, fullName=True)}>.Failure( error );\n")
-            else:
-                buffer.write(f"{utils.tab(indent+4)}return Response.Failure( error );\n")
-            buffer.write(f"{utils.tab(indent+3)}}}\n")
-            buffer.write(f"{utils.tab(indent+3)}else\n")
-            buffer.write(f"{utils.tab(indent+3)}{{\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+4)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+4)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+5)}Status = response.StatusCode.FromHttp(),\n")
-            buffer.write(f"{utils.tab(indent+5)}MessageText = \"Not handled reponse in REST client when calling '{versionedName}_{operation.name}'\",\n")
-            buffer.write(f"{utils.tab(indent+4)}}} );\n")
-            buffer.write(f"{utils.tab(indent+3)}}}\n")
+            buffer.write(self.restClientFailureText(versionedName, operation, code, indent+3))
             buffer.write(f"{utils.tab(indent+2)}}}\n") # try
             buffer.write(f"{utils.tab(indent+2)}catch (HttpRequestException ex)\n")
             buffer.write(f"{utils.tab(indent+2)}{{\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+3)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+3)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+4)}Status = ex.StatusCode.HasValue ? ex.StatusCode.Value.FromHttp() : Statuses.InternalError,\n")
-            buffer.write(f"{utils.tab(indent+4)}MessageText = ex.Message,\n")
-            buffer.write(f"{utils.tab(indent+4)}AdditionalInformation = ex.ToString(),\n")
-            buffer.write(f"{utils.tab(indent+3)}}} );\n")
-            buffer.write(f"{utils.tab(indent+2)}}}\n") # catch RpcException
+            buffer.write(self.clientFailureText(operation, code, "ex.StatusCode.HasValue ? ex.StatusCode.Value.FromHttp() : Statuses.InternalError", indent+3))
+            buffer.write(f"{utils.tab(indent+2)}}}\n") # catch HttpRequestException
             buffer.write(f"{utils.tab(indent+2)}catch (Exception ex)\n")
             buffer.write(f"{utils.tab(indent+2)}{{\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+3)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+3)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+4)}Status = Statuses.InternalError,\n")
-            buffer.write(f"{utils.tab(indent+4)}MessageText = ex.Message,\n")
-            buffer.write(f"{utils.tab(indent+4)}AdditionalInformation = ex.ToString(),\n")
-            buffer.write(f"{utils.tab(indent+3)}}} );\n")
+            buffer.write(self.clientFailureText(operation, code, "Statuses.InternalError", indent+3))
             buffer.write(f"{utils.tab(indent+2)}}}\n") # catch Exception
             buffer.write(f"{utils.tab(indent+1)}}}\n") # function
             buffer.write(f"\n")
@@ -1948,6 +1991,26 @@ class DotnetEmitter:
 
         code.content += buffer.getvalue()
         return code
+
+    def restClientFailureText(self, versionedName: str, operation: operation, code: dotnet_code, indent: int) -> str:
+        # The body of a failed answer is a LIST of errors now: the HTTP status code already carries
+        # the status, so the body is free to say every single thing that is wrong at once.
+        code.usings.add("System.Net.Http.Json")
+        buffer = io.StringIO()
+        if (operation.operation_return != None):
+            responseType = f"Response<{self.typeText(operation.operation_return.type, code, fullName=True)}>"
+        else:
+            responseType = "Response"
+        buffer.write(f"{utils.tab(indent)}else if( response.Content != null )\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}var errors = await response.Content.ReadFromJsonAsync<List<ServiceKit.Net.Error>>();\n")
+        buffer.write(f"{utils.tab(indent+1)}return {responseType}.Failure( response.StatusCode.FromHttp(), errors?.ToArray() ?? Array.Empty<ServiceKit.Net.Error>() );\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        buffer.write(f"{utils.tab(indent)}else\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}return {responseType}.Failure( response.StatusCode.FromHttp(), \"Not handled reponse in REST client when calling '{versionedName}_{operation.name}'\" );\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        return buffer.getvalue()
 
     def interfaceRestPublicClientText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
@@ -2051,49 +2114,15 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent+6)}return Response.Success();\n")
                 pass
             buffer.write(f"{utils.tab(indent+5)}}}\n")
-            buffer.write(f"{utils.tab(indent+5)}else if( response.Content != null )\n")
-            buffer.write(f"{utils.tab(indent+5)}{{\n")
-            buffer.write(f"{utils.tab(indent+6)}var error = await response.Content.ReadFromJsonAsync<Error>();\n")
-            if( operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+6)}return Response<{self.typeText( operation.operation_return.type, code, fullName=True)}>.Failure( error );\n")
-            else:
-                buffer.write(f"{utils.tab(indent+6)}return Response.Failure( error );\n")
-            buffer.write(f"{utils.tab(indent+5)}}}\n")
-            buffer.write(f"{utils.tab(indent+5)}else\n")
-            buffer.write(f"{utils.tab(indent+5)}{{\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+6)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+6)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+7)}Status = response.StatusCode.FromHttp(),\n")
-            buffer.write(f"{utils.tab(indent+7)}MessageText = \"Not handled reponse in REST client when calling '{versionedName}_{operation.name}'\",\n")
-            buffer.write(f"{utils.tab(indent+6)}}} );\n")
-            buffer.write(f"{utils.tab(indent+5)}}}\n")
+            buffer.write(self.restClientFailureText(versionedName, operation, code, indent+5))
             buffer.write(f"{utils.tab(indent+4)}}}\n") # try
             buffer.write(f"{utils.tab(indent+4)}catch (HttpRequestException ex)\n")
             buffer.write(f"{utils.tab(indent+4)}{{\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+6)}Status = ex.StatusCode.HasValue ? ex.StatusCode.Value.FromHttp() : Statuses.InternalError,\n")
-            buffer.write(f"{utils.tab(indent+6)}MessageText = ex.Message,\n")
-            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = ex.ToString(),\n")
-            buffer.write(f"{utils.tab(indent+5)}}} );\n")
-            buffer.write(f"{utils.tab(indent+4)}}}\n") # catch RpcException
+            buffer.write(self.clientFailureText(operation, code, "ex.StatusCode.HasValue ? ex.StatusCode.Value.FromHttp() : Statuses.InternalError", indent+5))
+            buffer.write(f"{utils.tab(indent+4)}}}\n") # catch HttpRequestException
             buffer.write(f"{utils.tab(indent+4)}catch (Exception ex)\n")
             buffer.write(f"{utils.tab(indent+4)}{{\n")
-            if (operation.operation_return != None ):
-                buffer.write(f"{utils.tab(indent+5)}return Response<{self.typeText(operation.operation_return.type, code,fullName=True)}>.Failure( ")
-            else:
-                buffer.write(f"{utils.tab(indent+5)}return Response.Failure( ")
-            buffer.write(f"new ServiceKit.Net.Error() {{\n")
-            buffer.write(f"{utils.tab(indent+6)}Status = Statuses.InternalError,\n")
-            buffer.write(f"{utils.tab(indent+6)}MessageText = ex.Message,\n")
-            buffer.write(f"{utils.tab(indent+6)}AdditionalInformation = ex.ToString(),\n")
-            buffer.write(f"{utils.tab(indent+5)}}} );\n")
+            buffer.write(self.clientFailureText(operation, code, "Statuses.InternalError", indent+5))
             buffer.write(f"{utils.tab(indent+4)}}}\n") # catch Exception
             buffer.write(f"{utils.tab(indent+3)}}}\n") # function
             buffer.write(f"\n")
@@ -2145,11 +2174,11 @@ class DotnetEmitter:
         buffer.write(f"{utils.tab(indent+2)}_service = service; \n")
         buffer.write(f"{utils.tab(indent+1)}}}\n")
 
+        buffer.write(self.controllerMapFailureText(code, indent+1))
+
         # Add functions based on operations
         for operation in interface.operations:
 
-            if(operation.name=="updateProject"):
-                pass
             buffer.write(f"\n")
             buffer.write(self.documentLines(operation, indent+1))
             http_operation:rest_operation = rest_operation(operation)
@@ -2168,12 +2197,15 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status200OK, \"{utils.document_lines_to_one(operation.operation_return)}\", typeof({self.typeText( operation.operation_return.type, code, fullName=True )}) )]\n")
             else:
                 buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status200OK, \"Ok\" )]\n")
-            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status400BadRequest, nameof(StatusCodes.Status400BadRequest), typeof(ServiceKit.Net.Error) )]\n")
-            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status408RequestTimeout, nameof(StatusCodes.Status408RequestTimeout), typeof(ServiceKit.Net.Error) )]\n")
-            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status404NotFound, nameof(StatusCodes.Status404NotFound), typeof(ServiceKit.Net.Error) )]\n")
-            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status401Unauthorized, nameof(StatusCodes.Status401Unauthorized), typeof(ServiceKit.Net.Error) )]\n")
-            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status501NotImplemented, nameof(StatusCodes.Status501NotImplemented), typeof(ServiceKit.Net.Error) )]\n")
-            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status500InternalServerError, nameof(StatusCodes.Status500InternalServerError), typeof(ServiceKit.Net.Error) )]\n")
+            # a failure body is a LIST: a form with three bad fields is the ordinary case, and the
+            # client has to be told about all three at once, not made to fix them one round trip
+            # at a time. The status itself travels as the HTTP status code.
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status400BadRequest, nameof(StatusCodes.Status400BadRequest), typeof(IList<ServiceKit.Net.Error>) )]\n")
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status408RequestTimeout, nameof(StatusCodes.Status408RequestTimeout), typeof(IList<ServiceKit.Net.Error>) )]\n")
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status404NotFound, nameof(StatusCodes.Status404NotFound), typeof(IList<ServiceKit.Net.Error>) )]\n")
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status401Unauthorized, nameof(StatusCodes.Status401Unauthorized), typeof(IList<ServiceKit.Net.Error>) )]\n")
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status501NotImplemented, nameof(StatusCodes.Status501NotImplemented), typeof(IList<ServiceKit.Net.Error>) )]\n")
+            buffer.write(f"{utils.tab(indent+1)}[SwaggerResponse( StatusCodes.Status500InternalServerError, nameof(StatusCodes.Status500InternalServerError), typeof(IList<ServiceKit.Net.Error>) )]\n")
             buffer.write(f"{utils.tab(indent+1)}public async Task<IActionResult> {operation.name}(")
             index: int = 0
             params: List[str] = []
@@ -2235,20 +2267,21 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent+5)}}}\n")
                 buffer.write(f"{utils.tab(indent+5)}else\n")
                 buffer.write(f"{utils.tab(indent+5)}{{\n")
-                buffer.write(f"{utils.tab(indent+6)}return StatusCode(StatusCodes.Status501NotImplemented, \"Not handled reponse in REST Controller when calling '{versionedName}.{operation.name}'\" );\n")
+                buffer.write(f"{utils.tab(indent+6)}return StatusCode(Statuses.NotImplemented.ToHttp(), new List<ServiceKit.Net.Error>() {{ new() {{ MessageText = \"Not handled reponse in REST Controller when calling '{versionedName}.{operation.name}'\" }} }} );\n")
                 buffer.write(f"{utils.tab(indent+5)}}}\n")
             else:
                 buffer.write(f"{utils.tab(indent+5)}return Ok();\n")
-                
+
             buffer.write(f"{utils.tab(indent+4)}}}\n")
             buffer.write(f"{utils.tab(indent+4)}else\n")
             buffer.write(f"{utils.tab(indent+4)}{{\n")
-            buffer.write(f"{utils.tab(indent+5)}return StatusCode(response.Error.Status.ToHttp(), response.Error);\n")
+            buffer.write(f"{utils.tab(indent+5)}return StatusCode(response.Status.ToHttp(), response.Errors);\n")
             buffer.write(f"{utils.tab(indent+4)}}}\n")
             buffer.write(f"{utils.tab(indent+3)}}}\n")
             buffer.write(f"{utils.tab(indent+3)}catch(Exception ex)\n")
             buffer.write(f"{utils.tab(indent+3)}{{\n")
-            buffer.write(f"{utils.tab(indent+4)}return StatusCode(StatusCodes.Status500InternalServerError, new Error() {{ Status = Statuses.InternalError, MessageText = ex.Message, AdditionalInformation = ex.ToString()}} );\n")
+            buffer.write(f"{utils.tab(indent+4)}var failure = _MapFailure( ex );\n")
+            buffer.write(f"{utils.tab(indent+4)}return StatusCode(failure.Status.ToHttp(), failure.Errors);\n")
             buffer.write(f"{utils.tab(indent+3)}}}\n")
             # No 'finally' releasing the context: it may outlive the request. A service can hand it
             # to background work - the audit trail keeps a reference and reads the identity off it

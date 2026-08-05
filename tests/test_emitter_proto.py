@@ -55,7 +55,34 @@ domain WebShop {
         self.assertIn("message OrderIF_v1_getOrderRequest {", content)
         self.assertIn("string id = 1;", content)
         self.assertIn("message OrderIF_v1_getOrderResponse {", content)
+        # the answer carries ONE status and AS MANY errors as there are things wrong
+        self.assertIn("ServiceKit.Protos.Statuses Status = 1;", content)
+        self.assertIn("repeated ServiceKit.Protos.Error Errors = 2;", content)
+        # the value keeps a one-member oneof, so "no value" stays distinguishable from "default"
         self.assertIn("oneof result {", content)
+        self.assertIn("string Value = 3;", content)
+
+    def test_emitter_void_operation_response_has_no_value(self):
+        # nothing came back, so there is no value to carry - the status alone is the answer
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        interface OrderIF version 1 {
+            command cancel( id:string )
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        content = ProtoEmitter().Emit(session)[0].content
+        self.assertIn("message OrderIF_v1_cancelResponse {", content)
+        self.assertIn("ServiceKit.Protos.Statuses Status = 1;", content)
+        self.assertIn("repeated ServiceKit.Protos.Error Errors = 2;", content)
+        self.assertNotIn("google.protobuf.Empty Success", content)
+        self.assertNotIn("oneof result", content)
 
     def test_emitter_composite_ok(self):
         engine = Engine()
