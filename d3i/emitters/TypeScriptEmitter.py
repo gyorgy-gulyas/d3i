@@ -147,7 +147,9 @@ class TypeScriptEmitter:
         code.content += buffer.getvalue()
 
         buffer = io.StringIO()
-        for _import in code.imports:
+        # sorted, like the .NET usings: the imports live in a set, so without this the order
+        # changed from run to run and every regeneration produced a diff that meant nothing
+        for _import in sorted(code.imports):
             buffer.write(f"import {_import};\n")
 
         code.content = code.content.replace("<ADDITIONAL_IMPORTS>", buffer.getvalue())
@@ -165,6 +167,11 @@ class TypeScriptEmitter:
             buffer.write(f"{utils.tab(indent)}export interface ValidationError {{\n")
             buffer.write(f"{utils.tab(indent+1)}typeOfEntity: string;\n")
             buffer.write(f"{utils.tab(indent+1)}memberOfEntity: string;\n")
+            buffer.write(f"{utils.tab(indent+1)}// where the failure is, relative to the object handed to validate:\n")
+            buffer.write(f"{utils.tab(indent+1)}// \"quantity\", \"items[1].quantity\", \"billingAddress.country\". A form binds to\n")
+            buffer.write(f"{utils.tab(indent+1)}// this instead of parsing a sentence, which is why two bad rows are now\n")
+            buffer.write(f"{utils.tab(indent+1)}// two different errors and not the same one twice.\n")
+            buffer.write(f"{utils.tab(indent+1)}path: string;\n")
             buffer.write(f"{utils.tab(indent+1)}errorText: string;\n")
             buffer.write(f"{utils.tab(indent)}}}\n\n")
             code.content += buffer.getvalue()
@@ -181,22 +188,61 @@ class TypeScriptEmitter:
         return code
 
     def __dtoHasValidate(self, the_dto: dto) -> bool:
+        # Does this dto, or one nested inside it, get a validator? Decides whether the file needs
+        # the shared ValidationError shape.
+        if (self.__dtoValidates(the_dto, set())):
+            return True
+        for nested in the_dto.dtos:
+            if (self.__dtoHasValidate(nested)):
+                return True
+        return False
+
+    def __dtoValidates(self, the_dto: dto, seen: set) -> bool:
+        # A dto validates when it declares a rule, inlines one from a composite - or HOLDS something
+        # that does. That last clause is the whole point of V12: the shape the form posts is usually
+        # the one with no rule of its own, and it used to be exactly the one with no validator.
+        # `seen` guards the type graph so a dto that refers to itself terminates.
+        if (the_dto == None or id(the_dto) in seen):
+            return False
+        seen.add(id(the_dto))
+        for member in self.__dtoAllMembers(the_dto):
+            if (getattr(member, "validate_ast", None) != None):
+                return True
+            if (self.__typeValidates(getattr(member, "type", None), seen)):
+                return True
+        return False
+
+    def __typeValidates(self, member_type: type, seen: set) -> bool:
+        # A dto member may only be a dto, an enum or a primitive (the interface-surface rule), so a
+        # reference here is either a dto to walk into or an enum with nothing to check.
+        if (member_type == None):
+            return False
+        if (member_type.kind == type.Kind.Reference):
+            return self.__dtoValidates(self.__referencedDto(member_type), seen)
+        if (member_type.kind == type.Kind.List):
+            return self.__typeValidates(member_type.item_type, seen)
+        if (member_type.kind == type.Kind.Map):
+            return self.__typeValidates(member_type.value_type, seen)
+        return False
+
+    def __referencedDto(self, member_type: type):
+        if (member_type == None or member_type.kind != type.Kind.Reference):
+            return None
+        referenced = Engine.get_referenced_element(member_type.parent, member_type.reference_name)
+        return referenced if isinstance(referenced, dto) else None
+
+    def __dtoAllMembers(self, the_dto: dto) -> List[hinted_base_element]:
+        # the members a consumer actually sees: the inlined composite fields first, then its own
+        members: List[hinted_base_element] = []
         base_composites: List[composite] = []
         for inherit in the_dto.inherits:
             base = Engine.get_referenced_element(the_dto.parent, inherit)
             if (isinstance(base, composite)):
                 utils.collectBaseCompositsRecursive(base, base_composites)
         for base_composite in base_composites:
-            for member in base_composite.members:
-                if (getattr(member, "validate_ast", None) != None):
-                    return True
-        for member in the_dto.members:
-            if (getattr(member, "validate_ast", None) != None):
-                return True
-        for nested in the_dto.dtos:
-            if (self.__dtoHasValidate(nested)):
-                return True
-        return False
+            members.extend(base_composite.members)
+        members.extend(the_dto.members)
+        return members
 
     def interfaceRestPublicClientText(self, interface: interface, code: ts_code, apiCollectionName:str, indent: int = 0) -> ts_code:
         """
@@ -395,37 +441,80 @@ class TypeScriptEmitter:
 
         code.content += buffer.getvalue()
 
-        # client-side validator for the dto's own + inlined composite validate rules
+        # client-side validator: the dto's own + inlined composite rules, and the walk into
+        # whatever it holds that carries a rule of its own
         validate_members: List[hinted_base_element] = []
-        for base_composite in base_composites:
-            for composite_member in base_composite.members:
-                if (getattr(composite_member, "validate_ast", None) != None):
-                    validate_members.append(composite_member)
-        for own_member in dto.members:
-            if (getattr(own_member, "validate_ast", None) != None):
-                validate_members.append(own_member)
-        if (len(validate_members) > 0):
-            code.content += self.dtoValidatorText(dto.name, validate_members, code, indent)
+        cascade_members: List[hinted_base_element] = []
+        for member in self.__dtoAllMembers(dto):
+            if (getattr(member, "validate_ast", None) != None):
+                validate_members.append(member)
+            if (self.__typeValidates(member.type, set())):
+                cascade_members.append(member)
+        if (len(validate_members) > 0 or len(cascade_members) > 0):
+            code.content += self.dtoValidatorText(dto.name, validate_members, cascade_members, code, indent)
 
         return code
 
-    def dtoValidatorText(self, name: str, validate_members: List[hinted_base_element], code: ts_code, indent: int = 1) -> str:
-        # client-side validator: returns the list of violated rules (empty = valid).
-        # The server always re-validates; this is a UX convenience.
+    def dtoValidatorText(self, name: str, validate_members: List[hinted_base_element], cascade_members: List[hinted_base_element], code: ts_code, indent: int = 1) -> str:
+        # Client-side validation: returns the list of violated rules (empty = valid). The server
+        # always re-validates - this is UX, not authority.
+        #
+        # Same split as the server: `validateX` is what a caller uses and starts the walk with an
+        # empty path, `validateXInto` IS the walk and extends the path as it descends. TypeScript
+        # dtos are flat interfaces, so these are free functions rather than overridable methods -
+        # the shape is the same, the dispatch is not needed.
         buffer = io.StringIO()
         buffer.write(f"\n")
         buffer.write(f"{utils.tab(indent)}export function validate{name}( dto: {name} ): ValidationError[] {{\n")
         buffer.write(f"{utils.tab(indent+1)}const errors: ValidationError[] = [];\n")
+        buffer.write(f"{utils.tab(indent+1)}validate{name}Into( dto, \"\", errors );\n")
+        buffer.write(f"{utils.tab(indent+1)}return errors;\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+        buffer.write(f"\n")
+        buffer.write(f"{utils.tab(indent)}export function validate{name}Into( dto: {name}, pathPrefix: string, errors: ValidationError[] ): void {{\n")
         for member in validate_members:
             violated = self.__tsViolation(member.validate_ast, member, code)
             if (member.find_decorator("optional") != None):
                 violated = f"dto.{member.name} != null && ({violated})"
             message = self.__tsRuleText(member.validate_ast).replace("\\", "\\\\").replace("\"", "\\\"")
             buffer.write(f"{utils.tab(indent+1)}if ({violated})\n")
-            buffer.write(f"{utils.tab(indent+2)}errors.push({{ typeOfEntity: \"{name}\", memberOfEntity: \"{member.name}\", errorText: \"{member.name} must satisfy: {message}\" }});\n")
-        buffer.write(f"{utils.tab(indent+1)}return errors;\n")
+            buffer.write(f"{utils.tab(indent+2)}errors.push({{ typeOfEntity: \"{name}\", memberOfEntity: \"{member.name}\", path: pathPrefix + \"{member.name}\", errorText: \"{member.name} must satisfy: {message}\" }});\n")
+        for member in cascade_members:
+            buffer.write(self.dtoMemberValidateIntoText(member, code, indent+1))
         buffer.write(f"{utils.tab(indent)}}}\n")
         return buffer.getvalue()
+
+    def dtoMemberValidateIntoText(self, member: hinted_base_element, code: ts_code, indent: int) -> str:
+        # The walk into one member; the path segment is the member's own name.
+        buffer = io.StringIO()
+        member_type: type = member.type
+        if (member_type.kind == type.Kind.Reference):
+            walk = self.__tsValidatorName(self.__referencedDto(member_type), code)
+            buffer.write(f"{utils.tab(indent)}if (dto.{member.name} != null)\n")
+            buffer.write(f"{utils.tab(indent+1)}{walk}( dto.{member.name}, pathPrefix + \"{member.name}.\", errors );\n")
+        elif (member_type.kind == type.Kind.List):
+            walk = self.__tsValidatorName(self.__referencedDto(member_type.item_type), code)
+            buffer.write(f"{utils.tab(indent)}if (dto.{member.name} != null)\n")
+            buffer.write(f"{utils.tab(indent+1)}dto.{member.name}.forEach( (item, index) => {{ if (item != null) {walk}( item, `${{pathPrefix}}{member.name}[${{index}}].`, errors ); }} );\n")
+        elif (member_type.kind == type.Kind.Map):
+            walk = self.__tsValidatorName(self.__referencedDto(member_type.value_type), code)
+            buffer.write(f"{utils.tab(indent)}if (dto.{member.name} != null)\n")
+            buffer.write(f"{utils.tab(indent+1)}Object.entries( dto.{member.name} ).forEach( ([key, value]) => {{ if (value != null) {walk}( value, `${{pathPrefix}}{member.name}[${{key}}].`, errors ); }} );\n")
+        return buffer.getvalue()
+
+    def __tsValidatorName(self, referenced_dto: dto, code: ts_code) -> str:
+        # The walk of another dto, named the way this file can reach it. A nested dto's validator is
+        # emitted inside its parent's namespace, so `OrderDTO.CustomerDataDTO` is walked by
+        # `OrderDTO.validateCustomerDataDTOInto`: only the LAST segment becomes the function name.
+        if (referenced_dto == None):
+            return "validateInto"
+        if (code.current_namespace != f"{referenced_dto.getDomain().name}.{referenced_dto.getContext().name}"):
+            code.imports.add(f"{referenced_dto.getDomain().name}.{referenced_dto.getContext().name}")
+            parts = code.getTsFullName(referenced_dto).split(".")
+        else:
+            parts = code.getTsName(referenced_dto).split(".")
+        parts[-1] = f"validate{parts[-1]}Into"
+        return ".".join(parts)
 
     # --- client-side validate codegen (same readable/negated shape as the .NET emitter) ---
     def __tsViolation(self, node: validate_node, member: hinted_base_element, code: ts_code) -> str:
@@ -487,6 +576,11 @@ class TypeScriptEmitter:
     def __tsValue(self, node: validate_node, member: hinted_base_element, code: ts_code) -> str:
         if (isinstance(node, validate_ref)):
             target = member.name if (node.name == "value") else node.name
+            # A `number` field is typed Decimal here, and TypeScript refuses to compare a Decimal
+            # with a literal - so the validator did not compile. Number() reads both a real Decimal
+            # (through valueOf) and the plain JSON number that actually arrives at runtime.
+            if (self.__tsIsDecimal(node, member)):
+                return f"Number(dto.{target})"
             return f"dto.{target}"
         if (isinstance(node, validate_literal)):
             return node.value
@@ -501,18 +595,27 @@ class TypeScriptEmitter:
         return self.__tsTruth(node, member, code)
 
     def __tsIsMap(self, node: validate_node, member: hinted_base_element) -> bool:
-        if (isinstance(node, validate_ref) == False):
-            return False
-        target = member
-        if (node.name != "value"):
-            target = None
-            for candidate in member.parent.members:
-                if (candidate.name == node.name):
-                    target = candidate
-                    break
+        target = self.__tsResolveMember(node, member)
         if (target == None or target.type == None):
             return False
         return target.type.kind == type.Kind.Map
+
+    def __tsIsDecimal(self, node: validate_node, member: hinted_base_element) -> bool:
+        target = self.__tsResolveMember(node, member)
+        if (target == None or target.type == None or target.type.kind != type.Kind.Primitive):
+            return False
+        return target.type.primtiveKind == primitive_type.PrimtiveKind.Number
+
+    def __tsResolveMember(self, node: validate_node, member: hinted_base_element):
+        # a validate operand is either `value` (this member) or a sibling field by name
+        if (isinstance(node, validate_ref) == False):
+            return None
+        if (node.name == "value"):
+            return member
+        for candidate in member.parent.members:
+            if (candidate.name == node.name):
+                return candidate
+        return None
 
     def __tsRuleText(self, node: validate_node) -> str:
         if (isinstance(node, validate_binary)):
@@ -593,7 +696,10 @@ class TypeScriptEmitter:
         return f"{self.typeText(type.item_type, code, fullName=fullName)}[]"
 
     def typeTextMap(self, type: map_type, code, fullName: bool = False) -> str:
-        return f"Dictionary<{self.typeText(type.key_type, code, fullName)},{self.typeText(type.value_type, code, fullName)}>"
+        # `Record` because `Dictionary` is not a TypeScript type - it was emitted as one and never
+        # exercised, since `fullName` was also passed positionally to a keyword-only parameter,
+        # which made any dto with a map member crash the emitter before it got this far.
+        return f"Record<{self.typeText(type.key_type, code, fullName=fullName)},{self.typeText(type.value_type, code, fullName=fullName)}>"
 
     def documentLines(self, hinted_element: hinted_base_element, indent: int = 1) -> str:
         """
@@ -614,7 +720,8 @@ class TypeScriptEmitter:
                 case primitive_type.PrimtiveKind.I18NString | primitive_type.PrimtiveKind.Any | primitive_type.PrimtiveKind.Bytes | primitive_type.PrimtiveKind.Stream:
                     return f"${{{name}}}"
                 case primitive_type.PrimtiveKind.Integer | primitive_type.PrimtiveKind.Number | primitive_type.PrimtiveKind.Float:
-                    return f"${{${name}.toString()}}"
+                    # one stray '$' put the name outside the interpolation: `${$price.toString()}`
+                    return f"${{{name}.toString()}}"
                 case primitive_type.PrimtiveKind.Date | primitive_type.PrimtiveKind.Time:
                     return f"${{{name}}}"
                 case primitive_type.PrimtiveKind.DateTime:
