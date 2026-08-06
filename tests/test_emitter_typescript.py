@@ -130,9 +130,9 @@ domain Shop {
         # Decimal here - TypeScript will not compare a Decimal with a literal, so it is read as a
         # number first (which also works on the plain JSON number that really arrives).
         self.assertIn("if (Number(dto.amount) <= 0 || Number(dto.amount) > 1000)", content)
-        self.assertIn('if (!new RegExp("^.+@.+$").test(dto.email))', content)
+        self.assertIn('if (!new RegExp("^.+@.+$").test(dto.email ?? ""))', content)
         # len on a list -> .length
-        self.assertIn("if (dto.tags.length > 3)", content)
+        self.assertIn("if ((dto.tags?.length ?? 0) > 3)", content)
         self.assertIn('memberOfEntity: "amount"', content)
         self.assertIn("return errors;", content)
         # the entry point starts the walk with an empty path; the walk is what records the errors
