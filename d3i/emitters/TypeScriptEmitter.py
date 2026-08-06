@@ -587,11 +587,14 @@ class TypeScriptEmitter:
         if (isinstance(node, validate_call)):
             if (node.func == "len"):
                 target = self.__tsValue(node.args[0], member, code)
+                # a missing value has no elements: reading .length off undefined throws inside the
+                # validator, and the form is then shown a crash instead of the field that is wrong
                 if (self.__tsIsMap(node.args[0], member)):
-                    return f"Object.keys({target}).length"
-                return f"{target}.length"   # string and array both use .length
+                    return f"Object.keys({target} ?? {{}}).length"
+                return f"({target}?.length ?? 0)"   # string and array both use .length
             if (node.func == "matches"):
-                return f"new RegExp({self.__tsValue(node.args[1], member, code)}).test({self.__tsValue(node.args[0], member, code)})"
+                # undefined would be coerced to the text "undefined" and could even match
+                return f"new RegExp({self.__tsValue(node.args[1], member, code)}).test({self.__tsValue(node.args[0], member, code)} ?? \"\")"
         return self.__tsTruth(node, member, code)
 
     def __tsIsMap(self, node: validate_node, member: hinted_base_element) -> bool:

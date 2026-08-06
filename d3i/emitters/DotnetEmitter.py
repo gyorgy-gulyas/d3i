@@ -673,10 +673,15 @@ class DotnetEmitter:
             if (node.func == "len"):
                 target = self.__validateValue(node.args[0], member, code)
                 accessor = "Count" if self.__validateIsCollection(node.args[0], member) else "Length"
-                return f"{target}.{accessor}"
+                # A missing value has no elements. Reading .Length off null would throw INSIDE the
+                # validator, and a validator that throws turns a bad request into a server error -
+                # the caller is told nothing about the field that is actually wrong.
+                return f"({target}?.{accessor} ?? 0)"
             if (node.func == "matches"):
                 code.usings.add("System.Text.RegularExpressions")
-                return f"Regex.IsMatch({self.__validateValue(node.args[0], member, code)}, {self.__validateValue(node.args[1], member, code)})"
+                # same reason: Regex.IsMatch rejects null outright, and a missing value matching
+                # nothing is exactly what the rule means
+                return f"Regex.IsMatch({self.__validateValue(node.args[0], member, code)} ?? string.Empty, {self.__validateValue(node.args[1], member, code)})"
         return self.__validateTruth(node, member, code)
 
     def __validateIsCollection(self, node: validate_node, member: hinted_base_element) -> bool:
@@ -762,11 +767,17 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+1)}// begin: {base.name}\n")
             # Write each base member
             for member in base.members:
+                # a field Equals ignores may not enter the hash: two equal instances would land in
+                # different buckets and a dictionary would stop finding them
+                if( member.find_decorator("system_field") != None ):
+                    continue
                 buffer.write(self.dataClassMemberHashText(member.name, member.type, code, dst="hash", src="", indent=indent+1))
                 pass
             buffer.write(f"{utils.tab(indent+1)}// end: {base.name}\n\n")
         # Write each own member
         for member in element.members:
+            if( member.find_decorator("system_field") != None ):
+                continue
             buffer.write(self.dataClassMemberHashText(member.name, member.type, code, dst="hash", src="", indent=indent+1))
             pass
         buffer.write(f"\n")
@@ -1169,16 +1180,19 @@ class DotnetEmitter:
                 # or unspecified DateTime threw at runtime instead of being converted.
                 return f"Timestamp.FromDateTime({memberName}.ToUniversalTime())"
             case primitive_type.PrimtiveKind.String:
-                return f"{memberName}"
+                # protobuf refuses null in a string field and throws on assignment, so an unset
+                # member - an id the caller has not got yet, an optional field - used to take the
+                # whole call down before it left the process. Absent is the empty string on the wire.
+                return f"{memberName} ?? string.Empty"
             case primitive_type.PrimtiveKind.I18NString:
                 code.usings.add("System.Text.Json")
                 return f"JsonSerializer.Serialize({memberName})"
             case primitive_type.PrimtiveKind.Boolean:
                 return f"{memberName}"
             case primitive_type.PrimtiveKind.Bytes:
-                return f"Google.Protobuf.ByteString.CopyFrom({memberName})"
+                return f"{memberName} != null ? Google.Protobuf.ByteString.CopyFrom({memberName}) : Google.Protobuf.ByteString.Empty"
             case primitive_type.PrimtiveKind.Stream:
-                return f"Google.Protobuf.ByteString.FromStream({memberName})"
+                return f"{memberName} != null ? Google.Protobuf.ByteString.FromStream({memberName}) : Google.Protobuf.ByteString.Empty"
 
     def convertExpressionFromGrpcRepresentation(self, memberName: str, memberType: type, code: dotnet_code):
         """
@@ -1643,7 +1657,7 @@ class DotnetEmitter:
 
         # Add constructor with server address
         buffer.write(f"\n")
-        buffer.write(f"{utils.tab(indent+1)}{versionedName}_GrpcClient( string serverAddress )\n")
+        buffer.write(f"{utils.tab(indent+1)}public {versionedName}_GrpcClient( string serverAddress )\n")
         buffer.write(f"{utils.tab(indent+1)}{{\n")
         buffer.write(f"{utils.tab(indent+2)}_channel = GrpcChannel.ForAddress(serverAddress);\n")
         buffer.write(f"{utils.tab(indent+2)}_client = new {versionedName}.{versionedName}Client(_channel);\n")
@@ -1770,6 +1784,10 @@ class DotnetEmitter:
         # Add documentation lines for the interface
         buffer.write(self.documentLines(interface, indent))
         # controller class declaration
+        # Without this the host maps nothing: MapGrpcControllers registers the classes that carry
+        # the attribute, so a generated controller that lacks it compiles, starts, and is never
+        # reachable.
+        buffer.write(f"{utils.tab(indent)}[AutoRegisterGrpc]\n")
         buffer.write(f"{utils.tab(indent)}public class {versionedName}_GrpcController : {domain.name}.{context.name}.Protos.{versionedName}.{versionedName}.{versionedName}Base \n")
         buffer.write(f"{utils.tab(indent)}{{\n")
         # class members
@@ -1882,10 +1900,11 @@ class DotnetEmitter:
         buffer.write(f"{utils.tab(indent)}{{\n")
         # private members
         buffer.write(f"{utils.tab(indent+1)}private readonly HttpClient _httpClient;\n")
+        buffer.write(self.restClientJsonOptionsText(code, indent+1))
 
         # Add constructor with server address
         buffer.write(f"\n")
-        buffer.write(f"{utils.tab(indent+1)}{versionedName}_RestClient( string serverAddress )\n")
+        buffer.write(f"{utils.tab(indent+1)}public {versionedName}_RestClient( string serverAddress )\n")
         buffer.write(f"{utils.tab(indent+1)}{{\n")
         buffer.write(f"{utils.tab(indent+2)}_httpClient = new HttpClient();\n")
         buffer.write(f"{utils.tab(indent+2)}_httpClient.BaseAddress = new Uri( serverAddress );\n")
@@ -1915,15 +1934,15 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+3)}// build request\n")
 
             # build route with FromRoute and Query params
-            base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{http_operation.full_route}"
+            base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{self.clientRouteText(http_operation, code)}"
             query_params = [
-                f"{param.httpName}={self.convertToQueryValue(param.param.name, param.param.type, code.usings)}"
+                f"{param.httpName}={self.convertToUrlValue(param.param.name, param.param.type, code.usings)}"
                 for param in http_operation.params.values()
                 if param.bindingSource == rest_param.BindingSource.FromQuery
             ]
             query_string = f"?{'&'.join(query_params)}" if query_params else ""
 
-            buffer.write(f"{utils.tab(indent+3)}HttpRequestMessage request = new HttpRequestMessage( HttpMethod.{http_operation.verb.name}, WebUtility.UrlEncode( $\"{base_route}{query_string}\" ) );\n")
+            buffer.write(f"{utils.tab(indent+3)}HttpRequestMessage request = new HttpRequestMessage( HttpMethod.{http_operation.verb.name}, $\"{base_route}{query_string}\" );\n")
             buffer.write(f"{utils.tab(indent+3)}ctx.FillHttpRequest( request, \"{domain.name}{context.name}{versionedName}\", \"{operation.name}\" );\n")
             buffer.write("\n")
 
@@ -1942,7 +1961,7 @@ class DotnetEmitter:
                             elif( rest_utils.is_body_type_param( http_param.param ) == True ):
                                 code.usings.add("System.Text")
                                 code.usings.add("System.Text.Json")
-                                buffer.write(f"{utils.tab(indent+3)}multipartContent.Add( new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name} ), Encoding.UTF8, \"application/json\" ), \"{http_param.httpName}\", \"{http_param.httpName}.json\" );\n")
+                                buffer.write(f"{utils.tab(indent+3)}multipartContent.Add( new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name}, _jsonOptions ), Encoding.UTF8, \"application/json\" ), \"{http_param.httpName}\", \"{http_param.httpName}.json\" );\n")
                 buffer.write(f"{utils.tab(indent+3)}request.Content = multipartContent;\n")
                 buffer.write("\n")
             else:
@@ -1954,8 +1973,11 @@ class DotnetEmitter:
                             case rest_param.BindingSource.FromRoute | rest_param.BindingSource.FromQuery | rest_param.BindingSource.FromForm:
                                 pass
                             case rest_param.BindingSource.FromBody:
+                                code.usings.add("System.Text")
                                 code.usings.add("System.Text.Json")
-                                buffer.write(f"{utils.tab(indent+3)}request.Content = new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name} ));\n")
+                                # without the media type the body goes out as text/plain and the
+                                # controller answers 415 before the service is ever reached
+                                buffer.write(f"{utils.tab(indent+3)}request.Content = new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name}, _jsonOptions ), Encoding.UTF8, \"application/json\" );\n")
                     buffer.write("\n")
             
             # call hhtp
@@ -1968,7 +1990,7 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+3)}{{\n")
             if( operation.operation_return != None ):
                 code.usings.add( "System.Net.Http.Json")
-                buffer.write(f"{utils.tab(indent+4)}var value = await response.Content.ReadFromJsonAsync<{self.typeText( operation.operation_return.type, code, fullName=True)}>();\n")
+                buffer.write(f"{utils.tab(indent+4)}var value = await response.Content.ReadFromJsonAsync<{self.typeText( operation.operation_return.type, code, fullName=True)}>( _jsonOptions );\n")
                 buffer.write(f"{utils.tab(indent+4)}return Response<{self.typeText( operation.operation_return.type, code, fullName=True)}>.Success( value );\n")
             else:
                 buffer.write(f"{utils.tab(indent+4)}return Response.Success();\n")
@@ -1992,6 +2014,25 @@ class DotnetEmitter:
         code.content += buffer.getvalue()
         return code
 
+    def restClientJsonOptionsText(self, code: dotnet_code, indent: int) -> str:
+        """
+        The client has to speak the host's JSON, not its own default.
+
+        The host serialises enums by NAME, so a client reading with the plain default options fails
+        on the very first answer it gets back - and it writes them as numbers, which happens to be
+        accepted, which is why only one direction ever broke.
+        """
+        code.usings.add("System.Text.Json")
+        code.usings.add("System.Text.Json.Serialization")
+
+        buffer = io.StringIO()
+        buffer.write(f"{utils.tab(indent)}// the same options the host is configured with: web defaults, and enums by name\n")
+        buffer.write(f"{utils.tab(indent)}private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions( JsonSerializerDefaults.Web )\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}Converters = {{ new JsonStringEnumConverter() }},\n")
+        buffer.write(f"{utils.tab(indent)}}};\n")
+        return buffer.getvalue()
+
     def restClientFailureText(self, versionedName: str, operation: operation, code: dotnet_code, indent: int) -> str:
         # The body of a failed answer is a LIST of errors now: the HTTP status code already carries
         # the status, so the body is free to say every single thing that is wrong at once.
@@ -2003,7 +2044,7 @@ class DotnetEmitter:
             responseType = "Response"
         buffer.write(f"{utils.tab(indent)}else if( response.Content != null )\n")
         buffer.write(f"{utils.tab(indent)}{{\n")
-        buffer.write(f"{utils.tab(indent+1)}var errors = await response.Content.ReadFromJsonAsync<List<ServiceKit.Net.Error>>();\n")
+        buffer.write(f"{utils.tab(indent+1)}var errors = await response.Content.ReadFromJsonAsync<List<ServiceKit.Net.Error>>( _jsonOptions );\n")
         buffer.write(f"{utils.tab(indent+1)}return {responseType}.Failure( response.StatusCode.FromHttp(), errors?.ToArray() ?? Array.Empty<ServiceKit.Net.Error>() );\n")
         buffer.write(f"{utils.tab(indent)}}}\n")
         buffer.write(f"{utils.tab(indent)}else\n")
@@ -2034,7 +2075,8 @@ class DotnetEmitter:
         buffer.write(f"{utils.tab(indent+1)}{{\n")
         buffer.write(f"{utils.tab(indent+2)}static class V{interface.version} \n")
         buffer.write(f"{utils.tab(indent+2)}{{\n")
-       
+        buffer.write(self.restClientJsonOptionsText(code, indent+3))
+
         # Add functions based on operations
         for operation in interface.operations:
             buffer.write(self.documentLines(operation, indent+2))
@@ -2056,15 +2098,15 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+5)}// build request\n")
 
             # build route with FromRoute and Query params
-            base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{http_operation.full_route}"
+            base_route = f"/{domain.name.lower()}/{context.name.lower()}/{interface.name.lower()}/v{interface.version}/{self.clientRouteText(http_operation, code)}"
             query_params = [
-                f"{param.httpName}={self.convertToQueryValue(param.param.name, param.param.type, code.usings)}"
+                f"{param.httpName}={self.convertToUrlValue(param.param.name, param.param.type, code.usings)}"
                 for param in http_operation.params.values()
                 if param.bindingSource == rest_param.BindingSource.FromQuery
             ]
             query_string = f"?{'&'.join(query_params)}" if query_params else ""
 
-            buffer.write(f"{utils.tab(indent+5)}HttpRequestMessage request = new HttpRequestMessage( HttpMethod.{http_operation.verb.name}, WebUtility.UrlEncode( $\"{base_route}{query_string}\" ) );\n")
+            buffer.write(f"{utils.tab(indent+5)}HttpRequestMessage request = new HttpRequestMessage( HttpMethod.{http_operation.verb.name}, $\"{base_route}{query_string}\" );\n")
             buffer.write("\n")
 
             if(http_operation.isMultiPartFormData()):
@@ -2082,7 +2124,7 @@ class DotnetEmitter:
                             elif( rest_utils.is_body_type_param( http_param.param ) == True ):
                                 code.usings.add("System.Text")
                                 code.usings.add("System.Text.Json")
-                                buffer.write(f"{utils.tab(indent+5)}multipartContent.Add( new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name} ), Encoding.UTF8, \"application/json\" ), \"{http_param.httpName}\", \"{http_param.httpName}.json\" );\n")
+                                buffer.write(f"{utils.tab(indent+5)}multipartContent.Add( new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name}, _jsonOptions ), Encoding.UTF8, \"application/json\" ), \"{http_param.httpName}\", \"{http_param.httpName}.json\" );\n")
                 buffer.write(f"{utils.tab(indent+4)}request.Content = multipartContent;\n")
                 buffer.write("\n")
             else:
@@ -2094,8 +2136,9 @@ class DotnetEmitter:
                             case rest_param.BindingSource.FromRoute | rest_param.BindingSource.FromQuery | rest_param.BindingSource.FromForm:
                                 pass
                             case rest_param.BindingSource.FromBody:
+                                code.usings.add("System.Text")
                                 code.usings.add("System.Text.Json")
-                                buffer.write(f"{utils.tab(indent+5)}request.Content = new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name} ));\n")
+                                buffer.write(f"{utils.tab(indent+5)}request.Content = new StringContent( JsonSerializer.Serialize<{self.typeText( http_param.param.type, code, fullName=True)}>( {http_param.param.name}, _jsonOptions ), Encoding.UTF8, \"application/json\" );\n")
                     buffer.write("\n")
             
             # call hhtp
@@ -2108,7 +2151,7 @@ class DotnetEmitter:
             buffer.write(f"{utils.tab(indent+5)}{{\n")
             if( operation.operation_return != None ):
                 code.usings.add( "System.Net.Http.Json")
-                buffer.write(f"{utils.tab(indent+6)}var value = await response.Content.ReadFromJsonAsync<{self.typeText( operation.operation_return.type, code, fullName=True)}>();\n")
+                buffer.write(f"{utils.tab(indent+6)}var value = await response.Content.ReadFromJsonAsync<{self.typeText( operation.operation_return.type, code, fullName=True)}>( _jsonOptions );\n")
                 buffer.write(f"{utils.tab(indent+6)}return Response<{self.typeText( operation.operation_return.type, code, fullName=True)}>.Success( value );\n")
             else:
                 buffer.write(f"{utils.tab(indent+6)}return Response.Success();\n")
@@ -2821,6 +2864,31 @@ class DotnetEmitter:
             buffer.write("\n")
         return buffer.getvalue()
 
+    def convertToUrlValue(self, name: str, _type: type, usings: set[str]) -> str:
+        """
+        The same value, escaped for the place it is going. Escaping is per VALUE, never per URL: an
+        id that carries a slash must not be able to change the route it sits in, and the slashes of
+        the route itself must survive.
+        """
+        value = self.convertToQueryValue(name, _type, usings)
+        if (value == None):
+            return None
+
+        # convertToQueryValue hands back an interpolation hole - the expression is what goes inside
+        return f"{{Uri.EscapeDataString({value[1:-1]})}}"
+
+    def clientRouteText(self, http_operation: rest_operation, code: dotnet_code) -> str:
+        """
+        The route as a client builds it: the same segments the controller declares, but with the
+        route parameters substituted and escaped instead of left as templates.
+        """
+        route = http_operation.route
+        for param in http_operation.params.values():
+            if (param.bindingSource == rest_param.BindingSource.FromRoute):
+                route += "/" + self.convertToUrlValue(param.param.name, param.param.type, code.usings)
+
+        return route
+
     def convertToQueryValue(self, name: str, _type: type, usings: set[str]) -> str:
         if (_type.kind == type.Kind.Primitive):
             primitive_type: primitive_type = _type
@@ -2832,13 +2900,13 @@ class DotnetEmitter:
                     return f"{{{name}.ToString(CultureInfo.InvariantCulture)}}"
                 case primitive_type.PrimtiveKind.Date:
                     usings.add("System.Globalization")
-                    return f"{{{name}.ToString(\"yyyy-MM-dd\" CultureInfo.InvariantCulture)}}"
+                    return f"{{{name}.ToString(\"yyyy-MM-dd\", CultureInfo.InvariantCulture)}}"
                 case primitive_type.PrimtiveKind.Time:
                     usings.add("System.Globalization")
-                    return f"{{{name}.ToString(\"HH:mm:ss\" CultureInfo.InvariantCulture)}}"
+                    return f"{{{name}.ToString(\"HH:mm:ss\", CultureInfo.InvariantCulture)}}"
                 case primitive_type.PrimtiveKind.DateTime:
                     usings.add("System.Globalization")
-                    return f"{{{name}.ToString(\"o\" CultureInfo.InvariantCulture)}}"
+                    return f"{{{name}.ToString(\"o\", CultureInfo.InvariantCulture)}}"
                 case primitive_type.PrimtiveKind.String:
                     return f"{{{name}}}"
                 case primitive_type.PrimtiveKind.Boolean:

@@ -791,7 +791,7 @@ domain Shop {
         self.assertIn("if (amount <= 0 || amount > 1000)", content)
         # inlined composite rule (zipCode) lands in Order.Validate; string len -> .Length
         self.assertIn('MemberOfEntity = "zipCode"', content)
-        self.assertIn("if (zipCode.Length != 4)", content)
+        self.assertIn("if ((zipCode?.Length ?? 0) != 4)", content)
         # @optional member is guarded by a null-check
         self.assertIn("note != null && (", content)
 
@@ -847,7 +847,7 @@ domain Shop {
 
         result = DotnetEmitter().Emit(session)
         content = next(f for f in result if f.fileName == "Cart.cs").content
-        self.assertIn("if (items.Count > 3)", content)
+        self.assertIn("if ((items?.Count ?? 0) > 3)", content)
 
     def test_emitter_validate_negative_bounds(self):
         # negative numeric literals work in validate rules (ranges/comparisons)
@@ -1082,7 +1082,7 @@ domain WebShop {
         content = self._emit()
         # outbound
         self.assertIn('result.When = @this.when.ToString("HH:mm:ss");', content)
-        self.assertIn("result.Raw = Google.Protobuf.ByteString.CopyFrom(@this.raw);", content)
+        self.assertIn("result.Raw = @this.raw != null ? Google.Protobuf.ByteString.CopyFrom(@this.raw) : Google.Protobuf.ByteString.Empty;", content)
         self.assertIn("result.Bag = JsonSerializer.Serialize(@this.bag);", content)
         # inbound - each of these used to be a copy of the outbound expression
         self.assertIn("result.when = TimeOnly.Parse(@from.When, CultureInfo.InvariantCulture);", content)
@@ -1366,6 +1366,12 @@ domain WebShop {
         self.assertIn("CallingContext.FromHttpContext( HttpContext, _logger );", controllers["OrderIF_v1.RestController.cs"])
         self.assertIn("CallingContext.FromGrpcContext( grpcContext, _logger );", controllers["OrderIF_v1.GrpcController.cs"])
 
+    def test_the_grpc_controller_registers_itself(self):
+        # the host maps the classes carrying [AutoRegisterGrpc]; without it the controller compiles,
+        # the host starts, and the gRPC surface is simply not served
+        controllers = self.__controllers()
+        self.assertIn("[AutoRegisterGrpc]\n\tpublic class OrderIF_v1_GrpcController", controllers["OrderIF_v1.GrpcController.cs"])
+
     def test_no_controller_releases_the_context(self):
         for name, content in self.__controllers().items():
             self.assertNotIn("ReturnToPool", content, name)
@@ -1476,7 +1482,7 @@ domain Shop {
 
     def test_the_rest_client_reads_the_whole_error_list(self):
         content = self.__files()["OrderIF_v1.RestClient.cs"]
-        self.assertIn("var errors = await response.Content.ReadFromJsonAsync<List<ServiceKit.Net.Error>>();", content)
+        self.assertIn("var errors = await response.Content.ReadFromJsonAsync<List<ServiceKit.Net.Error>>( _jsonOptions );", content)
         self.assertIn("response.StatusCode.FromHttp(), errors?.ToArray() ?? Array.Empty<ServiceKit.Net.Error>()", content)
         self.assertNotIn("ReadFromJsonAsync<Error>()", content)
 
@@ -1492,8 +1498,127 @@ domain Shop {
         self.assertNotIn("ResultOneofCase.Error", grpc)
 
         rest = by_name["OrderIF_v1.RestClient.cs"]
-        self.assertIn("ReadFromJsonAsync<List<ServiceKit.Net.Error>>();", rest)
+        self.assertIn("ReadFromJsonAsync<List<ServiceKit.Net.Error>>( _jsonOptions );", rest)
         self.assertNotIn("ReadFromJsonAsync<Error>()", rest)
+
+
+class TestEmitterDotnetRestClientCanCall(unittest.TestCase):
+    """
+    A generated client is only worth generating if it can reach the controller generated beside it.
+    None of these were caught by reading the code: the client compiled, and every one of the three
+    defects only showed up once something actually sent a request.
+    """
+
+    SOURCE = """
+domain Shop {
+    context C {
+        @internal_api( grpc, rest )
+        interface OrderIF version 1 {
+            dto OrderDTO {
+                @system_field id:string
+                total: number
+            }
+            query getOrder( orderId:string ) : OrderDTO
+            command setPrice( order:OrderDTO, price:number, at:date ) : OrderDTO
+        }
+    }
+}
+"""
+
+    PUBLIC_SOURCE = SOURCE.replace("@internal_api( grpc, rest )", "@public_api( grpc, rest, collection = \"ShopApi\" )")
+
+    def __emit(self, source: str):
+        engine = Engine()
+        session = Session(Source.CreateFromText(source))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+        return {f.fileName: f.content for f in DotnetEmitter().Emit(session)}
+
+    def test_the_clients_can_be_constructed(self):
+        # a constructor with no modifier is private, so nobody outside could ever build one
+        files = self.__emit(self.SOURCE)
+        self.assertIn("public OrderIF_v1_RestClient( string serverAddress )", files["OrderIF_v1.RestClient.cs"])
+        self.assertIn("public OrderIF_v1_GrpcClient( string serverAddress )", files["OrderIF_v1.GrpcClient.cs"])
+
+    def test_the_route_is_not_escaped_as_a_whole(self):
+        # escaping the whole url turns every separator into %2F and the request matches no route
+        content = self.__emit(self.SOURCE)["OrderIF_v1.RestClient.cs"]
+        self.assertNotIn("WebUtility.UrlEncode", content)
+        self.assertIn("HttpMethod.Get, $\"/shop/c/orderif/v1/getorder/", content)
+
+    def test_a_route_parameter_is_escaped_on_its_own(self):
+        content = self.__emit(self.SOURCE)["OrderIF_v1.RestClient.cs"]
+        self.assertIn("getorder/{Uri.EscapeDataString(orderId)}", content)
+
+    def test_a_query_parameter_is_escaped_on_its_own(self):
+        content = self.__emit(self.SOURCE)["OrderIF_v1.RestClient.cs"]
+        self.assertIn("?price={Uri.EscapeDataString(price.ToString(CultureInfo.InvariantCulture))}", content)
+
+    def test_a_date_query_parameter_is_valid_csharp(self):
+        # the format and the culture were emitted without the comma between them
+        content = self.__emit(self.SOURCE)["OrderIF_v1.RestClient.cs"]
+        self.assertIn("at.ToString(\"yyyy-MM-dd\", CultureInfo.InvariantCulture)", content)
+        self.assertNotIn("\" CultureInfo.InvariantCulture", content)
+
+    def test_the_body_says_it_is_json(self):
+        # without the media type the body goes out as text/plain and the controller answers 415
+        content = self.__emit(self.SOURCE)["OrderIF_v1.RestClient.cs"]
+        self.assertIn("new StringContent( JsonSerializer.Serialize<IOrderIF_v1.OrderDTO>( order, _jsonOptions ), Encoding.UTF8, \"application/json\" )", content)
+        self.assertIn("using System.Text;", content)
+
+    def test_the_client_speaks_the_hosts_json(self):
+        # the host writes enums by name; a client on the default options fails on the first answer
+        content = self.__emit(self.SOURCE)["OrderIF_v1.RestClient.cs"]
+        self.assertIn("new JsonSerializerOptions( JsonSerializerDefaults.Web )", content)
+        self.assertIn("Converters = { new JsonStringEnumConverter() },", content)
+        self.assertIn("using System.Text.Json.Serialization;", content)
+        self.assertIn("ReadFromJsonAsync<IOrderIF_v1.OrderDTO>( _jsonOptions )", content)
+        self.assertIn("ReadFromJsonAsync<List<ServiceKit.Net.Error>>( _jsonOptions )", content)
+        self.assertIn("JsonSerializer.Serialize<IOrderIF_v1.OrderDTO>( order, _jsonOptions )", content)
+
+    def test_the_public_client_is_built_the_same_way(self):
+        content = self.__emit(self.PUBLIC_SOURCE)["OrderIF_v1.RestClient.cs"]
+        self.assertNotIn("WebUtility.UrlEncode", content)
+        self.assertIn("getorder/{Uri.EscapeDataString(orderId)}", content)
+        self.assertIn("Encoding.UTF8, \"application/json\" )", content)
+        self.assertIn("Converters = { new JsonStringEnumConverter() },", content)
+        self.assertIn("ReadFromJsonAsync<Shop.C.IOrderIF_v1.OrderDTO>( _jsonOptions )", content)
+
+    def test_a_validator_reports_a_missing_value_instead_of_throwing(self):
+        # a validator that throws turns a bad request into a 500, and the caller is told nothing
+        # about the field that is actually wrong
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain Shop {
+    context C {
+        valueobject Address {
+            country:string validate len(value) == 2
+            email:string validate matches(email, "[^@]+@[^@]+")
+            tags:list[string] validate len(value) <= 3
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        content = next(f for f in DotnetEmitter().Emit(session) if f.fileName == "Address.cs").content
+        self.assertIn("if ((country?.Length ?? 0) != 2)", content)
+        self.assertIn("if (!Regex.IsMatch(email ?? string.Empty, \"[^@]+@[^@]+\"))", content)
+        self.assertIn("if ((tags?.Count ?? 0) > 3)", content)
+
+    def test_an_unset_string_does_not_take_the_grpc_call_down(self):
+        # protobuf throws on a null string field, so an id the caller has not got yet used to abort
+        # the call inside the client before anything was sent
+        content = self.__emit(self.SOURCE)["IOrderIF_v1.cs"]
+        self.assertIn("result.Id = @this.id ?? string.Empty;", content)
+
+    def test_a_system_field_stays_out_of_the_hash(self):
+        # Equals and Clone already skip it; a hash that does not would put two equal instances in
+        # different buckets and a dictionary would stop finding them
+        content = self.__emit(self.SOURCE)["IOrderIF_v1.cs"]
+        self.assertIn("hash.Add(total);", content)
+        self.assertNotIn("hash.Add(id);", content)
 
 
 if __name__ == "__main__":
