@@ -796,7 +796,8 @@ domain Shop {
         self.assertIn("note != null && (", content)
 
     def test_emitter_validate_base_class_chain(self):
-        # a value object inheriting a validating base overrides Validate and chains base.Validate
+        # a value object inheriting a validating base overrides the WALK and chains base into it;
+        # `Validate` stays declared once, on the topmost validating class
         engine = Engine()
         session = Session(Source.CreateFromText("""
 domain D {
@@ -817,12 +818,16 @@ domain D {
         base = next(f for f in result if f.fileName == "Base.cs").content
         derived = next(f for f in result if f.fileName == "Derived.cs").content
 
-        # base: fresh IValidable, virtual, no base call
+        # base: fresh IValidable, declares both the entry point and the walk
         self.assertIn("public virtual bool Validate( IList<IValidationError> errors )", base)
-        # derived: overrides and chains; IValidable is inherited (not re-listed)
-        self.assertIn("public override bool Validate( IList<IValidationError> errors )", derived)
-        self.assertIn("base.Validate( errors );", derived)
+        self.assertIn("public virtual void ValidateInto( IList<IValidationError> errors, string pathPrefix )", base)
+        # derived: overrides the WALK and chains base into it
+        self.assertIn("public override void ValidateInto( IList<IValidationError> errors, string pathPrefix )", derived)
+        self.assertIn("base.ValidateInto( errors, pathPrefix );", derived)
         self.assertIn("if (b <= 0)", derived)
+        # the entry point is declared ONCE, on the topmost validating class
+        self.assertNotIn("bool Validate(", derived)
+        # IValidable is inherited (not re-listed)
         self.assertNotIn("IValidable", derived.split("class Derived")[1].split("{")[0])
 
     def test_emitter_validate_collection_len_count(self):
@@ -864,6 +869,165 @@ domain D {
         content = next(f for f in result if f.fileName == "Reading.cs").content
         self.assertIn("if (temp < -273)", content)
         self.assertIn("if (lon < -180 || lon > 180)", content)
+
+
+class TestEmitterDotnetValidateCascade(unittest.TestCase):
+    """
+    A value object is self-validating, so a rule on it has to run wherever it is held. The bug this
+    guards against was silent: OrderItem.Validate() was generated perfectly and never called, so an
+    order with a zero-quantity item came back 200. The walk also has to say WHERE the failure is -
+    two bad rows used to produce two identical errors, which a form cannot bind to anything.
+    """
+
+    def __emit(self, source: str):
+        engine = Engine()
+        session = Session(Source.CreateFromText(source))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+        return {f.fileName: f.content for f in DotnetEmitter().Emit(session)}
+
+    def test_validate_walks_into_a_held_value_object(self):
+        files = self.__emit("""
+domain Shop {
+    context C {
+        valueobject Address {
+            country: string validate len(value) == 2
+        }
+        valueobject Customer {
+            billing: Address
+        }
+    }
+}
+""")
+        customer = files["Customer.cs"]
+        # Customer declares no rule of its own, yet it validates - V12: it is the only entry point
+        # the caller has, and without it the rule on the address never runs.
+        self.assertIn(", IValidable", customer)
+        self.assertIn("public virtual bool Validate( IList<IValidationError> errors )", customer)
+        self.assertIn("ValidateInto( errors, string.Empty );", customer)
+        self.assertIn('billing?.ValidateInto( errors, pathPrefix + "billing." );', customer)
+
+    def test_validate_walks_into_a_list_and_numbers_the_path(self):
+        files = self.__emit("""
+domain Shop {
+    context C {
+        valueobject OrderItem {
+            quantity: integer validate value > 0
+        }
+        valueobject Order {
+            items: list[OrderItem]
+        }
+    }
+}
+""")
+        order = files["Order.cs"]
+        self.assertIn("for (int index = 0; index < items.Count; index++)", order)
+        self.assertIn('items[index]?.ValidateInto( errors, $"{pathPrefix}items[{index}]." );', order)
+        # a null list is not a crash
+        self.assertIn("if (items != null)", order)
+
+    def test_validate_walks_into_a_map_and_keys_the_path(self):
+        files = self.__emit("""
+domain Shop {
+    context C {
+        valueobject Price {
+            amount: number validate value > 0
+        }
+        valueobject Catalog {
+            prices: map[string,Price]
+        }
+    }
+}
+""")
+        catalog = files["Catalog.cs"]
+        self.assertIn("foreach (var pair in prices)", catalog)
+        self.assertIn('pair.Value?.ValidateInto( errors, $"{pathPrefix}prices[{pair.Key}]." );', catalog)
+
+    def test_an_own_rule_records_its_path(self):
+        files = self.__emit("""
+domain Shop {
+    context C {
+        valueobject Order {
+            total: number validate value >= 0
+        }
+    }
+}
+""")
+        self.assertIn('Path = pathPrefix + "total"', files["Order.cs"])
+
+    def test_nothing_is_generated_for_a_class_that_holds_no_rule(self):
+        # V2: the walk is decided at generation time, so a class of plain fields pays nothing
+        files = self.__emit("""
+domain Shop {
+    context C {
+        valueobject Plain {
+            x: string
+        }
+        valueobject Holder {
+            p: Plain
+        }
+    }
+}
+""")
+        self.assertNotIn("ValidateInto", files["Plain.cs"])
+        self.assertNotIn("ValidateInto", files["Holder.cs"])
+        self.assertNotIn("IValidable", files["Holder.cs"])
+
+    def test_a_self_referring_value_object_terminates(self):
+        # V3: the TYPE graph is walked with a seen set, so a folder holding folders still emits
+        files = self.__emit("""
+domain D {
+    context C {
+        valueobject Folder {
+            fname: string validate len(value) > 0
+            subFolders: list[Folder]
+        }
+    }
+}
+""")
+        folder = files["Folder.cs"]
+        self.assertIn('subFolders[index]?.ValidateInto( errors, $"{pathPrefix}subFolders[{index}]." );', folder)
+
+    def test_a_dto_holding_a_validating_dto_gets_an_entry_point(self):
+        # V12: the shape the GUI posts is exactly the one that used to have no validator
+        files = self.__emit("""
+domain Shop {
+    context C {
+        interface OrderIF version 1 {
+            dto OrderItemDTO {
+                quantity: integer validate value > 0
+            }
+            dto OrderDTO {
+                items: list[OrderItemDTO]
+            }
+        }
+    }
+}
+""")
+        content = files["IOrderIF_v1.cs"]
+        self.assertIn("public virtual bool Validate( IList<IValidationError> errors )", content)
+        self.assertIn('items[index]?.ValidateInto( errors, $"{pathPrefix}items[{index}]." );', content)
+
+    def test_a_ref_is_not_walked_into(self):
+        # `ref X` is an identity, not a nested object - there is nothing to validate on an id
+        files = self.__emit("""
+domain Shop {
+    context C {
+        aggregate Customer {
+            root entity Account {
+                id: string
+                name: string validate len(value) > 0
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                customer: ref Customer
+            }
+        }
+    }
+}
+""")
+        self.assertNotIn("ValidateInto", files["OrderHeader.cs"])
 
 
 class TestEmitterDotnetPrimitiveConversions(unittest.TestCase):
@@ -1236,6 +1400,100 @@ domain WebShop {
     def test_the_typescript_emitter_ignores_workflows(self):
         from d3i.emitters.TypeScriptEmitter import TypeScriptEmitter
         self.assertEqual(0, len(TypeScriptEmitter().Emit(self.__session())))
+
+
+class TestEmitterDotnetResponseShape(unittest.TestCase):
+    """
+    The status describes the ANSWER and the transport can carry exactly one, so it lives on the
+    response; the errors are a list because a form with three bad fields is the ordinary case.
+    The controller is also the only place that sees both worlds - PolyPersist raises exceptions,
+    the wire speaks status + errors - and nobody owned that translation before, which is why a
+    single bad field used to reach the caller as a 500.
+    """
+
+    SOURCE = """
+domain Shop {
+    context C {
+        @internal_api( grpc, rest )
+        interface OrderIF version 1 {
+            dto OrderDTO {
+                total: number validate value > 0
+            }
+            query getOrder( id:string ) : OrderDTO
+            command cancel( id:string )
+        }
+    }
+}
+"""
+
+    PUBLIC_SOURCE = SOURCE.replace("@internal_api( grpc, rest )", "@public_api( grpc, rest, collection = \"WebShopApi\" )")
+
+    def __emit(self, source: str):
+        engine = Engine()
+        session = Session(Source.CreateFromText(source))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+        return DotnetEmitter().Emit(session)
+
+    def __files(self):
+        return {f.fileName: f.content for f in self.__emit(self.SOURCE)}
+
+    def test_the_grpc_controller_answers_with_a_status_and_every_error(self):
+        content = self.__files()["OrderIF_v1.GrpcController.cs"]
+        self.assertIn("_GrpcFailure_getOrder( response.Status, response.Errors );", content)
+        self.assertIn("_GrpcFailure_cancel( response.Status, response.Errors );", content)
+        self.assertIn("var failure = new OrderIF_v1_getOrderResponse() { Status = status.ToGrpc() };", content)
+        self.assertIn("failure.Errors.Add( new ServiceKit.Protos.Error() {", content)
+        # the one-per-error shape is gone
+        self.assertNotIn("response.Error.Status", content)
+
+    def test_the_grpc_controller_maps_polypersist_failures(self):
+        content = self.__files()["OrderIF_v1.GrpcController.cs"]
+        self.assertIn("var failure = _MapFailure( ex );", content)
+        self.assertIn("ex is PolyPersist.Net.Common.ValidationExeption validationExeption", content)
+        self.assertIn("Statuses.BadRequest, validationExeption.ValidationErrors.Select(", content)
+        self.assertIn("Path = validationError.Path,", content)
+        self.assertIn("ex is PolyPersist.Net.Common.NotFoundException", content)
+        self.assertIn("return (Statuses.NotFound,", content)
+
+    def test_the_rest_controller_answers_with_the_error_list(self):
+        content = self.__files()["OrderIF_v1.RestController.cs"]
+        self.assertIn("return StatusCode(response.Status.ToHttp(), response.Errors);", content)
+        self.assertIn("return StatusCode(failure.Status.ToHttp(), failure.Errors);", content)
+        # the documented failure body is a list, so a form learns about all its bad fields at once
+        self.assertIn("typeof(IList<ServiceKit.Net.Error>)", content)
+        self.assertNotIn("response.Error.Status.ToHttp()", content)
+
+    def test_the_grpc_client_reads_the_status_not_the_oneof(self):
+        content = self.__files()["OrderIF_v1.GrpcClient.cs"]
+        self.assertIn("if( grpc_response.Status != ServiceKit.Protos.Statuses.Ok )", content)
+        self.assertIn("grpc_response.Status.FromGrpc(), _FromGrpcErrors( grpc_response.Errors )", content)
+        self.assertIn("private static ServiceKit.Net.Error[] _FromGrpcErrors( IEnumerable<ServiceKit.Protos.Error> errors )", content)
+        # the value still travels in a oneof, so "no value" stays distinguishable from "default"
+        self.assertIn("grpc_response.ResultCase == OrderIF_v1_getOrderResponse.ResultOneofCase.Value", content)
+        self.assertNotIn("ResultOneofCase.Error", content)
+        self.assertNotIn("ResultOneofCase.Success", content)
+
+    def test_the_rest_client_reads_the_whole_error_list(self):
+        content = self.__files()["OrderIF_v1.RestClient.cs"]
+        self.assertIn("var errors = await response.Content.ReadFromJsonAsync<List<ServiceKit.Net.Error>>();", content)
+        self.assertIn("response.StatusCode.FromHttp(), errors?.ToArray() ?? Array.Empty<ServiceKit.Net.Error>()", content)
+        self.assertNotIn("ReadFromJsonAsync<Error>()", content)
+
+    def test_the_public_clients_read_the_same_way(self):
+        # the public (ApiClientKit) clients are a separate code path from the internal ones and
+        # were the ones a careless bulk edit broke last time, so they get their own check
+        public = [f for f in self.__emit(self.PUBLIC_SOURCE) if "ApiClientKit" in f.fullPath.replace("\\", "/")]
+        by_name = {f.fileName: f.content for f in public}
+
+        grpc = by_name["OrderIF_v1.GrpcClient.cs"]
+        self.assertIn("if( grpc_response.Status != ServiceKit.Protos.Statuses.Ok )", grpc)
+        self.assertIn("_FromGrpcErrors( grpc_response.Errors )", grpc)
+        self.assertNotIn("ResultOneofCase.Error", grpc)
+
+        rest = by_name["OrderIF_v1.RestClient.cs"]
+        self.assertIn("ReadFromJsonAsync<List<ServiceKit.Net.Error>>();", rest)
+        self.assertNotIn("ReadFromJsonAsync<Error>()", rest)
 
 
 if __name__ == "__main__":

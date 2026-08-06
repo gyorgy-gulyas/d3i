@@ -324,18 +324,17 @@ class ProtoEmitter:
                 buffer.write(f"\n")
                
 
-            # Response message
+            # Response message. The status describes the ANSWER - the wire can carry exactly one -
+            # so it sits on the message itself; the errors are a list because a form with three bad
+            # fields is the ordinary case. The value keeps a one-member `oneof` purely for PRESENCE:
+            # it is the only way to tell "succeeded with no value" from "succeeded with the default".
             buffer.write(f"{utils.tab(indent)}message {fullname}_{operation.name}Response {{\n")
-            buffer.write(f"{utils.tab(indent+1)}oneof result {{\n")
-            if (operation.operation_return == None):
-                code.imports.add("google/protobuf/empty.proto")
-                buffer.write(f"{utils.tab(indent+2)}google.protobuf.Empty Success = 1;\n")
-                buffer.write(f"{utils.tab(indent+2)}ServiceKit.Protos.Error Error = 2;\n")
-            else:
-                buffer.write(f"{utils.tab(indent+2)}{self.typeText(operation.operation_return.type, code,inOneOf=True)} Value = 1;\n")
-                buffer.write(f"{utils.tab(indent+2)}ServiceKit.Protos.Error Error = 2;\n")
-
-            buffer.write(f"{utils.tab(indent+1)}}}\n")
+            buffer.write(f"{utils.tab(indent+1)}ServiceKit.Protos.Statuses Status = 1;\n")
+            buffer.write(f"{utils.tab(indent+1)}repeated ServiceKit.Protos.Error Errors = 2;\n")
+            if (operation.operation_return != None):
+                buffer.write(f"{utils.tab(indent+1)}oneof result {{\n")
+                buffer.write(f"{utils.tab(indent+2)}{self.typeText(operation.operation_return.type, code,inOneOf=True)} Value = 3;\n")
+                buffer.write(f"{utils.tab(indent+1)}}}\n")
             buffer.write(f"{utils.tab(indent)}}}\n")
 
         # write internal enums if Any
