@@ -931,6 +931,27 @@ domain WebShop {
         self.assertIn("public decimal totalAmount { get; set; }", emitted.content)
         self.assertNotIn("totalPrice", emitted.content)
 
+    def test_the_translation_is_run_by_something_generated(self):
+        # Without this the 'from' clause would be documentation: the emitter would declare an
+        # obligation, the developer would discharge it, and nothing would ever call the result.
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        event OrderPlaced { orderId:string }
+        interface OrderIF version 1 {
+            integration event Placed version 1 from OrderPlaced { orderId:string }
+        }
+    }
+}
+""", "OrderIF_v1.Publishers.cs")
+
+        self.assertIn("Context/EventHandlers", emitted.fullPath)
+        self.assertIn("[AutoRegisterEventHandler]", emitted.content)
+        self.assertIn("public sealed class OrderIF_v1Placed_v1Publisher : IEventHandler<OrderPlaced>", emitted.content)
+        # It calls the hand-written translation, and records the result with the SAME ordering
+        # scope - so the outside world sees this aggregate's contracts in the order it made them.
+        self.assertIn("_recorder.Record( OrderIF_v1Translations.ToPlaced_v1( @event ), context.PartitionKey );", emitted.content)
+
     def test_emitter_types_ok(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""

@@ -175,6 +175,11 @@ class DotnetEmitter:
                         code = self.interfaceTranslationsText(interface, translated, code)
                         code = self.endFile(code)
                         result.append(code)
+                        # And the thing that runs it, so 'from' is a mechanism rather than a note.
+                        code = self.beginFile(output_path, interface, "Context/EventHandlers", postfix=f"_v{interface.version}.Publishers")
+                        code = self.interfacePublishersText(interface, translated, code)
+                        code = self.endFile(code)
+                        result.append(code)
                     # Service: GRPC controller
                     if( utils.isPublishedOn( interface, "grpc" ) == True):
                         code = self.beginFile(output_path, interface, "Context/Controllers", postfix=f"_v{interface.version}.GrpcController")
@@ -565,6 +570,55 @@ class DotnetEmitter:
             buffer.write(f'{utils.tab(indent+1)}public static partial {code.getDotnetFullName(published)} To{self.eventClassName(published)}( {code.getDotnetFullName(source)} @event );\n\n')
 
         buffer.write(f'{utils.tab(indent)}}}\n')
+        code.content += buffer.getvalue()
+        return code
+
+    def interfacePublishersText(self, the_interface: interface, translated: List[event], code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        What actually runs the translation.
+
+        Without this the `from` clause would be documentation: the emitter would declare an
+        obligation, the developer would discharge it, and nothing would ever call the result. So
+        each published contract gets a handler on its internal source - the fact is recorded once by
+        the aggregate, and the published restatement is a REACTION to it, which is exactly what it
+        is conceptually.
+
+        It also means the two travel separately: a consumer inside this context sees the internal
+        fact, the outside world sees the contract, and neither is reading the other's mail.
+        """
+        code.usings.add("ServiceKit.Net.Eventing")
+
+        buffer = io.StringIO()
+
+        for published in translated:
+            source = Engine.get_referenced_element(published, published.translated_from)
+            if (source == None):
+                continue
+
+            class_name: str = f"{the_interface.name}_v{the_interface.version}{self.eventClassName(published)}Publisher"
+            source_name: str = code.getDotnetFullName(source)
+            published_name: str = self.eventClassName(published)
+
+            buffer.write(f'{utils.tab(indent)}/// <summary>\n')
+            buffer.write(f'{utils.tab(indent)}/// Publishes \'{source.name}\' as \'{the_interface.name}\' states it.\n')
+            buffer.write(f'{utils.tab(indent)}///\n')
+            buffer.write(f'{utils.tab(indent)}/// Generated and self-registering, so a translation cannot be declared and then quietly\n')
+            buffer.write(f'{utils.tab(indent)}/// never run. WHAT it translates into is yours to write; THAT it runs is not.\n')
+            buffer.write(f'{utils.tab(indent)}/// </summary>\n')
+            buffer.write(f'{utils.tab(indent)}[AutoRegisterEventHandler]\n')
+            buffer.write(f'{utils.tab(indent)}public sealed class {class_name} : IEventHandler<{source_name}>\n')
+            buffer.write(f'{utils.tab(indent)}{{\n')
+            buffer.write(f'{utils.tab(indent+1)}private readonly IEventRecorder _recorder;\n\n')
+            buffer.write(f'{utils.tab(indent+1)}public {class_name}( IEventRecorder recorder ) => _recorder = recorder;\n\n')
+            buffer.write(f'{utils.tab(indent+1)}public Task Handle( EventContext context, {source_name} @event, CancellationToken cancellationToken = default )\n')
+            buffer.write(f'{utils.tab(indent+1)}{{\n')
+            buffer.write(f'{utils.tab(indent+2)}// The same ordering scope as the fact it restates, so the outside world sees this\n')
+            buffer.write(f'{utils.tab(indent+2)}// aggregate\'s contracts in the order the aggregate produced them.\n')
+            buffer.write(f'{utils.tab(indent+2)}_recorder.Record( {the_interface.name}_v{the_interface.version}Translations.To{published_name}( @event ), context.PartitionKey );\n')
+            buffer.write(f'{utils.tab(indent+2)}return Task.CompletedTask;\n')
+            buffer.write(f'{utils.tab(indent+1)}}}\n')
+            buffer.write(f'{utils.tab(indent)}}}\n\n')
+
         code.content += buffer.getvalue()
         return code
 
