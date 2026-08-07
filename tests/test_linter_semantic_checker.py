@@ -21,11 +21,11 @@ class TestLinterSemanticChecker(unittest.TestCase):
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        event TheEvent version 1 {
+        event TheEvent {
         }
-        event TheEvent version 1 {
+        event TheEvent {
         }
-        event OtherEvent version 2{
+        event OtherEvent {
         }
     }
 }
@@ -75,7 +75,7 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        event TheEvent version 1 {
+        event TheEvent {
             the_member:string
             the_member:number
             other_member:number
@@ -1068,7 +1068,7 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        event Uploaded version 1 {
+        event Uploaded {
             content: stream
         }
     }
@@ -1751,6 +1751,235 @@ domain SomeDomain {
 """))
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("takes exactly one string argument" in session.diagnostics[0].toText())
+
+    # ---- D3I-50: a version is a promise, and a promise needs someone to make it to -------------
+
+    def test_an_eventsourced_aggregate_event_must_be_versioned(self):
+        # The fact stays in the stream longer than the code that wrote it, so the code that reads it
+        # back will be newer than the code that produced it - the same compatibility problem as with
+        # a foreign team, only against your own past.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        eventsourced aggregate Account {
+            root entity AccountHeader {
+                @partitionKey
+                accountId:string
+                command open( owner:string ) emits Opened
+            }
+            event Opened { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must declare a version" in session.diagnostics[0].toText())
+        self.assertTrue("eventsourced" in session.diagnostics[0].toText())
+
+    def test_an_eventsourced_aggregate_event_with_a_version_is_ok(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        eventsourced aggregate Account {
+            root entity AccountHeader {
+                @partitionKey
+                accountId:string
+                command open( owner:string ) emits Opened.v1
+            }
+            event Opened version 1 { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_an_internal_event_must_not_be_versioned(self):
+        # Its consumers ship in the same deployment unit and move with it, so breaking the shape is
+        # a compile error. A version would promise a stability nobody is keeping.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event DailyClosingCompleted version 1 { orderCount:number }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must not declare a version" in session.diagnostics[0].toText())
+
+    def test_an_internal_event_without_a_version_is_ok(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event DailyClosingCompleted { orderCount:number }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_an_event_of_a_plain_aggregate_must_not_be_versioned(self):
+        # Not eventsourced: the fact is a passing message, not a stored one.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        aggregate Account {
+            root entity AccountHeader {
+                @partitionKey
+                accountId:string
+                command open( owner:string ) emits Opened.v1
+            }
+            event Opened version 1 { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must not declare a version" in session.diagnostics[0].toText())
+
+    def test_a_published_event_must_be_versioned(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            event OrderPlaced { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must declare a version" in session.diagnostics[0].toText())
+        self.assertTrue("another team reads it" in session.diagnostics[0].toText())
+
+    def test_an_integration_event_must_be_versioned_wherever_it_is(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        integration event Shipped { orderId:string }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("contract with somebody outside" in session.diagnostics[0].toText())
+
+    def test_an_audit_event_must_be_versioned(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        audit event Exported { orderId:string }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("kept for years" in session.diagnostics[0].toText())
+
+    # ---- D3I-50: the ordering scope -----------------------------------------------------------
+
+    def test_a_recording_root_without_a_partition_key_is_warned_about(self):
+        # Not fatal - the generated Record simply asks for the key - but it is almost always a
+        # mistyped decorator, and finding that out from a compiler error in hand-written code is a
+        # bad way to find it out. Note the deliberate typo below.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        aggregate Account {
+            root entity AccountHeader {
+                @partitonKey
+                accountId:string
+                command open( owner:string ) emits Opened
+            }
+            event Opened { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("no member is marked" in session.diagnostics[0].toText())
+        self.assertEqual(Diagnostic.Severity.Warning, session.diagnostics[0].severity)
+
+    def test_an_eventsourced_root_without_a_partition_key_is_an_error(self):
+        # An eventsourced aggregate IS its stream, and a stream without a key cannot be read back.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        eventsourced aggregate Account {
+            root entity AccountHeader {
+                accountId:string
+                command open( owner:string ) emits Opened.v1
+            }
+            event Opened version 1 { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("cannot be read back without it" in session.diagnostics[0].toText())
+        self.assertEqual(Diagnostic.Severity.Error, session.diagnostics[0].severity)
+
+    def test_a_root_that_records_nothing_needs_no_partition_key(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        aggregate Account {
+            root entity AccountHeader { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_two_partition_keys_on_a_root_is_an_error(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        aggregate Account {
+            root entity AccountHeader {
+                @partitionKey
+                accountId:string
+                @partitionKey
+                tenantId:string
+                command open( owner:string ) emits Opened
+            }
+            event Opened { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("More than one member" in session.diagnostics[0].toText())
+        self.assertTrue("ordered against one thing" in session.diagnostics[0].toText())
+
+    def test_a_partition_key_on_a_non_root_entity_has_no_effect(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        aggregate Account {
+            root entity AccountHeader { accountId:string }
+            entity AccountLine {
+                @partitionKey
+                lineId:string
+            }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("has no effect" in session.diagnostics[0].toText())
+        self.assertEqual(Diagnostic.Severity.Warning, session.diagnostics[0].severity)
+
+    def test_two_partition_keys_on_an_event_is_an_error(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event DailyClosingCompleted {
+            @partitionKey
+            businessDay:date
+            @partitionKey
+            region:string
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("More than one member" in session.diagnostics[0].toText())
 
 
 if __name__ == "__main__":

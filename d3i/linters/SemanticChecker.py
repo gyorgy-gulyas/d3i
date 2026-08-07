@@ -65,6 +65,49 @@ class SemanticChecker(ElementVisitor):
                     if (other_event.version == the_event.version):
                         self.__error(the_event, f"An event '{the_event.name}' with same name and version is already exists in {neighbour.locationText()}.")
 
+        self.__check_event_version(the_event)
+        self.__check_single_partition_key(the_event, the_event.members, f"event '{the_event.name}'")
+
+    def __check_event_version(self, the_event: event):
+        """
+        A version is a compatibility promise, and a promise needs someone to make it to.
+
+        Where there IS such an audience the version is required; where there is not, writing one is
+        an error rather than a harmless extra - it tells a reader that this shape is being kept
+        stable for somebody, and nobody is going to keep that promise.
+        """
+        owning_interface = the_event.getInterface()
+        owning_aggregate = the_event.getAggregate()
+
+        eventsourced: bool = owning_aggregate != None and owning_aggregate.eventsourced == True
+
+        reason: str = None
+        if (owning_interface != None):
+            reason = f"it is published on the interface '{owning_interface.name}', so another team reads it"
+        elif (the_event.kind == event.Kind.Integration):
+            reason = "an integration event is a contract with somebody outside this context"
+        elif (the_event.kind == event.Kind.Audit):
+            reason = "an audit fact is kept for years, and the code that reads it back will be newer than the code that wrote it"
+        elif (eventsourced == True):
+            reason = f"'{owning_aggregate.name}' is eventsourced, so this fact stays in the stream longer than the code that wrote it"
+
+        if (reason != None):
+            if (the_event.version == None):
+                self.__error(the_event, f"The event '{the_event.name}' must declare a version, because {reason}.")
+            return
+
+        # No audience: the consumers ship in the same deployment unit and move with the producer, so
+        # breaking the shape is a compile error rather than a wire incident.
+        if (the_event.version != None):
+            where = f"the aggregate '{owning_aggregate.name}'" if owning_aggregate != None else "this context"
+            self.__error(the_event, f"The internal event '{the_event.name}' must not declare a version: it is private to {where}, its consumers move with it, and a version would promise a stability nobody is keeping. Mark the aggregate 'eventsourced', or publish the event on an interface, if the promise is real.")
+
+    def __check_single_partition_key(self, element: base_element, members: List[base_element], what: str):
+        marked = [member for member in members if member.find_decorator("partitionKey") != None]
+        if (len(marked) > 1):
+            names = ", ".join(member.name for member in marked)
+            self.__error(marked[1], f"More than one member of {what} is marked '@partitionKey' ({names}). The partition key is the ordering scope, and a fact can only be ordered against one thing.")
+        return marked
 
 
     def visitEventMember(self, eventMember: event_member, parentData: Any) -> Any:
@@ -205,6 +248,37 @@ class SemanticChecker(ElementVisitor):
                     continue
                 if (neighbour.name == the_entity.name):
                     self.__error(the_entity, f"An entity '{the_entity.name}' conflicts with same name with element in {neighbour.locationText()}.")
+
+        self.__check_partition_key_on_root(the_entity, parent_aggregate)
+
+    def __check_partition_key_on_root(self, the_entity: entity, parent_aggregate: aggregate):
+        """
+        The ordering scope of a recorded fact.
+
+        Only checked on a root that actually records something: an entity that emits nothing has no
+        stream and needs no key.
+        """
+        marked = self.__check_single_partition_key(the_entity, the_entity.members, f"entity '{the_entity.name}'")
+
+        is_root: bool = the_entity.parent.isRoot == True
+        emits_anything: bool = any(len(operation.emits) > 0 for operation in the_entity.operations)
+
+        if (is_root == False):
+            if (len(marked) > 0):
+                self.__warning(marked[0], f"'@partitionKey' on '{the_entity.name}.{marked[0].name}' has no effect: only an aggregate ROOT records facts, so only a root has an ordering scope.")
+            return
+
+        if (emits_anything == False or len(marked) > 0):
+            return
+
+        if (parent_aggregate.eventsourced == True):
+            # An event-sourced aggregate IS its stream, and a stream without a key is not a stream.
+            self.__error(the_entity, f"The root '{the_entity.name}' of the eventsourced aggregate '{parent_aggregate.name}' records facts but has no member marked '@partitionKey'. The stream key is the root's identity, and an eventsourced aggregate cannot be read back without it.")
+        else:
+            # Not fatal - the generated Record simply asks for the key - but it is almost always a
+            # mistyped decorator rather than a decision, and finding that out from a compiler error
+            # in hand-written code is a bad way to find it out.
+            self.__warning(the_entity, f"The root '{the_entity.name}' records facts but no member is marked '@partitionKey', so the generated 'Record' will ask for the ordering scope on every call. Mark the member that identifies the root if that was the intention.")
 
     def visitEntityMember(self, entity_member: entity_member, parentData: Any) -> Any:
         parent_entity: entity = entity_member.parent
