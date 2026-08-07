@@ -690,25 +690,23 @@ domain somedomain {
         self.assertEqual(len(repository.operations), 1)
         self.assertEqual(repository.operations[0].name, "getById")
 
-    def test_service_event_ok(self):
+    def test_context_event_ok(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
 domain somedomain {
     context context_1 {
         @decorator
-        service OrderService {
-            event OrderPlaced version 1 {
-                enum Importance {
-                    High,
-                    Normal,
-                    Low
-                }
-
-                orderId:string
-                importance:Importance
-                @decorator_data
-                data:string
+        event OrderPlaced version 1 {
+            enum Importance {
+                High,
+                Normal,
+                Low
             }
+
+            orderId:string
+            importance:Importance
+            @decorator_data
+            data:string
         }
     }
 }
@@ -717,8 +715,8 @@ domain somedomain {
         session.PrintDiagnostics()
 
         context: context = root.domains[0].contexts[0]
-        self.assertEqual(len(context.services[0].events), 1)
-        event: event = context.services[0].events[0]
+        self.assertEqual(len(context.events), 1)
+        event: event = context.events[0]
         self.assertEqual(event.name, "OrderPlaced")
         self.assertEqual(event.version, 1)
         self.assertEqual(len(event.members), 3)
@@ -1074,18 +1072,15 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        service TheService {
-            eventhandler TheHandler for event SomeEvent
-        }
+        eventhandler TheHandler for event SomeEvent
     }
 }
 """))
         root = engine.Build(session)
         context: context = root.domains[0].contexts[0]
-        service: service = context.services[0]
-        self.assertEqual(len(service.eventhandlers), 1)
-        self.assertEqual(service.eventhandlers[0].name, "TheHandler")
-        self.assertEqual(service.eventhandlers[0].handledEvent.getText(), "SomeEvent")
+        self.assertEqual(len(context.eventhandlers), 1)
+        self.assertEqual(context.eventhandlers[0].name, "TheHandler")
+        self.assertEqual(context.eventhandlers[0].handledEvent.getText(), "SomeEvent")
 
     def test_operation_command_query(self):
         engine = Engine()
@@ -1170,22 +1165,78 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        service TheService {
-            event Plain version 1 { x:number }
-            domain event Created version 1 { x:number }
-            integration event Shipped version 1 { x:number }
-            audit event Logged version 1 { who:string }
+        event Plain version 1 { x:number }
+        domain event Created version 1 { x:number }
+        integration event Shipped version 1 { x:number }
+        audit event Logged version 1 { who:string }
+    }
+}
+"""))
+        root = engine.Build(session)
+        the_context = root.domains[0].contexts[0]
+        self.assertEqual(len(the_context.events), 4)
+        self.assertEqual(the_context.events[0].kind, event.Kind.Domain)
+        self.assertEqual(the_context.events[1].kind, event.Kind.Domain)
+        self.assertEqual(the_context.events[2].kind, event.Kind.Integration)
+        self.assertEqual(the_context.events[3].kind, event.Kind.Audit)
+
+    def test_aggregate_event_ok(self):
+        # A fact recorded by the root belongs to the aggregate, not to some service.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        eventsourced aggregate Account {
+            root entity AccountHeader {
+                accountId:string
+                command open( owner:string ) emits Opened.v1
+            }
+
+            event Opened version 1 {
+                accountId:string
+                owner:string
+            }
         }
     }
 }
 """))
         root = engine.Build(session)
-        service = root.domains[0].contexts[0].services[0]
-        self.assertEqual(len(service.events), 4)
-        self.assertEqual(service.events[0].kind, event.Kind.Domain)
-        self.assertEqual(service.events[1].kind, event.Kind.Domain)
-        self.assertEqual(service.events[2].kind, event.Kind.Integration)
-        self.assertEqual(service.events[3].kind, event.Kind.Audit)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasAnyError())
+
+        the_aggregate = root.domains[0].contexts[0].aggregates[0]
+        self.assertTrue(the_aggregate.eventsourced)
+        self.assertEqual(len(the_aggregate.events), 1)
+        self.assertEqual(the_aggregate.events[0].name, "Opened")
+        self.assertEqual(the_aggregate.events[0].version, 1)
+        self.assertEqual(the_aggregate.events[0].kind, event.Kind.Domain)
+
+        the_command = the_aggregate.internal_entities[0].entity.operations[0]
+        self.assertEqual(len(the_command.emits), 1)
+        self.assertEqual(the_command.emits[0].getText(), "Opened.v1")
+
+    def test_context_event_without_version_ok(self):
+        # An internal fact that nobody outside the deployment unit consumes makes no
+        # compatibility promise, so it carries no version. See D3I-50.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        event DailyClosingCompleted {
+            businessDay:date
+            orderCount:number
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasAnyError())
+
+        the_event = root.domains[0].contexts[0].events[0]
+        self.assertEqual(the_event.name, "DailyClosingCompleted")
+        self.assertIsNone(the_event.version)
+        self.assertEqual(len(the_event.members), 2)
 
     def test_eventsourced_aggregate(self):
         engine = Engine()

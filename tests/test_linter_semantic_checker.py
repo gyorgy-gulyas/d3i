@@ -16,18 +16,16 @@ class TestLinterSemanticChecker(unittest.TestCase):
         session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 0)
 
-    def test_conflict_service_event_fail(self):
+    def test_conflict_context_event_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        service OrderService {
-            event TheEvent version 1 {
-            }
-            event TheEvent version 1 {
-            }
-            event OtherEvent version 2{
-            }
+        event TheEvent version 1 {
+        }
+        event TheEvent version 1 {
+        }
+        event OtherEvent version 2{
         }
     }
 }
@@ -40,9 +38,9 @@ domain SomeDomain {
         session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEvent" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
         self.assertTrue("TheEvent" in session.diagnostics[1].toText())
-        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,12):", "(5,12)"]))
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,8):", "(4,8)"]))
 
     def test_conflict_interface_event_fail(self):
         engine = Engine()
@@ -77,12 +75,10 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        service OrderService {
-            event TheEvent version 1 {
-                the_member:string
-                the_member:number
-                other_member:number
-            }
+        event TheEvent version 1 {
+            the_member:string
+            the_member:number
+            other_member:number
         }
     }
 }
@@ -95,9 +91,9 @@ domain SomeDomain {
         session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("the_member" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,16):", "(7,16)"]))
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
         self.assertTrue("the_member" in session.diagnostics[1].toText())
-        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,16):", "(6,16)"]))
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,12):", "(5,12)"]))
 
     def test_conflict_context_enum_fail(self):
         engine = Engine()
@@ -908,9 +904,7 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        service TheService {
-            eventhandler TheHandler for event NotDefinedEvent
-        }
+        eventhandler TheHandler for event NotDefinedEvent
     }
 }
 """))
@@ -1074,10 +1068,8 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        service TheService {
-            event Uploaded version 1 {
-                content: stream
-            }
+        event Uploaded version 1 {
+            content: stream
         }
     }
 }

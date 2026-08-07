@@ -76,8 +76,25 @@ class DotnetEmitter:
                     code = self.endFile(code)
                     result.append(code)
 
+                # Process the facts owned by the context itself. An event is not nested in
+                # the producing service's contract: a consumer must be able to name the fact
+                # without naming who produced it.
+                for context_event in context.events:
+                    code = self.beginFile(output_path, context_event, "Events", postfix=self.eventPostfix(context_event))
+                    code = self.eventText(context_event, code)
+                    code = self.endFile(code)
+                    result.append(code)
+
                 # Process all aggregate in the context
                 for aggregate in context.aggregates:
+                    # The facts the root records. The stream key is the root identity, so
+                    # these belong to the aggregate and travel with it.
+                    for aggregate_event in aggregate.events:
+                        code = self.beginFile(output_path, aggregate_event, "Events", postfix=self.eventPostfix(aggregate_event))
+                        code = self.eventText(aggregate_event, code)
+                        code = self.endFile(code)
+                        result.append(code)
+
                     for enum in aggregate.enums:
                         code = self.beginFile(output_path, enum, "Models")
                         code = self.enumText(enum, code)
@@ -340,8 +357,18 @@ class DotnetEmitter:
     def dtoText(self, dto: dto, code: dotnet_code, indent: int = 1) -> dotnet_code:
         return self.dataClassText(dto, dto.inherits, dto.name, dto.members, code, indent=indent)
 
+    def eventPostfix(self, the_event: event) -> str:
+        return "" if the_event.version == None else f"_v{the_event.version}"
+
+    def eventClassName(self, the_event: event) -> str:
+        # An unversioned event is an internal fact that promises compatibility to nobody,
+        # so its class carries no version suffix either. See D3I-50.
+        if (the_event.version == None):
+            return the_event.name
+        return the_event.name + f"_v{the_event.version}"
+
     def eventText(self, event: event, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.dataClassText(event, event.inherits, event.name+f"_v{event.version}", event.members, code, indent=indent)
+        return self.dataClassText(event, event.inherits, self.eventClassName(event), event.members, code, indent=indent)
 
     def dataClassText(self, element: internal_scoped_base_element, inherits: List[qualified_name], name: str, members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> dotnet_code:
         """

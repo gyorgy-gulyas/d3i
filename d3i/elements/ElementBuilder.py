@@ -226,6 +226,14 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(context_element.workflow())
                 child.parent = result
                 result.workflows.append(child)
+            elif (context_element.event()):
+                child = self.visit(context_element.event())
+                child.parent = result
+                result.events.append(child)
+            elif (context_element.eventhandler()):
+                child = self.visit(context_element.eventhandler())
+                child.parent = result
+                result.eventhandlers.append(child)
             counter = counter + 1
 
         return result
@@ -516,6 +524,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(aggregate_element.value_object())
                 child.parent = result
                 result.value_objects.append(child)
+            elif (aggregate_element.event()):
+                child = self.visit(aggregate_element.event())
+                child.parent = result
+                result.events.append(child)
             counter = counter + 1
 
         return result
@@ -628,14 +640,6 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(service_element.operation())
                 child.parent = result
                 result.operations.append(child)
-            elif (service_element.event() != None):
-                child = self.visit(service_element.event())
-                child.parent = result
-                result.events.append(child)
-            elif (service_element.eventhandler() != None):
-                child = self.visit(service_element.eventhandler())
-                child.parent = result
-                result.eventhandlers.append(child)
             elif (service_element.enum()):
                 child = self.visit(service_element.enum())
                 child.parent = result

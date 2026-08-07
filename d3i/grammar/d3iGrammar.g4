@@ -44,6 +44,8 @@ context
         | service
         | interface
         | workflow
+        | event          // a fact owned by the context itself, not by one service
+        | eventhandler   // the CONTEXT reacts; which class runs it is implementation
         ;
 
 value_object
@@ -89,8 +91,15 @@ composite
             : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   //
             ;
 
+// The version is optional, and that is a modelling statement, not a convenience:
+// a version is a compatibility promise, and a promise needs someone to make it to.
+// An internal domain event of a non-eventsourced aggregate has no such audience -
+// its consumers ship in the same deployment unit and move with it, so breaking the
+// shape is a compile error, not a wire incident. Where the promise IS made (an
+// eventsourced stream that outlives the code, a published contract, a retained
+// audit fact) the linter requires the version. See D3I-50.
 event
-    :  DOCUMENT_LINE* decorator* event_kind? 'event' IDENTIFIER 'version' INTEGER_CONSTANS inherits? '{' event_element* '}'
+    :  DOCUMENT_LINE* decorator* event_kind? 'event' IDENTIFIER ('version' INTEGER_CONSTANS)? inherits? '{' event_element* '}'
     ;
 
     // three explicit event kinds. No prefix (or 'domain') = domain event.
@@ -136,6 +145,7 @@ aggregate
         : aggregate_entity
         | enum
         | value_object
+        | event          // facts recorded by the root; the stream key is the root identity
         ;
         
         aggregate_entity
@@ -167,12 +177,14 @@ service
     :  DOCUMENT_LINE* decorator* 'service' IDENTIFIER '{' service_element*  '}'
     ;
 
+    // A service is not the owner of a fact: it is the plumbing that loads an aggregate,
+    // calls it and saves it. Events and handlers therefore live on the aggregate or on
+    // the context, never here - otherwise a consumer would have to name the producing
+    // service's contract just to name the fact it cares about.
     service_element
         : operation
         | enum
         | value_object
-        | event
-        | eventhandler
         ;
 
 // workflow — first-class now, Temporal implementation later.

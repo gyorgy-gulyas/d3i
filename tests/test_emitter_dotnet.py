@@ -632,15 +632,16 @@ domain WebShop {
         self.assertIn("public partial class OrderDto : IEquatable<OrderDto>", content)
         self.assertIn("public string field { get; set; }", content)
 
-    def test_emitter_event_ok(self):
+    def test_emitter_context_event_ok(self):
+        # The fact gets its own file under Events/, not a nested class inside the
+        # producing service's contract - otherwise a consumer would have to name
+        # IOrderService just to name OrderPlaced.
         engine = Engine()
         session = Session(Source.CreateFromText("""
 domain WebShop {
     context Orders {
-        service OrderService {
-            event OrderPlaced version 1 {
-                orderId:string
-            }
+        event OrderPlaced version 1 {
+            orderId:string
         }
     }
 }
@@ -650,10 +651,59 @@ domain WebShop {
 
         result = DotnetEmitter().Emit(session)
         self.assertEqual(1, len(result))
-        self.assertEqual(result[0].fileName, "IOrderService.cs")
+        self.assertEqual(result[0].fileName, "OrderPlaced_v1.cs")
+        self.assertIn("Events", result[0].fullPath)
         content = result[0].content
+        self.assertIn("namespace WebShop.Orders", content)
         self.assertIn("public partial class OrderPlaced_v1 : IEquatable<OrderPlaced_v1>", content)
         self.assertIn("public string orderId { get; set; }", content)
+
+    def test_emitter_unversioned_event_has_no_suffix(self):
+        # No version means no compatibility promise, so no _vN on the class either.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        event DailyClosingCompleted {
+            orderCount:number
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertEqual(1, len(result))
+        self.assertEqual(result[0].fileName, "DailyClosingCompleted.cs")
+        self.assertIn("public partial class DailyClosingCompleted : IEquatable<DailyClosingCompleted>", result[0].content)
+
+    def test_emitter_aggregate_event_ok(self):
+        # A fact recorded by the root lands in the aggregate's own namespace.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Orders {
+        eventsourced aggregate Account {
+            root entity AccountHeader {
+                accountId:string
+            }
+
+            event Opened version 1 {
+                accountId:string
+            }
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        the_event = next(f for f in result if f.fileName == "Opened_v1.cs")
+        self.assertIn("Events", the_event.fullPath)
+        self.assertIn("namespace WebShop.Orders.Account", the_event.content)
+        self.assertIn("public partial class Opened_v1 : IEquatable<Opened_v1>", the_event.content)
 
     def test_emitter_types_ok(self):
         engine = Engine()
@@ -1122,10 +1172,8 @@ domain WebShop {
             currency:string
         }
 
-        service Payments {
-            event OrderPaid version 1 {
-                orderId:string
-            }
+        event OrderPaid version 1 {
+            orderId:string
         }
 
         @retry( 3 )
@@ -1140,7 +1188,7 @@ domain WebShop {
 
             query status( orderId:string ) : string
 
-            eventhandler onPaid for event Payments.OrderPaid.v1
+            eventhandler onPaid for event OrderPaid.v1
 
             step reserveStock( orderId:string, sku:string ) compensate releaseStock
 
@@ -1214,7 +1262,7 @@ domain WebShop {
 
     def test_an_eventhandler_is_a_signal(self):
         content = self.__file("FulfilOrderWorkflow.cs")
-        self.assertIn("[WorkflowSignal]\n\t\tpublic Task onPaid(IPayments.OrderPaid_v1 @event) => HandleOnPaid(@event);", content)
+        self.assertIn("[WorkflowSignal]\n\t\tpublic Task onPaid(OrderPaid_v1 @event) => HandleOnPaid(@event);", content)
 
     def test_the_developer_half_is_declared_but_not_written(self):
         # partial declarations with a return value MUST be implemented, so the compiler is what
@@ -1224,7 +1272,7 @@ domain WebShop {
         self.assertIn("private partial Task OnCancel(string reason);", content)
         self.assertIn("private partial Task<bool> OnApprove(string by);", content)
         self.assertIn("private partial string OnStatus(string orderId);", content)
-        self.assertIn("private partial Task HandleOnPaid(IPayments.OrderPaid_v1 @event);", content)
+        self.assertIn("private partial Task HandleOnPaid(OrderPaid_v1 @event);", content)
         # the run body itself is never generated
         self.assertNotIn("private partial Task<string> OnPlace(string orderId, Money total)\n", content)
 

@@ -241,6 +241,9 @@ class context(internal_scoped_base_element):
         self.services: List[service] = []
         self.interfaces: List[interface] = []
         self.workflows: List[workflow] = []
+        # facts owned by the context itself, and the context's own reactions
+        self.events: List[event] = []
+        self.eventhandlers: List[eventhandler] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitContext(self, parentData)
@@ -261,9 +264,13 @@ class context(internal_scoped_base_element):
             interface.visit(visitor, data)
         for workflow in self.workflows:
             workflow.visit(visitor, data)
+        for context_event in self.events:
+            context_event.visit(visitor, data)
+        for context_eventhandler in self.eventhandlers:
+            context_eventhandler.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return super().getChildren() + self.composites + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces + self.workflows
+        return super().getChildren() + self.composites + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces + self.workflows + self.events + self.eventhandlers
 
 
 class enum(hinted_base_element):
@@ -511,15 +518,19 @@ class aggregate(internal_scoped_base_element):
         self.name: str = None
         self.internal_entities: List[aggregate_entity] = []
         self.eventsourced: bool = False   # 'eventsourced aggregate' marker
+        # facts the root records; the stream key is the root identity
+        self.events: List[event] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitAggregate(self, parentData)
         super().visit(visitor, data)
         for aggregate_entity in self.internal_entities:
             aggregate_entity.visit(visitor, data)
+        for aggregate_event in self.events:
+            aggregate_event.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return super().getChildren() + [ae.entity for ae in self.internal_entities]
+        return super().getChildren() + [ae.entity for ae in self.internal_entities] + self.events
 
 
 class aggregate_entity(base_element):
@@ -613,8 +624,9 @@ class repository(functional_element):
         super().visit(visitor, data)
 
 class service(functional_element):
+    # A service owns no fact: events and handlers live on the aggregate or the context.
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False, withEvent=True, withEventHandler=True)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False, withEvent=False, withEventHandler=False)
         self.name: str = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):

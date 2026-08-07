@@ -90,6 +90,8 @@ class JsonEmitter(ElementVisitor):
             "services": [],
             "interfaces": [],
             "workflows": [],
+            "events": [],
+            "eventhandlers": [],
         }
         parentData['contexts'].append(data)
         return data
@@ -233,7 +235,8 @@ class JsonEmitter(ElementVisitor):
             "$type": "d3i.aggregate",
             "name": aggregate.name,
             "eventsourced": str(aggregate.eventsourced),
-            "internal_entities": []
+            "internal_entities": [],
+            "events": [],
         }
         parentData["aggregates"].append(data)
         return data
@@ -289,8 +292,6 @@ class JsonEmitter(ElementVisitor):
             "$type": "d3i.service",
             "name": service.name,
             "operations": [],
-            "events": [],
-            "eventhandlers": [],
         }
         parentData["services"].append(data)
         return data
