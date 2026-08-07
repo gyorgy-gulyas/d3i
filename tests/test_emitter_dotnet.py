@@ -705,6 +705,150 @@ domain WebShop {
         self.assertIn("namespace WebShop.Orders.Account", the_event.content)
         self.assertIn("public partial class Opened_v1 : IEquatable<Opened_v1>", the_event.content)
 
+    def __emitOne(self, source: str, fileName: str):
+        engine = Engine()
+        session = Session(Source.CreateFromText(source))
+        engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasAnyError())
+        result = DotnetEmitter().Emit(session)
+        return next(f for f in result if f.fileName == fileName)
+
+    def test_an_event_carries_its_routing_constants(self):
+        # Dispatch matches on the schema id alone - that is what lets a subscriber name the fact
+        # without naming the service that produced it.
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        eventsourced aggregate Order {
+            root entity OrderHeader { orderId:string }
+            event OrderPlaced version 1 { orderId:string }
+        }
+    }
+}
+""", "OrderPlaced_v1.cs")
+
+        self.assertIn("using ServiceKit.Net.Eventing;", emitted.content)
+        self.assertIn("public partial class OrderPlaced_v1 : IEquatable<OrderPlaced_v1>, IDomainEvent", emitted.content)
+        self.assertIn('public string SchemaId => "WebShop.Sales.Order.OrderPlaced.v1";', emitted.content)
+        # The channel is the context: the conversation the fact belongs to. Which topic that
+        # becomes is the broker adapter's business.
+        self.assertIn('public string Channel => "WebShop.Sales";', emitted.content)
+
+    def test_an_unversioned_event_has_no_version_in_its_schema_id(self):
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        event DailyClosingCompleted { orderCount:number }
+    }
+}
+""", "DailyClosingCompleted.cs")
+
+        self.assertIn('public string SchemaId => "WebShop.Sales.DailyClosingCompleted";', emitted.content)
+
+    def test_the_root_can_only_record_what_its_commands_declare(self):
+        # This is the whole point of `emits`: recording a fact the model does not say this root
+        # produces is a compile error, because there is no overload for it.
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        eventsourced aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+
+                command place( total:number ) emits OrderPlaced.v1
+                command cancel( reason:string ) emits OrderCancelled.v1
+            }
+
+            event OrderPlaced version 1 { orderId:string }
+            event OrderCancelled version 1 { orderId:string }
+            event NeverEmitted version 1 { orderId:string }
+        }
+    }
+}
+""", "OrderHeader.cs")
+
+        self.assertIn("public partial class OrderHeader : IEquatable<OrderHeader>, IEventRecordingRoot", emitted.content)
+        self.assertIn("protected void Record( OrderPlaced_v1 @event )", emitted.content)
+        self.assertIn("protected void Record( OrderCancelled_v1 @event )", emitted.content)
+        self.assertNotIn("NeverEmitted", emitted.content)
+
+        # The ordering scope is the root's own key, so the caller cannot get it wrong.
+        self.assertIn("new RecordedEvent( @event, orderId )", emitted.content)
+        self.assertIn("IReadOnlyList<RecordedEvent> IEventRecordingRoot.DrainRecordedEvents()", emitted.content)
+
+    def test_a_root_without_a_partition_key_has_to_be_told_the_scope(self):
+        # Inventing a key would be worse than asking for one: a fact ordered against the wrong
+        # scope is a bug nobody can see.
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        aggregate Order {
+            root entity OrderHeader {
+                orderId:string
+                command place( total:number ) emits OrderPlaced.v1
+            }
+            event OrderPlaced version 1 { orderId:string }
+        }
+    }
+}
+""", "OrderHeader.cs")
+
+        self.assertIn("protected void Record( OrderPlaced_v1 @event, string partitionKey )", emitted.content)
+
+    def test_a_root_that_emits_nothing_stays_a_plain_class(self):
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        aggregate Order {
+            root entity OrderHeader { orderId:string }
+        }
+    }
+}
+""", "OrderHeader.cs")
+
+        self.assertNotIn("IEventRecordingRoot", emitted.content)
+        self.assertNotIn("_recordedEvents", emitted.content)
+
+    def test_a_non_root_entity_records_nothing(self):
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        aggregate Order {
+            root entity OrderHeader { orderId:string }
+            entity OrderItem {
+                sku:string
+                command touch() emits OrderPlaced.v1
+            }
+            event OrderPlaced version 1 { orderId:string }
+        }
+    }
+}
+""", "OrderItem.cs")
+
+        # A non-root entity has no stream of its own; only the root records.
+        self.assertNotIn("IEventRecordingRoot", emitted.content)
+
+    def test_a_handler_registers_itself_and_leaves_the_body_to_the_developer(self):
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        event PaymentConfirmed version 1 { orderId:string }
+        eventhandler onPaymentConfirmed for event PaymentConfirmed.v1
+    }
+}
+""", "OnPaymentConfirmedHandler.cs")
+
+        self.assertIn("Context/EventHandlers", emitted.fullPath)
+        # Not wiring it up by hand is the point: a generated surface that has to be registered
+        # manually is one that silently never runs.
+        self.assertIn("[AutoRegisterEventHandler]", emitted.content)
+        self.assertIn("public sealed partial class OnPaymentConfirmedHandler : IEventHandler<PaymentConfirmed_v1>", emitted.content)
+        self.assertIn("public Task Handle( EventContext context, PaymentConfirmed_v1 @event, CancellationToken cancellationToken = default )", emitted.content)
+        # A declared reaction nobody wrote must not compile.
+        self.assertIn("private partial Task onPaymentConfirmed( EventContext context, PaymentConfirmed_v1 @event, CancellationToken cancellationToken );", emitted.content)
+
     def test_emitter_types_ok(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""

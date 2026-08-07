@@ -85,6 +85,15 @@ class DotnetEmitter:
                     code = self.endFile(code)
                     result.append(code)
 
+                # Process the context's own reactions. One class per handler, each registering
+                # itself - a generated surface that has to be wired up by hand is one that silently
+                # never runs.
+                for context_eventhandler in context.eventhandlers:
+                    code = self.beginFile(output_path, context_eventhandler, "Context/EventHandlers", name_override=self.eventHandlerClassName(context_eventhandler))
+                    code = self.contextEventHandlerText(context_eventhandler, code)
+                    code = self.endFile(code)
+                    result.append(code)
+
                 # Process all aggregate in the context
                 for aggregate in context.aggregates:
                     # The facts the root records. The stream key is the root identity, so
@@ -236,7 +245,7 @@ class DotnetEmitter:
 
         return "\n".join(using_statements) + "\n"
 
-    def beginFile(self, output_path: str, element: base_element, subDirectoryName: str, prefix: str = "", postfix: str = "", current_namespace:str=None) -> dotnet_code:
+    def beginFile(self, output_path: str, element: base_element, subDirectoryName: str, prefix: str = "", postfix: str = "", current_namespace:str=None, name_override: str = None) -> dotnet_code:
         buffer = io.StringIO()
         domain: domain = element.getDomain()
         context: context = element.getContext()
@@ -258,7 +267,8 @@ class DotnetEmitter:
         buffer.write("{\n")
 
         output_path = output_path if output_path.endswith('/') else output_path + '/'
-        code: dotnet_code = dotnet_code(output_path, [domain.name, context.name, subDirectoryName], prefix + element.name + postfix, current_namespace )
+        file_name: str = name_override if name_override != None else element.name
+        code: dotnet_code = dotnet_code(output_path, [domain.name, context.name, subDirectoryName], prefix + file_name + postfix, current_namespace )
         code.content = buffer.getvalue()
         return code
 
@@ -349,7 +359,88 @@ class DotnetEmitter:
         return self.dataClassText(valueobject, valueobject.inherits, valueobject.name, valueobject.members, code, indent=indent)
 
     def entityText(self, entity: entity, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.dataClassText(entity, entity.inherits, entity.name, entity.members, code, indent=indent)
+        extra_interfaces: List[str] = None
+        extra_body: str = None
+
+        # Only the aggregate ROOT records facts, and only the ones its commands declare with
+        # `emits`. A non-root entity has no stream of its own.
+        if (isinstance(entity.parent, aggregate_entity) == True and entity.parent.isRoot == True):
+            emitted = self.__collectEmittedEvents(entity)
+            if (len(emitted) > 0):
+                code.usings.add("ServiceKit.Net.Eventing")
+                extra_interfaces = ["IEventRecordingRoot"]
+                extra_body = self.rootRecordingText(entity, emitted, code, indent)
+
+        return self.dataClassText(entity, entity.inherits, entity.name, entity.members, code, indent=indent, extra_interfaces=extra_interfaces, extra_body=extra_body)
+
+    def __collectEmittedEvents(self, the_entity: entity) -> List[event]:
+        """
+        The events this entity's commands declare with `emits`, in declaration order, without
+        duplicates. Anything that does not resolve to an event is left to the linter to report.
+        """
+        emitted: List[event] = []
+        for operation in the_entity.operations:
+            for emits_name in operation.emits:
+                referenced = Engine.get_referenced_element(operation, emits_name)
+                if (isinstance(referenced, event) == True and referenced not in emitted):
+                    emitted.append(referenced)
+        return emitted
+
+    def __partitionKeyMember(self, the_entity: entity) -> hinted_base_element:
+        for member in the_entity.members:
+            if (member.find_decorator("partitionKey") != None):
+                return member
+        return None
+
+    def rootRecordingText(self, the_entity: entity, emitted: List[event], code: dotnet_code, indent: int = 1) -> str:
+        """
+        The recording half of an aggregate root.
+
+        There is one Record overload per event the root's commands declare with `emits`, and no
+        others - so recording a fact the model does not say this root produces is a compile error
+        rather than something a reviewer has to notice.
+        """
+        partition_member = self.__partitionKeyMember(the_entity)
+
+        buffer = io.StringIO()
+        buffer.write(f"{utils.tab(indent+1)}#region recorded facts\n\n")
+        buffer.write(f"{utils.tab(indent+1)}private readonly List<RecordedEvent> _recordedEvents = new();\n\n")
+
+        buffer.write(f"{utils.tab(indent+1)}/// <summary>\n")
+        buffer.write(f"{utils.tab(indent+1)}/// Takes the recorded facts and forgets them. The repository calls this inside the save, so\n")
+        buffer.write(f"{utils.tab(indent+1)}/// a root that was loaded, changed and then NOT saved leaves nothing behind for the next one.\n")
+        buffer.write(f"{utils.tab(indent+1)}/// </summary>\n")
+        buffer.write(f"{utils.tab(indent+1)}IReadOnlyList<RecordedEvent> IEventRecordingRoot.DrainRecordedEvents()\n")
+        buffer.write(f"{utils.tab(indent+1)}{{\n")
+        buffer.write(f"{utils.tab(indent+2)}var drained = _recordedEvents.ToArray();\n")
+        buffer.write(f"{utils.tab(indent+2)}_recordedEvents.Clear();\n")
+        buffer.write(f"{utils.tab(indent+2)}return drained;\n")
+        buffer.write(f"{utils.tab(indent+1)}}}\n\n")
+
+        for the_event in emitted:
+            event_name: str = code.getDotnetFullName(the_event)
+            buffer.write(f"{utils.tab(indent+1)}/// <summary>\n")
+            buffer.write(f"{utils.tab(indent+1)}/// Writes down that '{the_event.name}' happened. It is NOT sent here: the repository moves it\n")
+            buffer.write(f"{utils.tab(indent+1)}/// into the outbox inside the same save, and delivery is the platform's problem from there.\n")
+            buffer.write(f"{utils.tab(indent+1)}/// </summary>\n")
+
+            if (partition_member != None):
+                # The ordering scope is the root's own key, so the caller cannot get it wrong.
+                buffer.write(f"{utils.tab(indent+1)}protected void Record( {event_name} @event )\n")
+                buffer.write(f"{utils.tab(indent+2)}=> _recordedEvents.Add( new RecordedEvent( @event, {partition_member.name} ) );\n\n")
+            else:
+                # No member is marked @partitionKey, so the root has no identity this emitter can
+                # point at. Asking for the key beats inventing one: a fact ordered against the
+                # wrong scope is worse than a fact that made the caller say which scope it is in.
+                buffer.write(f"{utils.tab(indent+1)}/// <param name=\"partitionKey\">\n")
+                buffer.write(f"{utils.tab(indent+1)}/// The ordering scope. Mark a member of '{the_entity.name}' with @partitionKey and this\n")
+                buffer.write(f"{utils.tab(indent+1)}/// argument disappears - the root's own key is used instead.\n")
+                buffer.write(f"{utils.tab(indent+1)}/// </param>\n")
+                buffer.write(f"{utils.tab(indent+1)}protected void Record( {event_name} @event, string partitionKey )\n")
+                buffer.write(f"{utils.tab(indent+2)}=> _recordedEvents.Add( new RecordedEvent( @event, partitionKey ) );\n\n")
+
+        buffer.write(f"{utils.tab(indent+1)}#endregion recorded facts\n\n")
+        return buffer.getvalue()
 
     def viewText(self, view: view, code: dotnet_code, indent: int = 1) -> dotnet_code:
         return self.dataClassText(view, view.inherits, view.name, view.members, code, indent=indent)
@@ -367,10 +458,87 @@ class DotnetEmitter:
             return the_event.name
         return the_event.name + f"_v{the_event.version}"
 
-    def eventText(self, event: event, code: dotnet_code, indent: int = 1) -> dotnet_code:
-        return self.dataClassText(event, event.inherits, self.eventClassName(event), event.members, code, indent=indent)
+    def eventHandlerClassName(self, the_eventhandler: eventhandler) -> str:
+        return utils.camel_to_pascal(the_eventhandler.name) + "Handler"
 
-    def dataClassText(self, element: internal_scoped_base_element, inherits: List[qualified_name], name: str, members: List[hinted_base_element], code: dotnet_code, indent: int = 1) -> dotnet_code:
+    def contextEventHandlerText(self, the_eventhandler: eventhandler, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        The consuming half of `eventhandler`.
+
+        The class carries [AutoRegisterEventHandler], so the host finds it without anyone wiring it
+        up. That is not convenience: this platform once generated a complete gRPC surface that
+        nothing ever mapped, and it went unnoticed for months, because a method that is merely never
+        called looks exactly like a healthy one.
+
+        The body is a partial with no implementation - so a declared reaction that nobody wrote does
+        not compile, instead of quietly doing nothing.
+        """
+        handled_event: event = Engine.get_referenced_element(the_eventhandler, the_eventhandler.handledEvent)
+        if (handled_event == None):
+            return code
+
+        code.usings.add("ServiceKit.Net.Eventing")
+
+        class_name: str = self.eventHandlerClassName(the_eventhandler)
+        event_name: str = code.getDotnetFullName(handled_event)
+
+        buffer = io.StringIO()
+        buffer.write(self.documentLines(the_eventhandler, indent))
+        buffer.write(f"{utils.tab(indent)}/// <summary>\n")
+        buffer.write(f"{utils.tab(indent)}/// This CONTEXT reacts to '{handled_event.name}'. Which class runs the body is an\n")
+        buffer.write(f"{utils.tab(indent)}/// implementation detail, which is why the reaction is not declared on a service.\n")
+        buffer.write(f"{utils.tab(indent)}/// </summary>\n")
+        buffer.write(f"{utils.tab(indent)}[AutoRegisterEventHandler]\n")
+        buffer.write(f"{utils.tab(indent)}public sealed partial class {class_name} : IEventHandler<{event_name}>\n")
+        buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(f"{utils.tab(indent+1)}public Task Handle( EventContext context, {event_name} @event, CancellationToken cancellationToken = default )\n")
+        buffer.write(f"{utils.tab(indent+2)}=> {the_eventhandler.name}( context, @event, cancellationToken );\n\n")
+        buffer.write(f"{utils.tab(indent+1)}// The other half of the partial: this is what you write. A reaction the model declares\n")
+        buffer.write(f"{utils.tab(indent+1)}// and nobody wrote does not compile - it does not quietly do nothing.\n")
+        buffer.write(f"{utils.tab(indent+1)}private partial Task {the_eventhandler.name}( EventContext context, {event_name} @event, CancellationToken cancellationToken );\n")
+        buffer.write(f"{utils.tab(indent)}}}\n")
+
+        code.content += buffer.getvalue()
+        return code
+
+    def eventSchemaId(self, the_event: event) -> str:
+        """
+        The stable identity of the shape on the wire. Dispatch matches on this and nothing else,
+        which is why a subscriber never has to name the producing service's contract.
+        """
+        parts: List[str] = [the_event.getDomain().name, the_event.getContext().name]
+
+        the_aggregate = the_event.getAggregate()
+        if (the_aggregate != None):
+            parts.append(the_aggregate.name)
+
+        the_interface = the_event.getInterface()
+        if (the_interface != None):
+            parts.append(f"{the_interface.name}.v{the_interface.version}")
+
+        parts.append(the_event.name)
+        if (the_event.version != None):
+            parts.append(f"v{the_event.version}")
+
+        return ".".join(parts)
+
+    def eventChannel(self, the_event: event) -> str:
+        # The context is the conversation a fact belongs to. Which topic, queue or partition count
+        # that becomes is the broker adapter's configuration, never the model's business.
+        return f"{the_event.getDomain().name}.{the_event.getContext().name}"
+
+    def eventText(self, event: event, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        code.usings.add("ServiceKit.Net.Eventing")
+
+        buffer = io.StringIO()
+        buffer.write(f"{utils.tab(indent+1)}/// <summary>How the platform recognises this shape. Generated; never hand-written.</summary>\n")
+        buffer.write(f"{utils.tab(indent+1)}public string SchemaId => \"{self.eventSchemaId(event)}\";\n\n")
+        buffer.write(f"{utils.tab(indent+1)}/// <summary>The logical channel this fact travels on. Deployment maps it to a topic or queue.</summary>\n")
+        buffer.write(f"{utils.tab(indent+1)}public string Channel => \"{self.eventChannel(event)}\";\n\n")
+
+        return self.dataClassText(event, event.inherits, self.eventClassName(event), event.members, code, indent=indent, extra_interfaces=["IDomainEvent"], extra_body=buffer.getvalue())
+
+    def dataClassText(self, element: internal_scoped_base_element, inherits: List[qualified_name], name: str, members: List[hinted_base_element], code: dotnet_code, indent: int = 1, extra_interfaces: List[str] = None, extra_body: str = None) -> dotnet_code:
         """
         Generates the .NET code for an data object
         """
@@ -384,6 +552,8 @@ class DotnetEmitter:
             else:
                 inherit_names.append(inherit.getText())
         inherit_names.append( f"IEquatable<{name}>")
+        if (extra_interfaces != None):
+            inherit_names = inherit_names + extra_interfaces
 
         # collect members carrying a `validate` rule, and the members the walk has to step INTO
         # (inlined composite members + own members). A member is stepped into only when its type
@@ -421,6 +591,8 @@ class DotnetEmitter:
         # Write the data class declaration with indentation
         buffer.write(f"{utils.tab(indent)}public partial class {name} : {", ".join(inherit_names)}\n")
         buffer.write(f"{utils.tab(indent)}{{\n")
+        if (extra_body != None):
+            buffer.write(extra_body)
 
         # flush current text
         code.content += buffer.getvalue()
