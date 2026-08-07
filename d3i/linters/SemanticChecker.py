@@ -155,6 +155,32 @@ class SemanticChecker(ElementVisitor):
             where = f"the aggregate '{owning_aggregate.name}'" if owning_aggregate != None else "this context"
             self.__error(the_event, f"The internal event '{the_event.name}' must not declare a version: it is private to {where}, its consumers move with it, and a version would promise a stability nobody is keeping. Mark the aggregate 'eventsourced', or publish the event on an interface, if the promise is real.")
 
+    def __allMembers(self, element) -> List[base_element]:
+        """
+        Own fields plus the ones inherited from composites.
+
+        A composite exists so a group of fields can be declared once and inherited - a root's
+        identity usually comes from one - and a rule that only looked at own members would force a
+        model to duplicate a field purely to be able to decorate it.
+        """
+        collected: List[base_element] = []
+        for inherit in getattr(element, "inherits", []) or []:
+            base = Engine.get_referenced_element(element.parent, inherit)
+            if (isinstance(base, composite) == True):
+                bases: List[composite] = []
+                self.__collect_composites(base, bases)
+                for base_composite in bases:
+                    collected = collected + base_composite.members
+
+        return collected + list(element.members)
+
+    def __collect_composites(self, base_composite: composite, collected: List[composite]):
+        collected.append(base_composite)
+        for inherit in base_composite.inherits:
+            base = Engine.get_referenced_element(base_composite.parent, inherit)
+            if (isinstance(base, composite) == True and base not in collected):
+                self.__collect_composites(base, collected)
+
     def __check_single_partition_key(self, element: base_element, members: List[base_element], what: str):
         marked = [member for member in members if member.find_decorator("partitionKey") != None]
         if (len(marked) > 1):
@@ -311,14 +337,18 @@ class SemanticChecker(ElementVisitor):
         Only checked on a root that actually records something: an entity that emits nothing has no
         stream and needs no key.
         """
-        marked = self.__check_single_partition_key(the_entity, the_entity.members, f"entity '{the_entity.name}'")
+        marked = self.__check_single_partition_key(the_entity, self.__allMembers(the_entity), f"entity '{the_entity.name}'")
 
         is_root: bool = the_entity.parent.isRoot == True
         emits_anything: bool = any(len(operation.emits) > 0 for operation in the_entity.operations)
 
         if (is_root == False):
-            if (len(marked) > 0):
-                self.__warning(marked[0], f"'@partitionKey' on '{the_entity.name}.{marked[0].name}' has no effect: only an aggregate ROOT records facts, so only a root has an ordering scope.")
+            # Only a marker put on THIS entity is worth complaining about. One inherited from a
+            # shared composite is a statement about roots, and nagging every entity that happens to
+            # inherit it would turn a useful warning into noise people learn to ignore.
+            own = [member for member in the_entity.members if member.find_decorator("partitionKey") != None]
+            if (len(own) > 0):
+                self.__warning(own[0], f"'@partitionKey' on '{the_entity.name}.{own[0].name}' has no effect: only an aggregate ROOT records facts, so only a root has an ordering scope.")
             return
 
         if (emits_anything == False or len(marked) > 0):

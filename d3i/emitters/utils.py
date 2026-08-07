@@ -100,6 +100,26 @@ class utils:
         return False
 
 
+    @staticmethod
+    def allMembersIncludingInherited(element) -> list:
+        """
+        An element's own fields plus the ones it inherits from composites.
+
+        A composite exists so a group of fields can be declared once and inherited; a rule that only
+        looked at own members would make a model repeat a field purely to be able to decorate it.
+        """
+        base_composites = []
+        for inherit in getattr(element, "inherits", []) or []:
+            base = Engine.get_referenced_element(element.parent, inherit)
+            if (isinstance(base, composite) == True):
+                utils.collectBaseCompositsRecursive(base, base_composites)
+
+        members = []
+        for base_composite in base_composites:
+            members = members + base_composite.members
+        return members + list(element.members)
+
+
 class grpc_utils:
     @staticmethod
     def d3iTypeToGrpcRepresentation(type: type) -> str:
@@ -353,3 +373,4 @@ class rest_param:
         self.param: operation_param = _param
         self.httpName: str = _param.name
         self.bindingSource: rest_param.BindingSource = None
+

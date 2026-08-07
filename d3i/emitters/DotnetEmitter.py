@@ -407,7 +407,10 @@ class DotnetEmitter:
         return emitted
 
     def __partitionKeyMember(self, the_entity: entity) -> hinted_base_element:
-        for member in the_entity.members:
+        # Inherited fields count. A root's identity usually comes from a shared composite - that is
+        # the whole point of having one - and ignoring those would force a model to duplicate a
+        # field just to mark it.
+        for member in utils.allMembersIncludingInherited(the_entity):
             if (member.find_decorator("partitionKey") != None):
                 return member
         return None
