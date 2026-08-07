@@ -94,6 +94,14 @@ class DotnetEmitter:
                     code = self.endFile(code)
                     result.append(code)
 
+                # Evidence. Its own folder, because it is not an event and does not belong among
+                # things something reacts to.
+                for context_audit_record in context.audit_records:
+                    code = self.beginFile(output_path, context_audit_record, "Audit", postfix="" if context_audit_record.version == None else f"_v{context_audit_record.version}")
+                    code = self.auditRecordText(context_audit_record, code)
+                    code = self.endFile(code)
+                    result.append(code)
+
                 # Process all aggregate in the context
                 for aggregate in context.aggregates:
                     # The facts the root records. The stream key is the root identity, so
@@ -160,6 +168,13 @@ class DotnetEmitter:
                     code = self.interfaceInterfaceText(interface, code)
                     code = self.endFile(code)
                     result.append(code)
+                    # The translation from the internal fact - declared here, written by hand.
+                    translated = [e for e in interface.events if e.translated_from != None]
+                    if (len(translated) > 0):
+                        code = self.beginFile(output_path, interface, "Interfaces", postfix=f"_v{interface.version}.Translations")
+                        code = self.interfaceTranslationsText(interface, translated, code)
+                        code = self.endFile(code)
+                        result.append(code)
                     # Service: GRPC controller
                     if( utils.isPublishedOn( interface, "grpc" ) == True):
                         code = self.beginFile(output_path, interface, "Context/Controllers", postfix=f"_v{interface.version}.GrpcController")
@@ -498,6 +513,58 @@ class DotnetEmitter:
         buffer.write(f"{utils.tab(indent+1)}private partial Task {the_eventhandler.name}( EventContext context, {event_name} @event, CancellationToken cancellationToken );\n")
         buffer.write(f"{utils.tab(indent)}}}\n")
 
+        code.content += buffer.getvalue()
+        return code
+
+    def auditRecordText(self, the_record: audit_record, code: dotnet_code, indent: int = 1) -> dotnet_code:
+        code.usings.add("ServiceKit.Net.Eventing")
+
+        parts: List[str] = [the_record.getDomain().name, the_record.getContext().name, the_record.name]
+        if (the_record.version != None):
+            parts.append(f"v{the_record.version}")
+
+        schema_id: str = ".".join(parts)
+        channel: str = f"{the_record.getDomain().name}.{the_record.getContext().name}"
+
+        buffer = io.StringIO()
+        buffer.write(f'{utils.tab(indent+1)}/// <summary>How the platform recognises this shape. Generated; never hand-written.</summary>\n')
+        buffer.write(f'{utils.tab(indent+1)}public string SchemaId => "{schema_id}";\n\n')
+        buffer.write(f'{utils.tab(indent+1)}/// <summary>Where the evidence is kept. Deployment maps it to a store or a topic.</summary>\n')
+        buffer.write(f'{utils.tab(indent+1)}public string Channel => "{channel}";\n\n')
+
+        # IAuditFact, NOT IDomainEvent: nothing reacts to evidence, and a type a subscriber could be
+        # handed would promise a behaviour that does not exist.
+        return self.dataClassText(the_record, [], self.auditRecordClassName(the_record), the_record.members, code, indent=indent, extra_interfaces=["IAuditFact"], extra_body=buffer.getvalue())
+
+    def auditRecordClassName(self, the_record: audit_record) -> str:
+        return the_record.name if the_record.version == None else the_record.name + f"_v{the_record.version}"
+
+    def interfaceTranslationsText(self, the_interface: interface, translated: List[event], code: dotnet_code, indent: int = 1) -> dotnet_code:
+        """
+        The hand-written half of publishing.
+
+        Each generated method has NO body, so an interface whose contracts nobody translated does
+        not compile. Automatic field matching is deliberately absent: the published language is not
+        the internal one - that is the entire reason a separate contract exists - and matching by
+        name would let the domain leak straight back into it.
+        """
+        buffer = io.StringIO()
+        buffer.write(f'{utils.tab(indent)}/// <summary>\n')
+        buffer.write(f'{utils.tab(indent)}/// Translates this context\'s internal facts into what \'{the_interface.name}\' publishes.\n')
+        buffer.write(f'{utils.tab(indent)}/// The bodies are yours: a published contract is a deliberate restatement of an internal\n')
+        buffer.write(f'{utils.tab(indent)}/// fact, not a copy of it, and only you know what the outside world is entitled to see.\n')
+        buffer.write(f'{utils.tab(indent)}/// </summary>\n')
+        buffer.write(f'{utils.tab(indent)}public static partial class {the_interface.name}_v{the_interface.version}Translations\n')
+        buffer.write(f'{utils.tab(indent)}{{\n')
+
+        for published in translated:
+            source = Engine.get_referenced_element(published, published.translated_from)
+            if (source == None):
+                continue
+            buffer.write(f'{utils.tab(indent+1)}/// <summary>\'{source.name}\' as \'{the_interface.name}\' publishes it.</summary>\n')
+            buffer.write(f'{utils.tab(indent+1)}public static partial {code.getDotnetFullName(published)} To{self.eventClassName(published)}( {code.getDotnetFullName(source)} @event );\n\n')
+
+        buffer.write(f'{utils.tab(indent)}}}\n')
         code.content += buffer.getvalue()
         return code
 

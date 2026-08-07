@@ -48,6 +48,11 @@ COMMAND : 'command' ;
 QUERY : 'query' ;
 INTEGRATION : 'integration' ;
 AUDIT : 'audit' ;
+// An audit fact is a RECORD, not an event: nothing reacts to it, it is kept as evidence. Calling it
+// an event would promise a behaviour that does not exist - see D3I-35.
+RECORD : 'record' ;
+// Names the internal fact a published contract is translated from.
+FROM : 'from' ;
 EVENTSOURCED : 'eventsourced' ;
 EMITS : 'emits' ;
 WORKFLOW : 'workflow' ;

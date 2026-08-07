@@ -849,6 +849,88 @@ domain WebShop {
         # A declared reaction nobody wrote must not compile.
         self.assertIn("private partial Task onPaymentConfirmed( EventContext context, PaymentConfirmed_v1 @event, CancellationToken cancellationToken );", emitted.content)
 
+
+    def test_an_audit_record_is_not_an_event(self):
+        # It implements IAuditFact, not IDomainEvent - nothing reacts to evidence, and a type a
+        # subscriber could be handed would promise a behaviour that does not exist.
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        audit record OrderExported version 1 {
+            orderId:string
+            exportedBy:string
+        }
+    }
+}
+""", "OrderExported_v1.cs")
+
+        self.assertIn("Audit", emitted.fullPath)
+        self.assertIn("public partial class OrderExported_v1 : IEquatable<OrderExported_v1>, IAuditFact", emitted.content)
+        self.assertNotIn("IDomainEvent", emitted.content)
+        self.assertIn('public string SchemaId => "WebShop.Sales.OrderExported.v1";', emitted.content)
+
+    def test_a_published_contract_gets_a_translation_nobody_can_skip(self):
+        # The generated method has no body, so an interface whose contracts nobody translated does
+        # not compile. That is what makes the translation exist rather than be assumed.
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        event OrderPlaced { orderId:string  totalPrice:number }
+        interface OrderIF version 1 {
+            integration event Placed version 1 from OrderPlaced {
+                orderId:string
+                totalAmount:number
+                currency:string
+            }
+        }
+    }
+}
+""", "OrderIF_v1.Translations.cs")
+
+        self.assertIn("Interfaces", emitted.fullPath)
+        self.assertIn("public static partial class OrderIF_v1Translations", emitted.content)
+        self.assertIn("public static partial IOrderIF_v1.Placed_v1 ToPlaced_v1( OrderPlaced @event );", emitted.content)
+        # No body anywhere: the emitter declares the obligation, it does not discharge it.
+        self.assertNotIn("=>", emitted.content.split("ToPlaced_v1")[1])
+
+    def test_an_interface_without_published_contracts_gets_no_translations_file(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain WebShop {
+    context Sales {
+        interface OrderIF version 1 {
+            query getOrder( orderId:string ) : string
+        }
+    }
+}
+"""))
+        engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        result = DotnetEmitter().Emit(session)
+        self.assertFalse(any("Translations" in f.fileName for f in result))
+
+    def test_the_published_contract_keeps_its_own_field_names(self):
+        # The published language is not the internal one - that is the entire reason a separate
+        # contract exists.
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        event OrderPlaced { orderId:string  totalPrice:number }
+        interface OrderIF version 1 {
+            integration event Placed version 1 from OrderPlaced {
+                orderId:string
+                totalAmount:number
+            }
+        }
+    }
+}
+""", "IOrderIF_v1.cs")
+
+        self.assertIn("public partial class Placed_v1", emitted.content)
+        self.assertIn("public decimal totalAmount { get; set; }", emitted.content)
+        self.assertNotIn("totalPrice", emitted.content)
+
     def test_emitter_types_ok(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""

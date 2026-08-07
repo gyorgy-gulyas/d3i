@@ -47,12 +47,13 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
+        event Source { }
         interface IOrderInterface version 1 {
-            event TheEvent version 1 {
+            integration event TheEvent version 1 from Source {
             }
-            event TheEvent version 1 {
+            integration event TheEvent version 1 from Source {
             }
-            event OtherEvent version 2 {
+            integration event OtherEvent version 2 from Source {
             }
         }
     }
@@ -66,9 +67,9 @@ domain SomeDomain {
         session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEvent" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,12):", "(8,12)"]))
         self.assertTrue("TheEvent" in session.diagnostics[1].toText())
-        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,12):", "(5,12)"]))
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(8,12):", "(6,12)"]))
 
     def test_conflict_event_member_fail(self):
         engine = Engine()
@@ -680,6 +681,7 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
+        event Source { }
         interface TheInterface version 1 {
         }
         interface TheInterface version 2 {
@@ -691,9 +693,9 @@ domain SomeDomain {
             }    
             enum enum_out{
             }    
-            event event_out version 1 {
+            integration event event_out version 1 from Source {
             }    
-            event event_out version 2{
+            integration event event_out version 2 from Source {
                 enum enum_inner {
                 }    
             }    
@@ -748,8 +750,9 @@ domain SomeDomain {
             }
             valueobject TheValueObject inherits Order.TheEntity{
             }                                                    
+            event Source { }
             interface TheInterface version 1 {
-                event TheEvent version 1 inherits TheValueObject{
+                integration event TheEvent version 1 from Source inherits TheValueObject{
             }    
         }
     }
@@ -767,7 +770,7 @@ domain SomeDomain {
 
         self.assertTrue(any(all(x in s for x in ["TheInterface.TheEvent", "(5,47):"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ["Order.TheEntity", "(8,48):"]) for s in messages))
-        self.assertTrue(any(all(x in s for x in ["TheValueObject", "(11,50):"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ["TheValueObject", "(12,74):"]) for s in messages))
 
     def test_conflict_dto_fail(self):
         engine = Engine()
@@ -1839,8 +1842,9 @@ domain SomeDomain {
         session = self.__lint("""
 domain SomeDomain {
     context Order {
+        event OrderPlaced { orderId:string }
         interface OrderIF version 1 {
-            event OrderPlaced { orderId:string }
+            integration event Placed from OrderPlaced { orderId:string }
         }
     }
 }
@@ -1849,27 +1853,43 @@ domain SomeDomain {
         self.assertTrue("must declare a version" in session.diagnostics[0].toText())
         self.assertTrue("another team reads it" in session.diagnostics[0].toText())
 
-    def test_an_integration_event_must_be_versioned_wherever_it_is(self):
+    def test_an_integration_event_outside_an_interface_is_an_error(self):
+        # An interface is what 'published' means here; claiming a published contract from a place
+        # only this context can see would be a claim with nothing behind it.
         session = self.__lint("""
 domain SomeDomain {
     context Order {
-        integration event Shipped { orderId:string }
+        event Shipped { orderId:string }
+        integration event ShippedIF version 1 from Shipped { orderId:string }
     }
 }
 """)
         self.assertEqual(len(session.diagnostics), 1)
-        self.assertTrue("contract with somebody outside" in session.diagnostics[0].toText())
+        self.assertTrue("must be declared on an interface" in session.diagnostics[0].toText())
 
-    def test_an_audit_event_must_be_versioned(self):
+    def test_a_domain_event_on_an_interface_must_say_it_is_published(self):
         session = self.__lint("""
 domain SomeDomain {
     context Order {
-        audit event Exported { orderId:string }
+        interface OrderIF version 1 {
+            event OrderPlaced version 1 { orderId:string }
+        }
+    }
+}
+""")
+        self.assertTrue(any("write 'integration event'" in d.toText() for d in session.diagnostics))
+
+    def test_an_audit_record_must_be_versioned(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        audit record Exported { orderId:string }
     }
 }
 """)
         self.assertEqual(len(session.diagnostics), 1)
-        self.assertTrue("kept for years" in session.diagnostics[0].toText())
+        self.assertTrue("must declare a version" in session.diagnostics[0].toText())
+        self.assertTrue("evidence" in session.diagnostics[0].toText())
 
     # ---- D3I-50: the ordering scope -----------------------------------------------------------
 
@@ -1980,6 +2000,103 @@ domain SomeDomain {
 """)
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("More than one member" in session.diagnostics[0].toText())
+
+    # ---- D3I-35: a published contract is a translation, and the translation must exist ----------
+
+    def test_a_published_contract_must_say_what_it_translates(self):
+        # Naming the source is what makes the translation exist rather than be assumed. Without it
+        # a team can publish a fact without ever deciding what internally caused it.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            integration event Placed version 1 { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must declare what it is translated 'from'" in session.diagnostics[0].toText())
+
+    def test_the_translated_source_has_to_exist(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            integration event Placed version 1 from NoSuchFact { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("named in 'from' is not found" in session.diagnostics[0].toText())
+
+    def test_only_a_published_contract_is_translated_from_something(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event Source { }
+        event Derived from Source { }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("Only an integration event may declare 'from'" in session.diagnostics[0].toText())
+
+    def test_a_contract_is_translated_from_an_internal_fact_not_another_contract(self):
+        # Translating one published contract into another would only move the coupling.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event Source { }
+        interface OrderIF version 1 {
+            integration event First version 1 from Source { }
+            integration event Second version 1 from OrderIF.v1.First.v1 { }
+        }
+    }
+}
+""")
+        self.assertTrue(any("is not a domain event" in d.toText() for d in session.diagnostics))
+
+    def test_a_context_publishes_its_own_facts(self):
+        # Republishing somebody else's fact makes this context a proxy for theirs.
+        session = self.__lint("""
+domain SomeDomain {
+    context Warehouse {
+        event Shipped { orderId:string }
+    }
+    context Order {
+        interface OrderIF version 1 {
+            integration event Shipped version 1 from Warehouse.Shipped { orderId:string }
+        }
+    }
+}
+""")
+        self.assertTrue(any("belongs to another context" in d.toText() for d in session.diagnostics))
+
+    def test_nothing_can_handle_an_audit_record(self):
+        # Evidence has no handler by construction; the model must not be able to claim one.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        audit record Exported version 1 { orderId:string }
+        eventhandler onExported for event Exported.v1
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("is not an event" in session.diagnostics[0].toText())
+
+    def test_an_audit_record_name_cannot_collide(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event Exported { orderId:string }
+        audit record Exported version 1 { orderId:string }
+    }
+}
+""")
+        self.assertTrue(any("conflicts with same name" in d.toText() for d in session.diagnostics))
 
 
 if __name__ == "__main__":

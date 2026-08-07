@@ -67,6 +67,61 @@ class SemanticChecker(ElementVisitor):
 
         self.__check_event_version(the_event)
         self.__check_single_partition_key(the_event, the_event.members, f"event '{the_event.name}'")
+        self.__check_event_placement(the_event)
+        self.__check_translated_from(the_event)
+
+    def visitAuditRecord(self, the_record: audit_record, parentData: Any) -> Any:
+        scope = Engine.get_current_scope(the_record.parent)
+        for neighbour in scope.getChildren():
+            if (neighbour is the_record):
+                continue
+            if (neighbour.name == the_record.name):
+                self.__error(the_record, f"An audit record '{the_record.name}' conflicts with same name with element in {neighbour.locationText()}.")
+
+        # Evidence is kept for years, and the code that reads it back will be newer than the code
+        # that wrote it - the same reason a published contract carries a version.
+        if (the_record.version == None):
+            self.__error(the_record, f"The audit record '{the_record.name}' must declare a version: it is evidence, kept long enough that the code reading it back will be newer than the code that wrote it.")
+
+        self.__check_single_partition_key(the_record, the_record.members, f"audit record '{the_record.name}'")
+
+    def __check_event_placement(self, the_event: event):
+        # The place says who owns the fact, the keyword says what role it plays, and the two have to
+        # agree. Without this the model can claim a published contract while sitting somewhere only
+        # this context can see.
+        owning_interface = the_event.getInterface()
+
+        if (the_event.kind == event.Kind.Integration and owning_interface == None):
+            self.__error(the_event, f"The integration event '{the_event.name}' must be declared on an interface: it is a published contract, and an interface is what publishing means here.")
+        elif (the_event.kind == event.Kind.Domain and owning_interface != None):
+            self.__error(the_event, f"The event '{the_event.name}' is declared on the interface '{owning_interface.name}', so it is published and must say so: write 'integration event'. A domain event is the context's private language and belongs on an aggregate or on the context.")
+
+    def __check_translated_from(self, the_event: event):
+        """
+        A published contract has to say which internal fact it is translated from.
+
+        Not for the emitter's benefit - it is what forces the translation to EXIST. The generated
+        mapper has no body, so a contract nobody translated does not compile; and requiring the
+        source here means nobody can publish a fact without first deciding what internally caused it.
+        """
+        if (the_event.kind != event.Kind.Integration):
+            if (the_event.translated_from != None):
+                self.__error(the_event, f"Only an integration event may declare 'from': '{the_event.name}' is an internal fact and is not translated from anything.")
+            return
+
+        if (the_event.translated_from == None):
+            self.__error(the_event, f"The integration event '{the_event.name}' must declare what it is translated 'from'. A published contract is a translation of an internal fact, and naming the source is what makes the translation exist rather than be assumed.")
+            return
+
+        source, message = Engine.get_referenced_element_with_message(the_event, the_event.translated_from)
+        if (source == None):
+            self.__error(the_event.translated_from, f"The internal event '{the_event.translated_from.getText()}' named in 'from' is not found. {message}")
+        elif (isinstance(source, event) == False):
+            self.__error(the_event.translated_from, f"The element '{the_event.translated_from.getText()}' named in 'from' is not an event.")
+        elif (source.kind != event.Kind.Domain):
+            self.__error(the_event.translated_from, f"The event '{the_event.translated_from.getText()}' named in 'from' is not a domain event. A published contract is translated from an INTERNAL fact; translating one published contract into another would only move the coupling.")
+        elif (source.getContext() is not the_event.getContext()):
+            self.__error(the_event.translated_from, f"The event '{the_event.translated_from.getText()}' named in 'from' belongs to another context. A context publishes its OWN facts; republishing somebody else's makes this context a proxy for theirs.")
 
     def __check_event_version(self, the_event: event):
         """
@@ -86,8 +141,6 @@ class SemanticChecker(ElementVisitor):
             reason = f"it is published on the interface '{owning_interface.name}', so another team reads it"
         elif (the_event.kind == event.Kind.Integration):
             reason = "an integration event is a contract with somebody outside this context"
-        elif (the_event.kind == event.Kind.Audit):
-            reason = "an audit fact is kept for years, and the code that reads it back will be newer than the code that wrote it"
         elif (eventsourced == True):
             reason = f"'{owning_aggregate.name}' is eventsourced, so this fact stays in the stream longer than the code that wrote it"
 

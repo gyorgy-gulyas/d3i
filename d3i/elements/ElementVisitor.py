@@ -30,6 +30,9 @@ class ElementVisitor(ABC):
         pass
 
     @abstractmethod
+    def visitAuditRecord(self, audit_record: audit_record, parentData: Any) -> Any:
+        pass
+
     def visitEventHandler(self, eventhandler: eventhandler, parentData: Any) -> Any:
         pass
 

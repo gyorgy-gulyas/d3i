@@ -92,6 +92,7 @@ class JsonEmitter(ElementVisitor):
             "workflows": [],
             "events": [],
             "eventhandlers": [],
+            "audit_records": [],
         }
         parentData['contexts'].append(data)
         return data
@@ -102,6 +103,7 @@ class JsonEmitter(ElementVisitor):
             "name": event.name,
             "version": str(event.version),
             "kind": str(event.kind),
+            "translated_from": event.translated_from.getText() if event.translated_from != None else None,
             "inherits": [],
             "members": []
         }
@@ -115,6 +117,16 @@ class JsonEmitter(ElementVisitor):
             "type": {}
         }
         parentData["members"].append(data)
+        return data
+
+    def visitAuditRecord(self, the_record: audit_record, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.audit_record",
+            "name": the_record.name,
+            "version": str(the_record.version),
+            "members": []
+        }
+        parentData["audit_records"].append(data)
         return data
 
     def visitEventHandler(self, eventhandler: eventhandler, parentData: Any) -> Any:

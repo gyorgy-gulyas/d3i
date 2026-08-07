@@ -234,6 +234,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(context_element.eventhandler())
                 child.parent = result
                 result.eventhandlers.append(child)
+            elif (context_element.audit_record()):
+                child = self.visit(context_element.audit_record())
+                child.parent = result
+                result.audit_records.append(child)
             counter = counter + 1
 
         return result
@@ -388,8 +392,6 @@ class ElementBuilder(d3iGrammarVisitor):
             kind_text = ctx.event_kind().getText()
             if (kind_text == "integration"):
                 result.kind = event.Kind.Integration
-            elif (kind_text == "audit"):
-                result.kind = event.Kind.Audit
             else:
                 result.kind = event.Kind.Domain
 
@@ -398,6 +400,9 @@ class ElementBuilder(d3iGrammarVisitor):
 
         if (ctx.inherits() != None):
             result.inherits = result.value = self.visit(ctx.inherits())
+
+        if (ctx.from_clause() != None):
+            result.translated_from = self.visit(ctx.from_clause().qualifiedName())
 
         self.__build_document_lines(ctx, result)
 
@@ -429,6 +434,36 @@ class ElementBuilder(d3iGrammarVisitor):
     def visitEvent_member(self, ctx: d3iGrammar.Event_memberContext):
         result = event_member(self.fileName, ctx.start)
         self.__build_member(ctx, result)
+        return result
+
+    # Visit a parse tree produced by d3iGrammar#audit_record.
+    def visitAudit_record(self, ctx: d3iGrammar.Audit_recordContext):
+        result = audit_record(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+
+        if (ctx.VERSION() != None):
+            result.version = int(ctx.INTEGER_CONSTANS().getText())
+
+        self.__build_document_lines(ctx, result)
+
+        self.__build_decorators(ctx, result)
+
+        counter = 0
+        while True:
+            event_element: d3iGrammar.Event_elementContext = ctx.event_element((counter))
+            if (event_element == None):
+                break
+            elif (event_element.event_member() != None):
+                child = self.visit(event_element.event_member())
+                child.parent = result
+                result.members.append(child)
+            elif (event_element.enum()):
+                child = self.visit(event_element.enum())
+                child.parent = result
+                result.enums.append(child)
+            counter = counter + 1
+
         return result
 
     # Visit a parse tree produced by d3iGrammar#eventhandler.

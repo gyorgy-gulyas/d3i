@@ -46,6 +46,7 @@ context
         | workflow
         | event          // a fact owned by the context itself, not by one service
         | eventhandler   // the CONTEXT reacts; which class runs it is implementation
+        | audit_record   // evidence; nothing reacts to it
         ;
 
 value_object
@@ -99,15 +100,36 @@ composite
 // eventsourced stream that outlives the code, a published contract, a retained
 // audit fact) the linter requires the version. See D3I-50.
 event
-    :  DOCUMENT_LINE* decorator* event_kind? 'event' IDENTIFIER ('version' INTEGER_CONSTANS)? inherits? '{' event_element* '}'
+    :  DOCUMENT_LINE* decorator* event_kind? 'event' IDENTIFIER ('version' INTEGER_CONSTANS)? from_clause? inherits? '{' event_element* '}'
     ;
 
-    // three explicit event kinds. No prefix (or 'domain') = domain event.
+    // Two kinds. No prefix (or 'domain') = domain event. The audit fact is NOT here: nothing
+    // reacts to it, so calling it an event would promise a behaviour that does not exist. It has
+    // its own rule below, and with it the word 'event' in this language means exactly one thing -
+    // something reacts to this.
     event_kind
         : 'domain'
         | 'integration'
-        | 'audit'
         ;
+
+    // The internal fact this published contract is translated FROM.
+    //
+    // Required on an integration event, and the translation itself is HAND-WRITTEN: the emitter
+    // generates a mapper with no body, so a contract nobody translated does not compile. Automatic
+    // field matching is deliberately absent - the published language is not the internal one, and
+    // matching by name would let the domain leak back into the contract.
+    from_clause
+        : 'from' qualifiedName
+        ;
+
+// An audit fact: evidence, kept for years, that nothing subscribes to.
+//
+// It travels on the same pipe as an event and is reached through a DIFFERENT interface, so that
+// recording evidence and announcing a fact cannot be confused for one another - with two interfaces
+// the wrong one is impossible to use, with one interface it is merely discouraged.
+audit_record
+    : DOCUMENT_LINE* decorator* 'audit' 'record' IDENTIFIER ('version' INTEGER_CONSTANS)? '{' event_element* '}'
+    ;
 
     event_element
         : event_member

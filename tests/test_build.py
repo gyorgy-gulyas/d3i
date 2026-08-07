@@ -1165,20 +1165,29 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        event Plain version 1 { x:number }
-        domain event Created version 1 { x:number }
-        integration event Shipped version 1 { x:number }
-        audit event Logged version 1 { who:string }
+        event Plain { x:number }
+        domain event Created { x:number }
+        integration event Shipped version 1 from Created { x:number }
+
+        # An audit fact is NOT an event: nothing reacts to it, so it has its own keyword.
+        audit record Logged version 1 { who:string }
     }
 }
 """))
         root = engine.Build(session)
+        session.PrintDiagnostics()
+        self.assertFalse(session.HasAnyError())
+
         the_context = root.domains[0].contexts[0]
-        self.assertEqual(len(the_context.events), 4)
+        self.assertEqual(len(the_context.events), 3)
         self.assertEqual(the_context.events[0].kind, event.Kind.Domain)
         self.assertEqual(the_context.events[1].kind, event.Kind.Domain)
         self.assertEqual(the_context.events[2].kind, event.Kind.Integration)
-        self.assertEqual(the_context.events[3].kind, event.Kind.Audit)
+        self.assertEqual(the_context.events[2].translated_from.getText(), "Created")
+
+        self.assertEqual(len(the_context.audit_records), 1)
+        self.assertEqual(the_context.audit_records[0].name, "Logged")
+        self.assertEqual(the_context.audit_records[0].version, 1)
 
     def test_aggregate_event_ok(self):
         # A fact recorded by the root belongs to the aggregate, not to some service.

@@ -94,6 +94,16 @@ class d3iGrammarVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by d3iGrammar#from_clause.
+    def visitFrom_clause(self, ctx:d3iGrammar.From_clauseContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by d3iGrammar#audit_record.
+    def visitAudit_record(self, ctx:d3iGrammar.Audit_recordContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by d3iGrammar#event_element.
     def visitEvent_element(self, ctx:d3iGrammar.Event_elementContext):
         return self.visitChildren(ctx)

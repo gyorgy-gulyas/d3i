@@ -141,6 +141,7 @@ domain SomeDomain {
                     "workflows": [],
                     "events": [],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -203,6 +204,7 @@ domain SomeDomain {
                     "workflows": [],
                     "events": [],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [
                         {
                             "$type": "d3i.enum",
@@ -332,6 +334,7 @@ domain SomeDomain {
                     "workflows": [],
                     "events": [],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [
                         {
@@ -757,6 +760,7 @@ domain SomeDomain {
                     "workflows": [],
                     "events": [],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -873,6 +877,7 @@ domain SomeDomain {
                     "workflows": [],
                     "events": [],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [
                         {
@@ -1026,6 +1031,7 @@ domain SomeDomain {
                     "workflows": [],
                     "events": [],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1168,6 +1174,7 @@ domain SomeDomain {
                     "workflows": [],
                     "events": [],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1381,6 +1388,7 @@ domain SomeDomain {
                             "name": "OrderPlaced",
                             "version": "1",
                             "kind": "Kind.Domain",
+                            "translated_from": null,
                             "inherits": [],
                             "members": [
                                 {
@@ -1401,6 +1409,7 @@ domain SomeDomain {
                         }
                     ],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1518,6 +1527,7 @@ domain SomeDomain {
                                     "name": "OrderPlaced",
                                     "version": "1",
                                     "kind": "Kind.Domain",
+                                    "translated_from": null,
                                     "inherits": [],
                                     "members": [
                                         {
@@ -1613,6 +1623,7 @@ domain SomeDomain {
                     "workflows": [],
                     "events": [],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1789,6 +1800,7 @@ domain SomeDomain {
                     "workflows": [],
                     "events": [],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1889,6 +1901,7 @@ domain SomeDomain {
                     "workflows": [],
                     "events": [],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1945,6 +1958,7 @@ domain SomeDomain {
                             "name": "TheEvent",
                             "version": "1",
                             "kind": "Kind.Domain",
+                            "translated_from": null,
                             "inherits": [],
                             "members": [
                                 {
@@ -1973,6 +1987,7 @@ domain SomeDomain {
                             "decorators": []
                         }
                     ],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -2027,6 +2042,7 @@ domain SomeDomain {
                     "workflows": [],
                     "events": [],
                     "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [
                         {
@@ -2138,8 +2154,11 @@ domain SomeDomain {
                 command place() emits Placed
             }
         }
-        integration event Shipped version 1 { x:number }
-        audit event Logged version 1 { who:string }
+        event ShippedInternally { x:number }
+        interface OrderIF version 1 {
+            integration event Shipped version 1 from ShippedInternally { x:number }
+        }
+        audit record Logged version 1 { who:string }
         workflow OrderSaga {
             step reserveStock( id:string ) compensate releaseStock
             step releaseStock( id:string )
@@ -2155,7 +2174,10 @@ domain SomeDomain {
         self.assertIn('"compensate": "releaseStock"', result)
         self.assertIn('"$type": "d3i.ref_type"', result)
         self.assertIn('"kind": "Kind.Integration"', result)
-        self.assertIn('"kind": "Kind.Audit"', result)
+        self.assertIn('"translated_from": "ShippedInternally"', result)
+        # An audit fact is not an event, so it does not serialize as one.
+        self.assertIn('"$type": "d3i.audit_record"', result)
+        self.assertNotIn('"kind": "Kind.Audit"', result)
         self.assertIn('"eventsourced": "True"', result)
         self.assertIn('"Placed"', result)
         self.assertIn('"validate": "value>=0"', result)
