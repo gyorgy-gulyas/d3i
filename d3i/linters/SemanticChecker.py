@@ -22,6 +22,16 @@ STEP_SURFACE_ELEMENTS = (enum, value_object)
 DURATION_PATTERN = re.compile(r"^(\d+(?:ms|s|m|h|d))+$")
 DURATION_PARTS = re.compile(r"(\d+)(?:ms|s|m|h|d)")
 
+# The only type changes a later version of a contract may make to a field it already had.
+#
+# Deliberately almost empty. A widening is a change every reader of the old shape can absorb without
+# being told, and there is exactly one of those among the primitives: every integer is a number.
+# Everything else - a date becoming a string, a value becoming a list - is a re-encoding that some
+# reader has to be taught, and being taught is what a new version is supposed to avoid.
+WIDENING_TYPE_STEPS = {
+    ("integer", "number"),
+}
+
 
 def DoLint(session: Session, output_dir: str, args: Dict[str, str]):
     linter = SemanticChecker(session)
@@ -42,7 +52,103 @@ class SemanticChecker(ElementVisitor):
         pass
 
     def visitContext(self, context: context, parentData: Any) -> Any:
-        pass
+        self.__checkContractEvolution(context)
+
+    # --- versioned contract evolution (D3I-52) ------------------------------------------------
+    #
+    # A version number is a promise that the later shape is the SAME FACT restated. If a field can
+    # vanish between v1 and v2, the number promised nothing and a consumer moving forward has to be
+    # told, by hand, what it lost - at which point a new name would have been more honest than a
+    # higher number.
+    #
+    # The check runs where a version is a promise to somebody: a published contract on an interface,
+    # a fact recorded into an event-sourced stream, an audit record kept as evidence. It compares a
+    # version with the one immediately below it, so a chain of small honest steps stays legal and a
+    # single dishonest one is named at the step where it happened.
+
+    def __checkContractEvolution(self, the_context: context) -> None:
+        # Keyed by WHAT the contract is, not by which declaration carries it: OrderIF v1's
+        # OrderPlaced and OrderIF v2's OrderPlaced are two versions of one contract, and an
+        # OrderPlaced on a different interface is a different contract that happens to share a name.
+        groups: Dict[Any, List[Any]] = {}
+
+        def collect(key: Any, element: Any) -> None:
+            if (getattr(element, "version", None) == None):
+                return
+            groups.setdefault(key, []).append(element)
+
+        for the_interface in the_context.interfaces:
+            for the_event in the_interface.events:
+                collect(("interface", the_interface.name, the_event.name), the_event)
+
+        for the_aggregate in the_context.aggregates:
+            for the_event in the_aggregate.events:
+                collect(("aggregate", the_aggregate.name, the_event.name), the_event)
+
+        for the_event in the_context.events:
+            collect(("context", the_event.name), the_event)
+
+        for the_record in the_context.audit_records:
+            collect(("audit", the_record.name), the_record)
+
+        for versions in groups.values():
+            ordered = sorted(versions, key=lambda element: element.version)
+            for index in range(1, len(ordered)):
+                self.__checkOneStep(ordered[index - 1], ordered[index])
+
+    def __checkOneStep(self, previous, current) -> None:
+        what = f"'{current.name}' version {current.version}"
+        current_members = {member.name: member for member in current.members}
+
+        for old_member in previous.members:
+            new_member = current_members.get(old_member.name)
+
+            if (new_member == None):
+                self.__error(current, f"{what} drops the field '{old_member.name}', which version {previous.version} has ({previous.locationText()}). A higher version is the same fact restated, so what it used to say has to survive; if the field really is gone, this is a different fact and deserves its own name.")
+                continue
+
+            old_signature = self.__typeSignature(old_member.type)
+            new_signature = self.__typeSignature(new_member.type)
+            if (old_signature == new_signature):
+                continue
+            if ((old_signature, new_signature) in WIDENING_TYPE_STEPS):
+                continue
+
+            self.__error(new_member, f"{what} narrows '{old_member.name}' from '{old_signature}' to '{new_signature}'; version {previous.version} declares it in {previous.locationText()}. A reader of the older shape cannot be handed the newer one, so this is a new fact rather than a new version of an old one.")
+
+        current_enums = {the_enum.name: the_enum for the_enum in current.enums}
+        for old_enum in previous.enums:
+            new_enum = current_enums.get(old_enum.name)
+            if (new_enum == None):
+                continue   # a vanished enum shows up as a removed or retyped field above
+
+            still_there = {element.value for element in new_enum.enum_elements}
+            missing = [element.value for element in old_enum.enum_elements if element.value not in still_there]
+            if (len(missing) > 0):
+                self.__error(new_enum, f"{what} removes {', '.join(missing)} from the enum '{old_enum.name}'. A value that was legal in version {previous.version} was written down somewhere, and it does not stop having been written because a later version stopped listing it.")
+
+    def __typeSignature(self, the_type: type) -> str:
+        """
+        A type as one comparable string. Structural on purpose: two spellings of the same shape are
+        the same shape, and a reference is compared by the name it was written with, because that is
+        what a reader of the contract sees.
+        """
+        if (the_type == None):
+            return "?"
+
+        match the_type.kind:
+            case type.Kind.Primitive:
+                return the_type.primtiveKind.name.lower()
+            case type.Kind.Reference:
+                return the_type.reference_name.getText()
+            case type.Kind.Ref:
+                return f"ref {the_type.reference_name.getText()}"
+            case type.Kind.List:
+                return f"list[{self.__typeSignature(the_type.item_type)}]"
+            case type.Kind.Map:
+                return f"map[{self.__typeSignature(the_type.key_type)},{self.__typeSignature(the_type.value_type)}]"
+
+        return "?"
 
     def visitEvent(self, the_event: event, parentData: Any) -> Any:
         scope = Engine.get_current_scope(the_event.parent)
@@ -76,7 +182,14 @@ class SemanticChecker(ElementVisitor):
             if (neighbour is the_record):
                 continue
             if (neighbour.name == the_record.name):
-                self.__error(the_record, f"An audit record '{the_record.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                # Two VERSIONS of one record are the point, not a clash - the same way an interface
+                # carries v1 and v2 side by side. Until D3I-52 asked for the evolution of an audit
+                # record to be checked, nothing had ever declared a second version of one, and this
+                # branch refused the only shape that makes the mandatory version worth having.
+                if (isinstance(neighbour, audit_record) == False):
+                    self.__error(the_record, f"An audit record '{the_record.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                elif (neighbour.version == the_record.version):
+                    self.__error(the_record, f"An audit record '{the_record.name}' with same name and version is already exists in {neighbour.locationText()}.")
 
         # Evidence is kept for years, and the code that reads it back will be newer than the code
         # that wrote it - the same reason a published contract carries a version.

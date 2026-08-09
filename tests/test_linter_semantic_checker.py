@@ -921,6 +921,213 @@ domain SomeDomain {
         self.assertTrue("NotDefinedEvent" in session.diagnostics[0].toText())
         self.assertTrue("handled event" in session.diagnostics[0].toText())
 
+    def __diagnose(self, text: str):
+        engine = Engine()
+        session = Session(Source.CreateFromText(text))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        return session.diagnostics
+
+    def test_a_later_version_may_add_a_field(self):
+        # The ordinary reason to bump a version, and it must stay legal.
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        interface OrderIF version 1 {
+            integration event OrderPlaced version 1 from Order.Placed {
+                orderId:string
+            }
+        }
+        interface OrderIF version 2 {
+            integration event OrderPlaced version 2 from Order.Placed {
+                orderId:string
+                totalAmount:number
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+            }
+            event Placed { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 0)
+
+    def test_a_later_version_may_not_drop_a_field(self):
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        interface OrderIF version 1 {
+            integration event OrderPlaced version 1 from Order.Placed {
+                orderId:string
+                totalAmount:number
+            }
+        }
+        interface OrderIF version 2 {
+            integration event OrderPlaced version 2 from Order.Placed {
+                orderId:string
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+            }
+            event Placed { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 1)
+        self.assertTrue("drops the field 'totalAmount'" in diagnostics[0].toText())
+
+    def test_a_later_version_may_not_narrow_a_type(self):
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        interface OrderIF version 1 {
+            integration event OrderPlaced version 1 from Order.Placed {
+                total:number
+            }
+        }
+        interface OrderIF version 2 {
+            integration event OrderPlaced version 2 from Order.Placed {
+                total:integer
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+            }
+            event Placed { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 1)
+        self.assertTrue("narrows 'total' from 'number' to 'integer'" in diagnostics[0].toText())
+
+    def test_an_integer_may_become_a_number(self):
+        # The one widening among the primitives: every integer is a number, so no reader of the
+        # old shape has to be taught anything.
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        interface OrderIF version 1 {
+            integration event OrderPlaced version 1 from Order.Placed {
+                quantity:integer
+            }
+        }
+        interface OrderIF version 2 {
+            integration event OrderPlaced version 2 from Order.Placed {
+                quantity:number
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+            }
+            event Placed { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 0)
+
+    def test_an_audit_record_may_not_drop_a_field_either(self):
+        # Evidence is the case where this matters most: it is read back years later, by code that
+        # only knows the newest shape.
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        audit record Exported version 1 {
+            by:string
+            at:dateTime
+        }
+        audit record Exported version 2 {
+            by:string
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 1)
+        self.assertTrue("drops the field 'at'" in diagnostics[0].toText())
+
+    def test_a_later_version_may_not_remove_an_enum_value(self):
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        audit record Exported version 1 {
+            enum Reasons { Manual, Scheduled, Retry }
+            reason:Reasons
+        }
+        audit record Exported version 2 {
+            enum Reasons { Manual, Scheduled }
+            reason:Reasons
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 1)
+        self.assertTrue("removes Retry" in diagnostics[0].toText())
+
+    def test_each_step_is_judged_against_the_one_below_it(self):
+        # v1 -> v2 adds, v2 -> v3 drops what v2 added. The complaint belongs to the step that did
+        # it, and there is exactly one of them.
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        audit record Exported version 1 { by:string }
+        audit record Exported version 2 {
+            by:string
+            at:dateTime
+        }
+        audit record Exported version 3 { by:string }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 1)
+        self.assertTrue("'Exported' version 3" in diagnostics[0].toText())
+        self.assertTrue("drops the field 'at'" in diagnostics[0].toText())
+
+    def test_the_same_name_on_a_different_interface_is_a_different_contract(self):
+        # Two interfaces may each publish an OrderPlaced. They are not versions of one another, and
+        # comparing them would invent a promise nobody made.
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        interface OrderIF version 1 {
+            integration event OrderPlaced version 1 from Order.Placed {
+                orderId:string
+                totalAmount:number
+            }
+        }
+        interface LegacyIF version 2 {
+            integration event OrderPlaced version 2 from Order.Placed {
+                orderId:string
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+            }
+            event Placed { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 0)
+
     def test_an_unversioned_reference_does_not_pick_a_version_for_you(self):
         # An interface may carry v1 and v2 side by side - that is what versioning it is for - so
         # there is nothing to guess from. Saying nothing has to fail, not silently mean 'the first'.
