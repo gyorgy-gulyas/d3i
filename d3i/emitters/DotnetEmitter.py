@@ -2001,6 +2001,26 @@ class DotnetEmitter:
         buffer.write(f"{utils.tab(indent)}}} );\n")
         return buffer.getvalue()
 
+    def serviceNameConstantText(self, interface: interface, code: dotnet_code, indent: int) -> str:
+        """
+        Who this client is calling, as a name and not as an address.
+
+        A context IS the microservice boundary in this language, so the context is what a caller
+        addresses - not an interface and not a version, because v1 and v2 of one interface answer
+        from one deployment. Where that deployment actually lives is configuration, and a generated
+        file is the last place a hostname should ever appear.
+        """
+        domain: domain = interface.getDomain()
+        context: context = interface.getContext()
+
+        buffer = io.StringIO()
+        buffer.write(f"{utils.tab(indent)}/// <summary>\n")
+        buffer.write(f"{utils.tab(indent)}/// The service this client calls. Its address is configuration:\n")
+        buffer.write(f"{utils.tab(indent)}/// Services:{domain.name}.{context.name}:BaseAddress (and :GrpcAddress when cleartext needs a second port).\n")
+        buffer.write(f"{utils.tab(indent)}/// </summary>\n")
+        buffer.write(f"{utils.tab(indent)}public const string ServiceName = \"{domain.name}.{context.name}\";\n\n")
+        return buffer.getvalue()
+
     def interfaceGrpcInternalClientText(self, interface: interface, code: dotnet_code, indent: int = 1) -> dotnet_code:
         """
         Generates the .NET GRPC INTERNAL client code for interface
@@ -2012,7 +2032,6 @@ class DotnetEmitter:
 
         code.usings.add("Google.Protobuf.WellKnownTypes")
         code.usings.add("Grpc.Core")
-        code.usings.add("Grpc.Net.Client")
         code.usings.add("ServiceKit.Net")
         code.usings.add(f"{domain.name}.{context.name}.Protos.{versionedName}")
 
@@ -2021,16 +2040,18 @@ class DotnetEmitter:
         # client class declaration
         buffer.write(f"{utils.tab(indent)}public class {versionedName}_GrpcClient : I{versionedName} \n")
         buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(self.serviceNameConstantText(interface, code, indent+1))
         # private members
-        buffer.write(f"{utils.tab(indent+1)}private readonly GrpcChannel _channel;\n")
         buffer.write(f"{utils.tab(indent+1)}private readonly {versionedName}.{versionedName}Client _client;\n")
 
-        # Add constructor with server address
+        # Add constructor
         buffer.write(f"\n")
-        buffer.write(f"{utils.tab(indent+1)}public {versionedName}_GrpcClient( string serverAddress )\n")
+        buffer.write(f"{utils.tab(indent+1)}public {versionedName}_GrpcClient( IServiceClientFactory clients )\n")
         buffer.write(f"{utils.tab(indent+1)}{{\n")
-        buffer.write(f"{utils.tab(indent+2)}_channel = GrpcChannel.ForAddress(serverAddress);\n")
-        buffer.write(f"{utils.tab(indent+2)}_client = new {versionedName}.{versionedName}Client(_channel);\n")
+        buffer.write(f"{utils.tab(indent+2)}// The channel comes from the factory and is NOT held or disposed here. A channel owns the\n")
+        buffer.write(f"{utils.tab(indent+2)}// connection, the HTTP/2 session and the load balancing state, so one per call site is a\n")
+        buffer.write(f"{utils.tab(indent+2)}// connection storm; the factory keeps one per address and everybody shares it.\n")
+        buffer.write(f"{utils.tab(indent+2)}_client = new {versionedName}.{versionedName}Client( clients.GetChannel( ServiceName ) );\n")
         buffer.write(f"{utils.tab(indent+1)}}}\n")
         buffer.write(f"\n")
         
@@ -2268,16 +2289,19 @@ class DotnetEmitter:
         # client class declaration
         buffer.write(f"{utils.tab(indent)}public class {versionedName}_RestClient : I{versionedName} \n")
         buffer.write(f"{utils.tab(indent)}{{\n")
+        buffer.write(self.serviceNameConstantText(interface, code, indent+1))
         # private members
         buffer.write(f"{utils.tab(indent+1)}private readonly HttpClient _httpClient;\n")
         buffer.write(self.restClientJsonOptionsText(code, indent+1))
 
-        # Add constructor with server address
+        # Add constructor
         buffer.write(f"\n")
-        buffer.write(f"{utils.tab(indent+1)}public {versionedName}_RestClient( string serverAddress )\n")
+        buffer.write(f"{utils.tab(indent+1)}public {versionedName}_RestClient( IServiceClientFactory clients )\n")
         buffer.write(f"{utils.tab(indent+1)}{{\n")
-        buffer.write(f"{utils.tab(indent+2)}_httpClient = new HttpClient();\n")
-        buffer.write(f"{utils.tab(indent+2)}_httpClient.BaseAddress = new Uri( serverAddress );\n")
+        buffer.write(f"{utils.tab(indent+2)}// From the factory, not from 'new HttpClient()'. A hand-made one holds its connections\n")
+        buffer.write(f"{utils.tab(indent+2)}// open and never notices DNS changing - which is the kind of bug that works perfectly\n")
+        buffer.write(f"{utils.tab(indent+2)}// until there is traffic. The factory's client also carries the house retry policy.\n")
+        buffer.write(f"{utils.tab(indent+2)}_httpClient = clients.CreateHttpClient( ServiceName );\n")
         buffer.write(f"{utils.tab(indent+2)}_httpClient.DefaultRequestHeaders.Add(\"Accept\", \"application/json\");\n")
         buffer.write(f"{utils.tab(indent+1)}}}\n")
         buffer.write(f"\n")

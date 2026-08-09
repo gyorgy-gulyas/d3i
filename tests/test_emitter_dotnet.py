@@ -1891,8 +1891,35 @@ domain Shop {
     def test_the_clients_can_be_constructed(self):
         # a constructor with no modifier is private, so nobody outside could ever build one
         files = self.__emit(self.SOURCE)
-        self.assertIn("public OrderIF_v1_RestClient( string serverAddress )", files["OrderIF_v1.RestClient.cs"])
-        self.assertIn("public OrderIF_v1_GrpcClient( string serverAddress )", files["OrderIF_v1.GrpcClient.cs"])
+        self.assertIn("public OrderIF_v1_RestClient( IServiceClientFactory clients )", files["OrderIF_v1.RestClient.cs"])
+        self.assertIn("public OrderIF_v1_GrpcClient( IServiceClientFactory clients )", files["OrderIF_v1.GrpcClient.cs"])
+
+    def test_the_clients_ask_the_factory_and_carry_no_address(self):
+        # Both transports used to build their own: 'new HttpClient()' holds its connections open and
+        # never notices DNS changing, and a channel per call site is a connection storm - the kind of
+        # bug that works perfectly until there is traffic.
+        files = self.__emit(self.SOURCE)
+
+        rest = files["OrderIF_v1.RestClient.cs"]
+        self.assertIn("_httpClient = clients.CreateHttpClient( ServiceName );", rest)
+        # the statements, not the prose: the constructor comment names both of these on purpose
+        self.assertNotIn("_httpClient = new HttpClient()", rest)
+        self.assertNotIn("_httpClient.BaseAddress =", rest)
+
+        grpc = files["OrderIF_v1.GrpcClient.cs"]
+        self.assertIn("clients.GetChannel( ServiceName )", grpc)
+        self.assertNotIn("GrpcChannel.ForAddress", grpc)
+        # the channel is shared, so the client must not hold one it could be tempted to dispose
+        self.assertNotIn("GrpcChannel _channel", grpc)
+
+    def test_a_client_addresses_a_context_and_not_an_interface(self):
+        # A context IS the microservice boundary here, and v1 and v2 of one interface answer from
+        # one deployment - so the name a caller addresses is the context's, and the address behind
+        # it is configuration rather than anything a generated file knows.
+        files = self.__emit(self.SOURCE)
+        for name in ("OrderIF_v1.RestClient.cs", "OrderIF_v1.GrpcClient.cs"):
+            self.assertIn('public const string ServiceName = "Shop.C";', files[name])
+            self.assertIn("Services:Shop.C:BaseAddress", files[name])
 
     def test_the_route_is_not_escaped_as_a_whole(self):
         # escaping the whole url turns every separator into %2F and the request matches no route
