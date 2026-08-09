@@ -131,13 +131,35 @@ class internal_scoped_base_element(hinted_base_element, IScope):
         return data
 
 
+class qualified_name_part:
+    """
+    One segment of a referenced name, with the version it asked for - or None when it asked for
+    none. Silence is not 'version 1': an unversioned reference resolves to an unversioned element,
+    and a versioned one has to say which.
+    """
+
+    def __init__(self, name: str, version: int = None):
+        self.name: str = name
+        self.version: int = version
+
+    def getText(self):
+        if (self.version == None):
+            return self.name
+        return f"{self.name}#{self.version}"
+
+
 class qualified_name(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.names: List[str] = []
+        self.parts: List[qualified_name_part] = []
+
+    @property
+    def names(self) -> List[str]:
+        """The segments without their versions - for the callers that only need the path."""
+        return [part.name for part in self.parts]
 
     def getText(self):
-        return '.'.join(self.names)
+        return '.'.join(part.getText() for part in self.parts)
 
 
 class decorator(base_element):

@@ -312,9 +312,19 @@ type
         : REF qualifiedName
         ;
 
+// One rule, two separators, and they mean different things: a '.' goes DOWN a namespace, a '#'
+// picks a version of the thing just named. `Sales.OrderManagement.OrderIF#1.OrderPlaced#1`.
+//
+// It used to be '.v1', which reads like another namespace segment and is not one - while the
+// declaration a few lines up says `version 1`. Two spellings for one idea, and the wrong one
+// looked like the thing it is not.
 qualifiedName
-    : IDENTIFIER ('.' IDENTIFIER)*
+    : qualifiedNamePart ('.' qualifiedNamePart)*
     ;
+
+    qualifiedNamePart
+        : IDENTIFIER VERSION_REF?
+        ;
 
 // small, lintable validate expression sublanguage.
 // `value` is the field itself; a bare IDENTIFIER may reference a sibling field.

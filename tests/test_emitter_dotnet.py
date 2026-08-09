@@ -757,8 +757,8 @@ domain WebShop {
                 @partitionKey
                 orderId:string
 
-                command place( total:number ) emits OrderPlaced.v1
-                command cancel( reason:string ) emits OrderCancelled.v1
+                command place( total:number ) emits OrderPlaced#1
+                command cancel( reason:string ) emits OrderCancelled#1
             }
 
             event OrderPlaced version 1 { orderId:string }
@@ -792,7 +792,7 @@ domain WebShop {
                 orderId:string
 
                 # what it does
-                command place( total:number ) emits OrderPlaced.v1
+                command place( total:number ) emits OrderPlaced#1
                 query isPlaceable() : boolean
             }
 
@@ -840,7 +840,7 @@ domain WebShop {
         aggregate Order {
             root entity OrderHeader {
                 orderId:string
-                command place( total:number ) emits OrderPlaced.v1
+                command place( total:number ) emits OrderPlaced#1
             }
             event OrderPlaced version 1 { orderId:string }
         }
@@ -872,7 +872,7 @@ domain WebShop {
             root entity OrderHeader { orderId:string }
             entity OrderItem {
                 sku:string
-                command touch() emits OrderPlaced.v1
+                command touch() emits OrderPlaced#1
             }
             event OrderPlaced version 1 { orderId:string }
         }
@@ -888,7 +888,7 @@ domain WebShop {
 domain WebShop {
     context Sales {
         event PaymentConfirmed version 1 { orderId:string }
-        eventhandler onPaymentConfirmed for event PaymentConfirmed.v1
+        eventhandler onPaymentConfirmed for event PaymentConfirmed#1
     }
 }
 """, "OnPaymentConfirmedHandler.cs")
@@ -1488,7 +1488,7 @@ domain WebShop {
 
             query status( orderId:string ) : string
 
-            eventhandler onPaid for event OrderPaid.v1
+            eventhandler onPaid for event OrderPaid#1
 
             step reserveStock( orderId:string, sku:string ) compensate releaseStock
 

@@ -1088,7 +1088,7 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        eventhandler OnShipped for integration event Shipping.ShippingIF.v1.Shipped.v1
+        eventhandler OnShipped for integration event Shipping.ShippingIF#1.Shipped#1
         eventhandler OnPaid for domain event PaymentReceived
     }
 }
@@ -1097,8 +1097,59 @@ domain SomeDomain {
         context: context = root.domains[0].contexts[0]
         self.assertEqual(len(context.eventhandlers), 2)
         self.assertEqual(context.eventhandlers[0].handledKind, event.Kind.Integration)
-        self.assertEqual(context.eventhandlers[0].handledEvent.getText(), "Shipping.ShippingIF.v1.Shipped.v1")
+        self.assertEqual(context.eventhandlers[0].handledEvent.getText(), "Shipping.ShippingIF#1.Shipped#1")
         self.assertEqual(context.eventhandlers[1].handledKind, event.Kind.Domain)
+
+    def test_a_version_is_part_of_the_name_part_not_a_segment(self):
+        # '.' goes down a namespace, '#' picks a version of the thing just named. They are two
+        # different ideas and now they look different.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        eventhandler OnShipped for event Shipping.ShippingIF#1.Shipped#12
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        handled = root.domains[0].contexts[0].eventhandlers[0].handledEvent
+        self.assertEqual(3, len(handled.parts))
+        self.assertEqual("Shipping", handled.parts[0].name)
+        self.assertIsNone(handled.parts[0].version)
+        self.assertEqual("ShippingIF", handled.parts[1].name)
+        self.assertEqual(1, handled.parts[1].version)
+        self.assertEqual("Shipped", handled.parts[2].name)
+        # more than one digit, because a twelfth version is not a lexer problem
+        self.assertEqual(12, handled.parts[2].version)
+
+        # the path without the versions is still available to whoever only needs the path
+        self.assertEqual(["Shipping", "ShippingIF", "Shipped"], handled.names)
+        self.assertEqual("Shipping.ShippingIF#1.Shipped#12", handled.getText())
+
+    def test_a_documentation_line_may_not_start_with_a_digit(self):
+        # The whole cost of spelling a version '#1': the lexer cannot also read it as the start of a
+        # comment. '# 1. step' is fine, '#1. step' is not - and it says so instead of parsing into
+        # something else.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+# 1. this one is a comment
+domain SomeDomain {
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+        self.assertEqual(" 1. this one is a comment", root.domains[0].document_lines[0])
+
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+#1. this one is not
+domain SomeDomain {
+}
+"""))
+        engine.Build(session)
+        self.assertTrue(session.HasAnyError())
 
     def test_operation_command_query(self):
         engine = Engine()
@@ -1216,7 +1267,7 @@ domain SomeDomain {
         eventsourced aggregate Account {
             root entity AccountHeader {
                 accountId:string
-                command open( owner:string ) emits Opened.v1
+                command open( owner:string ) emits Opened#1
             }
 
             event Opened version 1 {
@@ -1240,7 +1291,7 @@ domain SomeDomain {
 
         the_command = the_aggregate.internal_entities[0].entity.operations[0]
         self.assertEqual(len(the_command.emits), 1)
-        self.assertEqual(the_command.emits[0].getText(), "Opened.v1")
+        self.assertEqual(the_command.emits[0].getText(), "Opened#1")
 
     def test_context_event_without_version_ok(self):
         # An internal fact that nobody outside the deployment unit consumes makes no

@@ -718,7 +718,7 @@ domain SomeDomain {
                     }    
                 }
 
-                member_0: TheInterface.v2.event_out.v2.enum_inner
+                member_0: TheInterface#2.event_out#2.enum_inner
                 member_1: vo_inner
                 member_2: vo_inner.enum_inner
                 member_3: enum_out
@@ -920,6 +920,67 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("NotDefinedEvent" in session.diagnostics[0].toText())
         self.assertTrue("handled event" in session.diagnostics[0].toText())
+
+    def test_an_unversioned_reference_does_not_pick_a_version_for_you(self):
+        # An interface may carry v1 and v2 side by side - that is what versioning it is for - so
+        # there is nothing to guess from. Saying nothing has to fail, not silently mean 'the first'.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            dto OrderDTO { id:string }
+        }
+        service TheService {
+            query get() : OrderIF.OrderDTO
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("OrderIF" in session.diagnostics[0].toText())
+
+    def test_a_versioned_reference_names_the_version_it_wants(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            dto OrderDTO { id:string }
+        }
+        interface OrderIF version 2 {
+            dto OrderDTO {
+                id:string
+                shippingCity:string
+            }
+        }
+        service TheService {
+            query getOld() : OrderIF#1.OrderDTO
+            query getNew() : OrderIF#2.OrderDTO
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 0)
+
+        # and they really are two different DTOs, not the same one found twice
+        service = root.domains[0].contexts[0].services[0]
+        old = Engine.get_referenced_element(service.operations[0], service.operations[0].operation_return.type.reference_name)
+        new = Engine.get_referenced_element(service.operations[1], service.operations[1].operation_return.type.reference_name)
+        self.assertEqual(1, len(old.members))
+        self.assertEqual(2, len(new.members))
 
     def test_eventhandler_kind_matches_declaration_ok(self):
         engine = Engine()
@@ -1829,7 +1890,7 @@ domain SomeDomain {
             root entity AccountHeader {
                 @partitionKey
                 accountId:string
-                command open( owner:string ) emits Opened.v1
+                command open( owner:string ) emits Opened#1
             }
             event Opened version 1 { accountId:string }
         }
@@ -1870,7 +1931,7 @@ domain SomeDomain {
             root entity AccountHeader {
                 @partitionKey
                 accountId:string
-                command open( owner:string ) emits Opened.v1
+                command open( owner:string ) emits Opened#1
             }
             event Opened version 1 { accountId:string }
         }
@@ -1965,7 +2026,7 @@ domain SomeDomain {
         eventsourced aggregate Account {
             root entity AccountHeader {
                 accountId:string
-                command open( owner:string ) emits Opened.v1
+                command open( owner:string ) emits Opened#1
             }
             event Opened version 1 { accountId:string }
         }
@@ -2093,7 +2154,7 @@ domain SomeDomain {
         event Source { }
         interface OrderIF version 1 {
             integration event First version 1 from Source { }
-            integration event Second version 1 from OrderIF.v1.First.v1 { }
+            integration event Second version 1 from OrderIF#1.First#1 { }
         }
     }
 }
@@ -2122,7 +2183,7 @@ domain SomeDomain {
 domain SomeDomain {
     context Order {
         audit record Exported version 1 { orderId:string }
-        eventhandler onExported for event Exported.v1
+        eventhandler onExported for event Exported#1
     }
 }
 """)

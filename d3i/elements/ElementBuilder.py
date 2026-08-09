@@ -981,11 +981,17 @@ class ElementBuilder(d3iGrammarVisitor):
 
         counter = 0
         while True:
-            identifier = ctx.IDENTIFIER(counter)
-            if (identifier == None):
+            part_ctx = ctx.qualifiedNamePart(counter)
+            if (part_ctx == None):
                 break
             counter = counter + 1
-            result.names.append(identifier.getText())
+
+            version: int = None
+            if (part_ctx.VERSION_REF() != None):
+                # the token carries its '#', which is a lexer concern and not a name
+                version = int(part_ctx.VERSION_REF().getText()[1:])
+
+            result.parts.append(qualified_name_part(part_ctx.IDENTIFIER().getText(), version))
 
         return result
 
@@ -1021,7 +1027,7 @@ class ElementBuilder(d3iGrammarVisitor):
             # Backward compat: a bare single-identifier positional param (e.g.
             # `@public_api( rest )`) also acts as a named flag, so find_param()
             # can still locate it by name. Dotted names stay purely positional.
-            if (result.name == None and len(ctx.qualifiedName().IDENTIFIER()) == 1):
+            if (result.name == None and len(result.value.parts) == 1):
                 result.name = ctx.qualifiedName().getText()
         elif (ctx.INTEGER_CONSTANS() != None):
             result.kind = decorator_param.Kind.Integer

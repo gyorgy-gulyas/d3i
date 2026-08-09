@@ -101,6 +101,17 @@ IDENTIFIER: [a-z][a-z_0-9]* ;
 WS: [ \t\n\r\f]+ -> skip ;
 BOM : '\uFEFF' -> skip ;
 
-DOCUMENT_LINE: '#' ~[\r\n]*;
+// A version, where a name is REFERENCED: `OrderIF#1`. The declaration still says the readable
+// `version 1` - a different position does not have to look the same.
+//
+// The token carries its digits rather than being a bare '#', and that is what resolves the clash
+// with the documentation line below: both start with '#', ANTLR takes the longest match, so a bare
+// '#' would always lose to a comment running to the end of the line.
+VERSION_REF : '#' [0-9]+ ;
+
+// The first character after '#' may not be a digit, so `#1` cannot open a comment. That is the
+// entire cost of using '#' for versions, and it is a rule a reader can hold: write `# 1. step`,
+// not `#1. step`.
+DOCUMENT_LINE: '#' (~[0-9\r\n] ~[\r\n]*)?;
 LINE_COMMENT : '//' ~[\r\n]* -> channel(COMMENT_CHANNEL);
 BLOCK_COMMENT : '/*' .*? '*/' -> channel(COMMENT_CHANNEL);

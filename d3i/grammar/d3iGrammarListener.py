@@ -485,6 +485,15 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#qualifiedNamePart.
+    def enterQualifiedNamePart(self, ctx:d3iGrammar.QualifiedNamePartContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#qualifiedNamePart.
+    def exitQualifiedNamePart(self, ctx:d3iGrammar.QualifiedNamePartContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#validate_expr.
     def enterValidate_expr(self, ctx:d3iGrammar.Validate_exprContext):
         pass
