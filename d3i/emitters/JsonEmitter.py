@@ -90,6 +90,9 @@ class JsonEmitter(ElementVisitor):
             "services": [],
             "interfaces": [],
             "workflows": [],
+            "events": [],
+            "eventhandlers": [],
+            "audit_records": [],
         }
         parentData['contexts'].append(data)
         return data
@@ -100,6 +103,7 @@ class JsonEmitter(ElementVisitor):
             "name": event.name,
             "version": str(event.version),
             "kind": str(event.kind),
+            "translated_from": event.translated_from.getText() if event.translated_from != None else None,
             "inherits": [],
             "members": []
         }
@@ -115,11 +119,23 @@ class JsonEmitter(ElementVisitor):
         parentData["members"].append(data)
         return data
 
+    def visitAuditRecord(self, the_record: audit_record, parentData: Any) -> Any:
+        data = {
+            "$type": "d3i.audit_record",
+            "name": the_record.name,
+            "version": str(the_record.version),
+            "members": []
+        }
+        parentData["audit_records"].append(data)
+        return data
+
     def visitEventHandler(self, eventhandler: eventhandler, parentData: Any) -> Any:
         data = {
             "$type": "d3i.eventhandler",
             "name": eventhandler.name,
             "handled_event": eventhandler.handledEvent.getText(),
+            # null when the handler did not name a kind - silence, not a default
+            "handled_kind": str(eventhandler.handledKind) if eventhandler.handledKind != None else None,
         }
         parentData["eventhandlers"].append(data)
         return data
@@ -233,7 +249,8 @@ class JsonEmitter(ElementVisitor):
             "$type": "d3i.aggregate",
             "name": aggregate.name,
             "eventsourced": str(aggregate.eventsourced),
-            "internal_entities": []
+            "internal_entities": [],
+            "events": [],
         }
         parentData["aggregates"].append(data)
         return data
@@ -289,8 +306,6 @@ class JsonEmitter(ElementVisitor):
             "$type": "d3i.service",
             "name": service.name,
             "operations": [],
-            "events": [],
-            "eventhandlers": [],
         }
         parentData["services"].append(data)
         return data

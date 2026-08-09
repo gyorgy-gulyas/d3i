@@ -16,18 +16,16 @@ class TestLinterSemanticChecker(unittest.TestCase):
         session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 0)
 
-    def test_conflict_service_event_fail(self):
+    def test_conflict_context_event_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        service OrderService {
-            event TheEvent version 1 {
-            }
-            event TheEvent version 1 {
-            }
-            event OtherEvent version 2{
-            }
+        event TheEvent {
+        }
+        event TheEvent {
+        }
+        event OtherEvent {
         }
     }
 }
@@ -40,21 +38,22 @@ domain SomeDomain {
         session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEvent" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(4,8):", "(6,8)"]))
         self.assertTrue("TheEvent" in session.diagnostics[1].toText())
-        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,12):", "(5,12)"]))
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,8):", "(4,8)"]))
 
     def test_conflict_interface_event_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
+        event Source { }
         interface IOrderInterface version 1 {
-            event TheEvent version 1 {
+            integration event TheEvent version 1 from Source {
             }
-            event TheEvent version 1 {
+            integration event TheEvent version 1 from Source {
             }
-            event OtherEvent version 2 {
+            integration event OtherEvent version 2 from Source {
             }
         }
     }
@@ -68,21 +67,19 @@ domain SomeDomain {
         session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("TheEvent" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(7,12)"]))
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,12):", "(8,12)"]))
         self.assertTrue("TheEvent" in session.diagnostics[1].toText())
-        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,12):", "(5,12)"]))
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(8,12):", "(6,12)"]))
 
     def test_conflict_event_member_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        service OrderService {
-            event TheEvent version 1 {
-                the_member:string
-                the_member:number
-                other_member:number
-            }
+        event TheEvent {
+            the_member:string
+            the_member:number
+            other_member:number
         }
     }
 }
@@ -95,9 +92,9 @@ domain SomeDomain {
         session.PrintDiagnostics()
         self.assertEqual(len(session.diagnostics), 2)
         self.assertTrue("the_member" in session.diagnostics[0].toText())
-        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(6,16):", "(7,16)"]))
+        self.assertTrue(all(location in session.diagnostics[0].toText() for location in ["(5,12):", "(6,12)"]))
         self.assertTrue("the_member" in session.diagnostics[1].toText())
-        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(7,16):", "(6,16)"]))
+        self.assertTrue(all(location in session.diagnostics[1].toText() for location in ["(6,12):", "(5,12)"]))
 
     def test_conflict_context_enum_fail(self):
         engine = Engine()
@@ -684,6 +681,7 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext{
+        event Source { }
         interface TheInterface version 1 {
         }
         interface TheInterface version 2 {
@@ -695,9 +693,9 @@ domain SomeDomain {
             }    
             enum enum_out{
             }    
-            event event_out version 1 {
+            integration event event_out version 1 from Source {
             }    
-            event event_out version 2{
+            integration event event_out version 2 from Source {
                 enum enum_inner {
                 }    
             }    
@@ -720,7 +718,7 @@ domain SomeDomain {
                     }    
                 }
 
-                member_0: TheInterface.v2.event_out.v2.enum_inner
+                member_0: TheInterface#2.event_out#2.enum_inner
                 member_1: vo_inner
                 member_2: vo_inner.enum_inner
                 member_3: enum_out
@@ -752,8 +750,9 @@ domain SomeDomain {
             }
             valueobject TheValueObject inherits Order.TheEntity{
             }                                                    
+            event Source { }
             interface TheInterface version 1 {
-                event TheEvent version 1 inherits TheValueObject{
+                integration event TheEvent version 1 from Source inherits TheValueObject{
             }    
         }
     }
@@ -771,7 +770,7 @@ domain SomeDomain {
 
         self.assertTrue(any(all(x in s for x in ["TheInterface.TheEvent", "(5,47):"]) for s in messages))
         self.assertTrue(any(all(x in s for x in ["Order.TheEntity", "(8,48):"]) for s in messages))
-        self.assertTrue(any(all(x in s for x in ["TheValueObject", "(11,50):"]) for s in messages))
+        self.assertTrue(any(all(x in s for x in ["TheValueObject", "(12,74):"]) for s in messages))
 
     def test_conflict_dto_fail(self):
         engine = Engine()
@@ -908,9 +907,7 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        service TheService {
-            eventhandler TheHandler for event NotDefinedEvent
-        }
+        eventhandler TheHandler for event NotDefinedEvent
     }
 }
 """))
@@ -923,6 +920,316 @@ domain SomeDomain {
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("NotDefinedEvent" in session.diagnostics[0].toText())
         self.assertTrue("handled event" in session.diagnostics[0].toText())
+
+    def __diagnose(self, text: str):
+        engine = Engine()
+        session = Session(Source.CreateFromText(text))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        return session.diagnostics
+
+    def test_a_later_version_may_add_a_field(self):
+        # The ordinary reason to bump a version, and it must stay legal.
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        interface OrderIF version 1 {
+            integration event OrderPlaced version 1 from Order.Placed {
+                orderId:string
+            }
+        }
+        interface OrderIF version 2 {
+            integration event OrderPlaced version 2 from Order.Placed {
+                orderId:string
+                totalAmount:number
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+            }
+            event Placed { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 0)
+
+    def test_a_later_version_may_not_drop_a_field(self):
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        interface OrderIF version 1 {
+            integration event OrderPlaced version 1 from Order.Placed {
+                orderId:string
+                totalAmount:number
+            }
+        }
+        interface OrderIF version 2 {
+            integration event OrderPlaced version 2 from Order.Placed {
+                orderId:string
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+            }
+            event Placed { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 1)
+        self.assertTrue("drops the field 'totalAmount'" in diagnostics[0].toText())
+
+    def test_a_later_version_may_not_narrow_a_type(self):
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        interface OrderIF version 1 {
+            integration event OrderPlaced version 1 from Order.Placed {
+                total:number
+            }
+        }
+        interface OrderIF version 2 {
+            integration event OrderPlaced version 2 from Order.Placed {
+                total:integer
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+            }
+            event Placed { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 1)
+        self.assertTrue("narrows 'total' from 'number' to 'integer'" in diagnostics[0].toText())
+
+    def test_an_integer_may_become_a_number(self):
+        # The one widening among the primitives: every integer is a number, so no reader of the
+        # old shape has to be taught anything.
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        interface OrderIF version 1 {
+            integration event OrderPlaced version 1 from Order.Placed {
+                quantity:integer
+            }
+        }
+        interface OrderIF version 2 {
+            integration event OrderPlaced version 2 from Order.Placed {
+                quantity:number
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+            }
+            event Placed { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 0)
+
+    def test_an_audit_record_may_not_drop_a_field_either(self):
+        # Evidence is the case where this matters most: it is read back years later, by code that
+        # only knows the newest shape.
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        audit record Exported version 1 {
+            by:string
+            at:dateTime
+        }
+        audit record Exported version 2 {
+            by:string
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 1)
+        self.assertTrue("drops the field 'at'" in diagnostics[0].toText())
+
+    def test_a_later_version_may_not_remove_an_enum_value(self):
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        audit record Exported version 1 {
+            enum Reasons { Manual, Scheduled, Retry }
+            reason:Reasons
+        }
+        audit record Exported version 2 {
+            enum Reasons { Manual, Scheduled }
+            reason:Reasons
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 1)
+        self.assertTrue("removes Retry" in diagnostics[0].toText())
+
+    def test_each_step_is_judged_against_the_one_below_it(self):
+        # v1 -> v2 adds, v2 -> v3 drops what v2 added. The complaint belongs to the step that did
+        # it, and there is exactly one of them.
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        audit record Exported version 1 { by:string }
+        audit record Exported version 2 {
+            by:string
+            at:dateTime
+        }
+        audit record Exported version 3 { by:string }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 1)
+        self.assertTrue("'Exported' version 3" in diagnostics[0].toText())
+        self.assertTrue("drops the field 'at'" in diagnostics[0].toText())
+
+    def test_the_same_name_on_a_different_interface_is_a_different_contract(self):
+        # Two interfaces may each publish an OrderPlaced. They are not versions of one another, and
+        # comparing them would invent a promise nobody made.
+        diagnostics = self.__diagnose("""
+domain WebShop {
+    context Sales {
+        interface OrderIF version 1 {
+            integration event OrderPlaced version 1 from Order.Placed {
+                orderId:string
+                totalAmount:number
+            }
+        }
+        interface LegacyIF version 2 {
+            integration event OrderPlaced version 2 from Order.Placed {
+                orderId:string
+            }
+        }
+        aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+            }
+            event Placed { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(diagnostics), 0)
+
+    def test_an_unversioned_reference_does_not_pick_a_version_for_you(self):
+        # An interface may carry v1 and v2 side by side - that is what versioning it is for - so
+        # there is nothing to guess from. Saying nothing has to fail, not silently mean 'the first'.
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            dto OrderDTO { id:string }
+        }
+        service TheService {
+            query get() : OrderIF.OrderDTO
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("OrderIF" in session.diagnostics[0].toText())
+
+    def test_a_versioned_reference_names_the_version_it_wants(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            dto OrderDTO { id:string }
+        }
+        interface OrderIF version 2 {
+            dto OrderDTO {
+                id:string
+                shippingCity:string
+            }
+        }
+        service TheService {
+            query getOld() : OrderIF#1.OrderDTO
+            query getNew() : OrderIF#2.OrderDTO
+        }
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 0)
+
+        # and they really are two different DTOs, not the same one found twice
+        service = root.domains[0].contexts[0].services[0]
+        old = Engine.get_referenced_element(service.operations[0], service.operations[0].operation_return.type.reference_name)
+        new = Engine.get_referenced_element(service.operations[1], service.operations[1].operation_return.type.reference_name)
+        self.assertEqual(1, len(old.members))
+        self.assertEqual(2, len(new.members))
+
+    def test_eventhandler_kind_matches_declaration_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        domain event PaymentReceived {
+            amount:integer
+        }
+        eventhandler OnPaid for domain event PaymentReceived
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_eventhandler_wrong_kind_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        domain event PaymentReceived {
+            amount:integer
+        }
+        eventhandler OnPaid for integration event PaymentReceived
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("as a integration event" in session.diagnostics[0].toText())
+        self.assertTrue("declared as a domain event" in session.diagnostics[0].toText())
 
     def test_view_projection_unknown_fail(self):
         engine = Engine()
@@ -1074,10 +1381,8 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        service TheService {
-            event Uploaded version 1 {
-                content: stream
-            }
+        event Uploaded {
+            content: stream
         }
     }
 }
@@ -1759,6 +2064,349 @@ domain SomeDomain {
 """))
         self.assertEqual(len(session.diagnostics), 1)
         self.assertTrue("takes exactly one string argument" in session.diagnostics[0].toText())
+
+    # ---- D3I-50: a version is a promise, and a promise needs someone to make it to -------------
+
+    def test_an_eventsourced_aggregate_event_must_be_versioned(self):
+        # The fact stays in the stream longer than the code that wrote it, so the code that reads it
+        # back will be newer than the code that produced it - the same compatibility problem as with
+        # a foreign team, only against your own past.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        eventsourced aggregate Account {
+            root entity AccountHeader {
+                @partitionKey
+                accountId:string
+                command open( owner:string ) emits Opened
+            }
+            event Opened { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must declare a version" in session.diagnostics[0].toText())
+        self.assertTrue("eventsourced" in session.diagnostics[0].toText())
+
+    def test_an_eventsourced_aggregate_event_with_a_version_is_ok(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        eventsourced aggregate Account {
+            root entity AccountHeader {
+                @partitionKey
+                accountId:string
+                command open( owner:string ) emits Opened#1
+            }
+            event Opened version 1 { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_an_internal_event_must_not_be_versioned(self):
+        # Its consumers ship in the same deployment unit and move with it, so breaking the shape is
+        # a compile error. A version would promise a stability nobody is keeping.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event DailyClosingCompleted version 1 { orderCount:number }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must not declare a version" in session.diagnostics[0].toText())
+
+    def test_an_internal_event_without_a_version_is_ok(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event DailyClosingCompleted { orderCount:number }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_an_event_of_a_plain_aggregate_must_not_be_versioned(self):
+        # Not eventsourced: the fact is a passing message, not a stored one.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        aggregate Account {
+            root entity AccountHeader {
+                @partitionKey
+                accountId:string
+                command open( owner:string ) emits Opened#1
+            }
+            event Opened version 1 { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must not declare a version" in session.diagnostics[0].toText())
+
+    def test_a_published_event_must_be_versioned(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event OrderPlaced { orderId:string }
+        interface OrderIF version 1 {
+            integration event Placed from OrderPlaced { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must declare a version" in session.diagnostics[0].toText())
+        self.assertTrue("another team reads it" in session.diagnostics[0].toText())
+
+    def test_an_integration_event_outside_an_interface_is_an_error(self):
+        # An interface is what 'published' means here; claiming a published contract from a place
+        # only this context can see would be a claim with nothing behind it.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event Shipped { orderId:string }
+        integration event ShippedIF version 1 from Shipped { orderId:string }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must be declared on an interface" in session.diagnostics[0].toText())
+
+    def test_a_domain_event_on_an_interface_must_say_it_is_published(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            event OrderPlaced version 1 { orderId:string }
+        }
+    }
+}
+""")
+        self.assertTrue(any("write 'integration event'" in d.toText() for d in session.diagnostics))
+
+    def test_an_audit_record_must_be_versioned(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        audit record Exported { orderId:string }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must declare a version" in session.diagnostics[0].toText())
+        self.assertTrue("evidence" in session.diagnostics[0].toText())
+
+    # ---- D3I-50: the ordering scope -----------------------------------------------------------
+
+    def test_a_recording_root_without_a_partition_key_is_warned_about(self):
+        # Not fatal - the generated Record simply asks for the key - but it is almost always a
+        # mistyped decorator, and finding that out from a compiler error in hand-written code is a
+        # bad way to find it out. Note the deliberate typo below.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        aggregate Account {
+            root entity AccountHeader {
+                @partitonKey
+                accountId:string
+                command open( owner:string ) emits Opened
+            }
+            event Opened { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("no member is marked" in session.diagnostics[0].toText())
+        self.assertEqual(Diagnostic.Severity.Warning, session.diagnostics[0].severity)
+
+    def test_an_eventsourced_root_without_a_partition_key_is_an_error(self):
+        # An eventsourced aggregate IS its stream, and a stream without a key cannot be read back.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        eventsourced aggregate Account {
+            root entity AccountHeader {
+                accountId:string
+                command open( owner:string ) emits Opened#1
+            }
+            event Opened version 1 { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("cannot be read back without it" in session.diagnostics[0].toText())
+        self.assertEqual(Diagnostic.Severity.Error, session.diagnostics[0].severity)
+
+    def test_a_root_that_records_nothing_needs_no_partition_key(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        aggregate Account {
+            root entity AccountHeader { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_two_partition_keys_on_a_root_is_an_error(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        aggregate Account {
+            root entity AccountHeader {
+                @partitionKey
+                accountId:string
+                @partitionKey
+                tenantId:string
+                command open( owner:string ) emits Opened
+            }
+            event Opened { accountId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("More than one member" in session.diagnostics[0].toText())
+        self.assertTrue("ordered against one thing" in session.diagnostics[0].toText())
+
+    def test_a_partition_key_on_a_non_root_entity_has_no_effect(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        aggregate Account {
+            root entity AccountHeader { accountId:string }
+            entity AccountLine {
+                @partitionKey
+                lineId:string
+            }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("has no effect" in session.diagnostics[0].toText())
+        self.assertEqual(Diagnostic.Severity.Warning, session.diagnostics[0].severity)
+
+    def test_two_partition_keys_on_an_event_is_an_error(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event DailyClosingCompleted {
+            @partitionKey
+            businessDay:date
+            @partitionKey
+            region:string
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("More than one member" in session.diagnostics[0].toText())
+
+    # ---- D3I-35: a published contract is a translation, and the translation must exist ----------
+
+    def test_a_published_contract_must_say_what_it_translates(self):
+        # Naming the source is what makes the translation exist rather than be assumed. Without it
+        # a team can publish a fact without ever deciding what internally caused it.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            integration event Placed version 1 { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("must declare what it is translated 'from'" in session.diagnostics[0].toText())
+
+    def test_the_translated_source_has_to_exist(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        interface OrderIF version 1 {
+            integration event Placed version 1 from NoSuchFact { orderId:string }
+        }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("named in 'from' is not found" in session.diagnostics[0].toText())
+
+    def test_only_a_published_contract_is_translated_from_something(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event Source { }
+        event Derived from Source { }
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("Only an integration event may declare 'from'" in session.diagnostics[0].toText())
+
+    def test_a_contract_is_translated_from_an_internal_fact_not_another_contract(self):
+        # Translating one published contract into another would only move the coupling.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event Source { }
+        interface OrderIF version 1 {
+            integration event First version 1 from Source { }
+            integration event Second version 1 from OrderIF#1.First#1 { }
+        }
+    }
+}
+""")
+        self.assertTrue(any("is not a domain event" in d.toText() for d in session.diagnostics))
+
+    def test_a_context_publishes_its_own_facts(self):
+        # Republishing somebody else's fact makes this context a proxy for theirs.
+        session = self.__lint("""
+domain SomeDomain {
+    context Warehouse {
+        event Shipped { orderId:string }
+    }
+    context Order {
+        interface OrderIF version 1 {
+            integration event Shipped version 1 from Warehouse.Shipped { orderId:string }
+        }
+    }
+}
+""")
+        self.assertTrue(any("belongs to another context" in d.toText() for d in session.diagnostics))
+
+    def test_nothing_can_handle_an_audit_record(self):
+        # Evidence has no handler by construction; the model must not be able to claim one.
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        audit record Exported version 1 { orderId:string }
+        eventhandler onExported for event Exported#1
+    }
+}
+""")
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("is not an event" in session.diagnostics[0].toText())
+
+    def test_an_audit_record_name_cannot_collide(self):
+        session = self.__lint("""
+domain SomeDomain {
+    context Order {
+        event Exported { orderId:string }
+        audit record Exported version 1 { orderId:string }
+    }
+}
+""")
+        self.assertTrue(any("conflicts with same name" in d.toText() for d in session.diagnostics))
 
 
 if __name__ == "__main__":

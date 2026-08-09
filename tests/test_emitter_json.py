@@ -139,6 +139,9 @@ domain SomeDomain {
                     "services": [],
                     "interfaces": [],
                     "workflows": [],
+                    "events": [],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -199,6 +202,9 @@ domain SomeDomain {
                     "services": [],
                     "interfaces": [],
                     "workflows": [],
+                    "events": [],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [
                         {
                             "$type": "d3i.enum",
@@ -326,6 +332,9 @@ domain SomeDomain {
                     "services": [],
                     "interfaces": [],
                     "workflows": [],
+                    "events": [],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [
                         {
@@ -543,6 +552,7 @@ domain SomeDomain {
                             "$type": "d3i.aggregate",
                             "name": "OrderAggregate",
                             "eventsourced": "False",
+                            "events": [],
                             "internal_entities": [
                                 {
                                     "$type": "d3i.aggregate_entity",
@@ -748,6 +758,9 @@ domain SomeDomain {
                     "services": [],
                     "interfaces": [],
                     "workflows": [],
+                    "events": [],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -862,6 +875,9 @@ domain SomeDomain {
                     "services": [],
                     "interfaces": [],
                     "workflows": [],
+                    "events": [],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [
                         {
@@ -1013,6 +1029,9 @@ domain SomeDomain {
                     "services": [],
                     "interfaces": [],
                     "workflows": [],
+                    "events": [],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1153,6 +1172,9 @@ domain SomeDomain {
                     "services": [],
                     "interfaces": [],
                     "workflows": [],
+                    "events": [],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1172,27 +1194,26 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context OrderContext {
+        event OrderPlaced version 1 {
+            orderId:string
+        }
+
         @decoration( "value" )
         service OrderService {
             enum PartnerType {
-                Customer,    
+                Customer,
                 PrivatePerson
             }
             valueobject OrderData {
                 address:string
                 type:PartnerType
             }
-            event OrderPlaced {
-                orderId:string
-            }
 
             @post
-            getOrder( @required orderId: string ) 
-                : @status(200) OrderData
-                | @status(404) ErrorNotFound
+            query getOrder( @required orderId: string ) : OrderData
 
             @put
-            closeAllOrder()
+            command closeAllOrder()
         }
     }
 }
@@ -1222,21 +1243,67 @@ domain SomeDomain {
                         {
                             "$type": "d3i.service",
                             "name": "OrderService",
-                            "operations": [],
-                            "events": [
+                            "operations": [
                                 {
-                                    "$type": "d3i.event",
-                                    "name": "OrderPlaced",
-                                    "version": "None",
-                                    "kind": "Kind.Domain",
-                                    "inherits": [],
-                                    "members": [],
-                                    "enums": [],
+                                    "$type": "d3i.operation",
+                                    "name": "getOrder",
+                                    "kind": "Kind.Query",
+                                    "emits": [],
+                                    "operation_params": [
+                                        {
+                                            "$type": "d3i.operation_param",
+                                            "name": "orderId",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String"
+                                            },
+                                            "document_lines": [],
+                                            "decorators": [
+                                                {
+                                                    "$type": "d3i.decorator",
+                                                    "name": "required",
+                                                    "params": []
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "operation_return": {
+                                        "$type": "d3i.operation_return",
+                                        "type": {
+                                            "$type": "d3i.reference_type",
+                                            "kind": "Kind.Reference",
+                                            "reference_name": "OrderData"
+                                        },
+                                        "document_lines": [],
+                                        "decorators": []
+                                    },
                                     "document_lines": [],
-                                    "decorators": []
+                                    "decorators": [
+                                        {
+                                            "$type": "d3i.decorator",
+                                            "name": "post",
+                                            "params": []
+                                        }
+                                    ]
+                                },
+                                {
+                                    "$type": "d3i.operation",
+                                    "name": "closeAllOrder",
+                                    "kind": "Kind.Command",
+                                    "emits": [],
+                                    "operation_params": [],
+                                    "operation_return": null,
+                                    "document_lines": [],
+                                    "decorators": [
+                                        {
+                                            "$type": "d3i.decorator",
+                                            "name": "put",
+                                            "params": []
+                                        }
+                                    ]
                                 }
                             ],
-                            "eventhandlers": [],
                             "enums": [
                                 {
                                     "$type": "d3i.enum",
@@ -1315,6 +1382,34 @@ domain SomeDomain {
                     ],
                     "interfaces": [],
                     "workflows": [],
+                    "events": [
+                        {
+                            "$type": "d3i.event",
+                            "name": "OrderPlaced",
+                            "version": "1",
+                            "kind": "Kind.Domain",
+                            "translated_from": null,
+                            "inherits": [],
+                            "members": [
+                                {
+                                    "$type": "d3i.event_member",
+                                    "name": "orderId",
+                                    "type": {
+                                        "$type": "d3i.primitive_type",
+                                        "kind": "Kind.Primitive",
+                                        "primtiveKind": "PrimtiveKind.String"
+                                    },
+                                    "document_lines": [],
+                                    "decorators": []
+                                }
+                            ],
+                            "enums": [],
+                            "document_lines": [],
+                            "decorators": []
+                        }
+                    ],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1335,26 +1430,21 @@ domain SomeDomain {
 domain SomeDomain {
     context OrderContext {
         @decoration( "value" )
-        interface OrderInterface {
+        interface OrderInterface version 1 {
             enum PartnerType {
                 Customer,    
                 PrivatePerson
             }
-            valueobject OrderData {
+            dto OrderData {
                 address:string
                 type:PartnerType
             }
-            event OrderPlaced {
+            event OrderPlaced version 1 {
                 orderId:string
             }
 
             @post
-            getOrder( @required orderId: string ) 
-                : @status(200) OrderData
-                | @status(404) ErrorNotFound
-
-            @put
-            closeAllOrder()
+            query getOrder( @required orderId: string ) : OrderData
         }
     }
 }
@@ -1385,11 +1475,135 @@ domain SomeDomain {
                         {
                             "$type": "d3i.interface",
                             "name": "OrderInterface",
-                            "version": "None",
-                            "operations": [],
-                            "events": [],
-                            "enums": [],
-                            "dtos": [],
+                            "version": "1",
+                            "operations": [
+                                {
+                                    "$type": "d3i.operation",
+                                    "name": "getOrder",
+                                    "kind": "Kind.Query",
+                                    "emits": [],
+                                    "operation_params": [
+                                        {
+                                            "$type": "d3i.operation_param",
+                                            "name": "orderId",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String"
+                                            },
+                                            "document_lines": [],
+                                            "decorators": [
+                                                {
+                                                    "$type": "d3i.decorator",
+                                                    "name": "required",
+                                                    "params": []
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "operation_return": {
+                                        "$type": "d3i.operation_return",
+                                        "type": {
+                                            "$type": "d3i.reference_type",
+                                            "kind": "Kind.Reference",
+                                            "reference_name": "OrderData"
+                                        },
+                                        "document_lines": [],
+                                        "decorators": []
+                                    },
+                                    "document_lines": [],
+                                    "decorators": [
+                                        {
+                                            "$type": "d3i.decorator",
+                                            "name": "post",
+                                            "params": []
+                                        }
+                                    ]
+                                }
+                            ],
+                            "events": [
+                                {
+                                    "$type": "d3i.event",
+                                    "name": "OrderPlaced",
+                                    "version": "1",
+                                    "kind": "Kind.Domain",
+                                    "translated_from": null,
+                                    "inherits": [],
+                                    "members": [
+                                        {
+                                            "$type": "d3i.event_member",
+                                            "name": "orderId",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String"
+                                            },
+                                            "document_lines": [],
+                                            "decorators": []
+                                        }
+                                    ],
+                                    "enums": [],
+                                    "document_lines": [],
+                                    "decorators": []
+                                }
+                            ],
+                            "enums": [
+                                {
+                                    "$type": "d3i.enum",
+                                    "name": "PartnerType",
+                                    "enum_elements": [
+                                        {
+                                            "$type": "d3i.enum_element",
+                                            "value": "Customer",
+                                            "document_lines": [],
+                                            "decorators": []
+                                        },
+                                        {
+                                            "$type": "d3i.enum_element",
+                                            "value": "PrivatePerson",
+                                            "document_lines": [],
+                                            "decorators": []
+                                        }
+                                    ],
+                                    "document_lines": [],
+                                    "decorators": []
+                                }
+                            ],
+                            "dtos": [
+                                {
+                                    "$type": "d3i.dto",
+                                    "name": "OrderData",
+                                    "inherits": [],
+                                    "members": [
+                                        {
+                                            "$type": "d3i.dto_member",
+                                            "name": "address",
+                                            "type": {
+                                                "$type": "d3i.primitive_type",
+                                                "kind": "Kind.Primitive",
+                                                "primtiveKind": "PrimtiveKind.String"
+                                            },
+                                            "document_lines": [],
+                                            "decorators": []
+                                        },
+                                        {
+                                            "$type": "d3i.dto_member",
+                                            "name": "type",
+                                            "type": {
+                                                "$type": "d3i.reference_type",
+                                                "kind": "Kind.Reference",
+                                                "reference_name": "PartnerType"
+                                            },
+                                            "document_lines": [],
+                                            "decorators": []
+                                        }
+                                    ],
+                                    "enums": [],
+                                    "dtos": [],
+                                    "document_lines": [],
+                                    "decorators": []
+                                }
+                            ],
                             "document_lines": [],
                             "decorators": [
                                 {
@@ -1407,123 +1621,13 @@ domain SomeDomain {
                         }
                     ],
                     "workflows": [],
-                    "enums": [
-                        {
-                            "$type": "d3i.enum",
-                            "name": "PartnerType",
-                            "enum_elements": [
-                                {
-                                    "$type": "d3i.enum_element",
-                                    "value": "Customer",
-                                    "document_lines": [],
-                                    "decorators": []
-                                },
-                                {
-                                    "$type": "d3i.enum_element",
-                                    "value": "PrivatePerson",
-                                    "document_lines": [],
-                                    "decorators": []
-                                }
-                            ],
-                            "document_lines": [],
-                            "decorators": []
-                        }
-                    ],
-                    "value_objects": [
-                        {
-                            "$type": "d3i.value_object",
-                            "name": "OrderData",
-                            "inherits": [],
-                            "members": [
-                                {
-                                    "$type": "d3i.value_object_member",
-                                    "name": "address",
-                                    "validate": null,
-                                    "type": {
-                                        "$type": "d3i.primitive_type",
-                                        "kind": "Kind.Primitive",
-                                        "primtiveKind": "PrimtiveKind.String"
-                                    },
-                                    "document_lines": [],
-                                    "decorators": []
-                                },
-                                {
-                                    "$type": "d3i.value_object_member",
-                                    "name": "type",
-                                    "validate": null,
-                                    "type": {
-                                        "$type": "d3i.reference_type",
-                                        "kind": "Kind.Reference",
-                                        "reference_name": "PartnerType"
-                                    },
-                                    "document_lines": [],
-                                    "decorators": []
-                                }
-                            ],
-                            "operations": [],
-                            "enums": [],
-                            "value_objects": [],
-                            "document_lines": [],
-                            "decorators": []
-                        }
-                    ],
-                    "document_lines": [],
-                    "decorators": []
-                },
-                {
-                    "$type": "d3i.context",
-                    "name": "getOrder",
-                    "entities": [],
-                    "composites": [],
-                    "aggregates": [],
-                    "views": [],
-                    "repositories": [],
-                    "acls": [],
-                    "services": [],
-                    "interfaces": [],
-                    "workflows": [],
+                    "events": [],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
-                    "decorators": [
-                        {
-                            "$type": "d3i.decorator",
-                            "name": "post",
-                            "params": []
-                        },
-                        {
-                            "$type": "d3i.decorator",
-                            "name": "required",
-                            "params": []
-                        },
-                        {
-                            "$type": "d3i.decorator",
-                            "name": "status",
-                            "params": [
-                                {
-                                    "$type": "d3i.decorator_param",
-                                    "kind": "Kind.Integer",
-                                    "value": "200"
-                                }
-                            ]
-                        },
-                        {
-                            "$type": "d3i.decorator",
-                            "name": "status",
-                            "params": [
-                                {
-                                    "$type": "d3i.decorator_param",
-                                    "kind": "Kind.Integer",
-                                    "value": "404"
-                                }
-                            ]
-                        },
-                        {
-                            "$type": "d3i.decorator",
-                            "name": "put",
-                            "params": []
-                        }
-                    ]
+                    "decorators": []
                 }
             ],
             "domain_events": [],
@@ -1694,6 +1798,9 @@ domain SomeDomain {
                     "services": [],
                     "interfaces": [],
                     "workflows": [],
+                    "events": [],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1792,6 +1899,9 @@ domain SomeDomain {
                         }
                     ],
                     "workflows": [],
+                    "events": [],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1811,12 +1921,10 @@ domain SomeDomain {
         session = Session(Source.CreateFromText("""
 domain SomeDomain {
     context Order {
-        service TheService {
-            event TheEvent version 1 {
-                data:string
-            }
-            eventhandler TheHandler for event TheEvent
+        event TheEvent version 1 {
+            data:string
         }
+        eventhandler TheHandler for event TheEvent
     }
 }
 """))
@@ -1841,53 +1949,46 @@ domain SomeDomain {
                     "views": [],
                     "repositories": [],
                     "acls": [],
-                    "services": [
+                    "services": [],
+                    "interfaces": [],
+                    "workflows": [],
+                    "events": [
                         {
-                            "$type": "d3i.service",
-                            "name": "TheService",
-                            "operations": [],
-                            "events": [
+                            "$type": "d3i.event",
+                            "name": "TheEvent",
+                            "version": "1",
+                            "kind": "Kind.Domain",
+                            "translated_from": null,
+                            "inherits": [],
+                            "members": [
                                 {
-                                    "$type": "d3i.event",
-                                    "name": "TheEvent",
-                                    "version": "1",
-                                    "kind": "Kind.Domain",
-                                    "inherits": [],
-                                    "members": [
-                                        {
-                                            "$type": "d3i.event_member",
-                                            "name": "data",
-                                            "type": {
-                                                "$type": "d3i.primitive_type",
-                                                "kind": "Kind.Primitive",
-                                                "primtiveKind": "PrimtiveKind.String"
-                                            },
-                                            "document_lines": [],
-                                            "decorators": []
-                                        }
-                                    ],
-                                    "enums": [],
-                                    "document_lines": [],
-                                    "decorators": []
-                                }
-                            ],
-                            "eventhandlers": [
-                                {
-                                    "$type": "d3i.eventhandler",
-                                    "name": "TheHandler",
-                                    "handled_event": "TheEvent",
+                                    "$type": "d3i.event_member",
+                                    "name": "data",
+                                    "type": {
+                                        "$type": "d3i.primitive_type",
+                                        "kind": "Kind.Primitive",
+                                        "primtiveKind": "PrimtiveKind.String"
+                                    },
                                     "document_lines": [],
                                     "decorators": []
                                 }
                             ],
                             "enums": [],
-                            "value_objects": [],
                             "document_lines": [],
                             "decorators": []
                         }
                     ],
-                    "interfaces": [],
-                    "workflows": [],
+                    "eventhandlers": [
+                        {
+                            "$type": "d3i.eventhandler",
+                            "name": "TheHandler",
+                            "handled_event": "TheEvent",
+                            "handled_kind": null,
+                            "document_lines": [],
+                            "decorators": []
+                        }
+                    ],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [],
                     "document_lines": [],
@@ -1940,6 +2041,9 @@ domain SomeDomain {
                     "services": [],
                     "interfaces": [],
                     "workflows": [],
+                    "events": [],
+                    "eventhandlers": [],
+                    "audit_records": [],
                     "enums": [],
                     "value_objects": [
                         {
@@ -2051,10 +2155,11 @@ domain SomeDomain {
                 command place() emits Placed
             }
         }
-        service TheService {
-            integration event Shipped version 1 { x:number }
-            audit event Logged version 1 { who:string }
+        event ShippedInternally { x:number }
+        interface OrderIF version 1 {
+            integration event Shipped version 1 from ShippedInternally { x:number }
         }
+        audit record Logged version 1 { who:string }
         workflow OrderSaga {
             step reserveStock( id:string ) compensate releaseStock
             step releaseStock( id:string )
@@ -2070,7 +2175,10 @@ domain SomeDomain {
         self.assertIn('"compensate": "releaseStock"', result)
         self.assertIn('"$type": "d3i.ref_type"', result)
         self.assertIn('"kind": "Kind.Integration"', result)
-        self.assertIn('"kind": "Kind.Audit"', result)
+        self.assertIn('"translated_from": "ShippedInternally"', result)
+        # An audit fact is not an event, so it does not serialize as one.
+        self.assertIn('"$type": "d3i.audit_record"', result)
+        self.assertNotIn('"kind": "Kind.Audit"', result)
         self.assertIn('"eventsourced": "True"', result)
         self.assertIn('"Placed"', result)
         self.assertIn('"validate": "value>=0"', result)

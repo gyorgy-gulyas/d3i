@@ -131,13 +131,35 @@ class internal_scoped_base_element(hinted_base_element, IScope):
         return data
 
 
+class qualified_name_part:
+    """
+    One segment of a referenced name, with the version it asked for - or None when it asked for
+    none. Silence is not 'version 1': an unversioned reference resolves to an unversioned element,
+    and a versioned one has to say which.
+    """
+
+    def __init__(self, name: str, version: int = None):
+        self.name: str = name
+        self.version: int = version
+
+    def getText(self):
+        if (self.version == None):
+            return self.name
+        return f"{self.name}#{self.version}"
+
+
 class qualified_name(base_element):
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos)
-        self.names: List[str] = []
+        self.parts: List[qualified_name_part] = []
+
+    @property
+    def names(self) -> List[str]:
+        """The segments without their versions - for the callers that only need the path."""
+        return [part.name for part in self.parts]
 
     def getText(self):
-        return '.'.join(self.names)
+        return '.'.join(part.getText() for part in self.parts)
 
 
 class decorator(base_element):
@@ -241,6 +263,10 @@ class context(internal_scoped_base_element):
         self.services: List[service] = []
         self.interfaces: List[interface] = []
         self.workflows: List[workflow] = []
+        # facts owned by the context itself, and the context's own reactions
+        self.events: List[event] = []
+        self.eventhandlers: List[eventhandler] = []
+        self.audit_records: List[audit_record] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitContext(self, parentData)
@@ -261,9 +287,15 @@ class context(internal_scoped_base_element):
             interface.visit(visitor, data)
         for workflow in self.workflows:
             workflow.visit(visitor, data)
+        for context_event in self.events:
+            context_event.visit(visitor, data)
+        for context_eventhandler in self.eventhandlers:
+            context_eventhandler.visit(visitor, data)
+        for context_audit_record in self.audit_records:
+            context_audit_record.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return super().getChildren() + self.composites + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces + self.workflows
+        return super().getChildren() + self.composites + self.aggregates + self.views + self.repositories + self.acls + self.services + self.interfaces + self.workflows + self.events + self.eventhandlers + self.audit_records
 
 
 class enum(hinted_base_element):
@@ -429,11 +461,11 @@ class composite_member(hinted_base_element):
 
 
 class event(internal_scoped_base_element):
-    # three explicit event kinds (no prefix / 'domain' = Domain).
+    # Two kinds (no prefix / 'domain' = Domain). The audit fact is NOT one of them - see
+    # audit_record below.
     class Kind(Enum):
         Domain = 1
         Integration = 2
-        Audit = 3
 
     def __init__(self, fileName, pos):
         super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=False)
@@ -442,6 +474,9 @@ class event(internal_scoped_base_element):
         self.version: int = None
         self.members: List[event_member] = []
         self.kind: event.Kind = event.Kind.Domain
+        # The internal fact this published contract is translated from. Required on an integration
+        # event; the translation itself is hand-written.
+        self.translated_from: qualified_name = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEvent(self, parentData)
@@ -468,10 +503,32 @@ class eventhandler(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.handledEvent: qualified_name = None
+        # The kind the handler CLAIMS to react to, or None when it did not say. None is silence,
+        # not a default of Domain: an unstated kind is checked against nothing, a stated one must
+        # match the declaration.
+        self.handledKind: event.Kind = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEventHandler(self, parentData)
         super().visit(visitor, data)
+
+class audit_record(internal_scoped_base_element):
+    # Evidence, kept for years, that nothing subscribes to. Deliberately NOT an event: nothing
+    # reacts to it, and calling it one would promise a behaviour that does not exist. It reaches
+    # the platform through its own interface, so recording evidence and announcing a fact cannot
+    # be confused for one another.
+    def __init__(self, fileName, pos):
+        super().__init__(fileName, pos, withEnum=True, withValueObject=False, withDto=False)
+        self.name: str = None
+        self.version: int = None
+        self.members: List[event_member] = []
+
+    def visit(self, visitor: ElementVisitor, parentData: Any):
+        data = visitor.visitAuditRecord(self, parentData)
+        super().visit(visitor, data)
+        for member in self.members:
+            member.visit(visitor, data)
+
 
 class entity(internal_scoped_base_element):
     def __init__(self, fileName, pos):
@@ -511,15 +568,19 @@ class aggregate(internal_scoped_base_element):
         self.name: str = None
         self.internal_entities: List[aggregate_entity] = []
         self.eventsourced: bool = False   # 'eventsourced aggregate' marker
+        # facts the root records; the stream key is the root identity
+        self.events: List[event] = []
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitAggregate(self, parentData)
         super().visit(visitor, data)
         for aggregate_entity in self.internal_entities:
             aggregate_entity.visit(visitor, data)
+        for aggregate_event in self.events:
+            aggregate_event.visit(visitor, data)
 
     def getChildren(self) -> List[base_element]:
-        return super().getChildren() + [ae.entity for ae in self.internal_entities]
+        return super().getChildren() + [ae.entity for ae in self.internal_entities] + self.events
 
 
 class aggregate_entity(base_element):
@@ -613,8 +674,9 @@ class repository(functional_element):
         super().visit(visitor, data)
 
 class service(functional_element):
+    # A service owns no fact: events and handlers live on the aggregate or the context.
     def __init__(self, fileName, pos):
-        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False, withEvent=True, withEventHandler=True)
+        super().__init__(fileName, pos, withEnum=True, withValueObject=True, withDto=False, withEvent=False, withEventHandler=False)
         self.name: str = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):

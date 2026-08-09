@@ -22,6 +22,16 @@ STEP_SURFACE_ELEMENTS = (enum, value_object)
 DURATION_PATTERN = re.compile(r"^(\d+(?:ms|s|m|h|d))+$")
 DURATION_PARTS = re.compile(r"(\d+)(?:ms|s|m|h|d)")
 
+# The only type changes a later version of a contract may make to a field it already had.
+#
+# Deliberately almost empty. A widening is a change every reader of the old shape can absorb without
+# being told, and there is exactly one of those among the primitives: every integer is a number.
+# Everything else - a date becoming a string, a value becoming a list - is a re-encoding that some
+# reader has to be taught, and being taught is what a new version is supposed to avoid.
+WIDENING_TYPE_STEPS = {
+    ("integer", "number"),
+}
+
 
 def DoLint(session: Session, output_dir: str, args: Dict[str, str]):
     linter = SemanticChecker(session)
@@ -42,7 +52,103 @@ class SemanticChecker(ElementVisitor):
         pass
 
     def visitContext(self, context: context, parentData: Any) -> Any:
-        pass
+        self.__checkContractEvolution(context)
+
+    # --- versioned contract evolution (D3I-52) ------------------------------------------------
+    #
+    # A version number is a promise that the later shape is the SAME FACT restated. If a field can
+    # vanish between v1 and v2, the number promised nothing and a consumer moving forward has to be
+    # told, by hand, what it lost - at which point a new name would have been more honest than a
+    # higher number.
+    #
+    # The check runs where a version is a promise to somebody: a published contract on an interface,
+    # a fact recorded into an event-sourced stream, an audit record kept as evidence. It compares a
+    # version with the one immediately below it, so a chain of small honest steps stays legal and a
+    # single dishonest one is named at the step where it happened.
+
+    def __checkContractEvolution(self, the_context: context) -> None:
+        # Keyed by WHAT the contract is, not by which declaration carries it: OrderIF v1's
+        # OrderPlaced and OrderIF v2's OrderPlaced are two versions of one contract, and an
+        # OrderPlaced on a different interface is a different contract that happens to share a name.
+        groups: Dict[Any, List[Any]] = {}
+
+        def collect(key: Any, element: Any) -> None:
+            if (getattr(element, "version", None) == None):
+                return
+            groups.setdefault(key, []).append(element)
+
+        for the_interface in the_context.interfaces:
+            for the_event in the_interface.events:
+                collect(("interface", the_interface.name, the_event.name), the_event)
+
+        for the_aggregate in the_context.aggregates:
+            for the_event in the_aggregate.events:
+                collect(("aggregate", the_aggregate.name, the_event.name), the_event)
+
+        for the_event in the_context.events:
+            collect(("context", the_event.name), the_event)
+
+        for the_record in the_context.audit_records:
+            collect(("audit", the_record.name), the_record)
+
+        for versions in groups.values():
+            ordered = sorted(versions, key=lambda element: element.version)
+            for index in range(1, len(ordered)):
+                self.__checkOneStep(ordered[index - 1], ordered[index])
+
+    def __checkOneStep(self, previous, current) -> None:
+        what = f"'{current.name}' version {current.version}"
+        current_members = {member.name: member for member in current.members}
+
+        for old_member in previous.members:
+            new_member = current_members.get(old_member.name)
+
+            if (new_member == None):
+                self.__error(current, f"{what} drops the field '{old_member.name}', which version {previous.version} has ({previous.locationText()}). A higher version is the same fact restated, so what it used to say has to survive; if the field really is gone, this is a different fact and deserves its own name.")
+                continue
+
+            old_signature = self.__typeSignature(old_member.type)
+            new_signature = self.__typeSignature(new_member.type)
+            if (old_signature == new_signature):
+                continue
+            if ((old_signature, new_signature) in WIDENING_TYPE_STEPS):
+                continue
+
+            self.__error(new_member, f"{what} narrows '{old_member.name}' from '{old_signature}' to '{new_signature}'; version {previous.version} declares it in {previous.locationText()}. A reader of the older shape cannot be handed the newer one, so this is a new fact rather than a new version of an old one.")
+
+        current_enums = {the_enum.name: the_enum for the_enum in current.enums}
+        for old_enum in previous.enums:
+            new_enum = current_enums.get(old_enum.name)
+            if (new_enum == None):
+                continue   # a vanished enum shows up as a removed or retyped field above
+
+            still_there = {element.value for element in new_enum.enum_elements}
+            missing = [element.value for element in old_enum.enum_elements if element.value not in still_there]
+            if (len(missing) > 0):
+                self.__error(new_enum, f"{what} removes {', '.join(missing)} from the enum '{old_enum.name}'. A value that was legal in version {previous.version} was written down somewhere, and it does not stop having been written because a later version stopped listing it.")
+
+    def __typeSignature(self, the_type: type) -> str:
+        """
+        A type as one comparable string. Structural on purpose: two spellings of the same shape are
+        the same shape, and a reference is compared by the name it was written with, because that is
+        what a reader of the contract sees.
+        """
+        if (the_type == None):
+            return "?"
+
+        match the_type.kind:
+            case type.Kind.Primitive:
+                return the_type.primtiveKind.name.lower()
+            case type.Kind.Reference:
+                return the_type.reference_name.getText()
+            case type.Kind.Ref:
+                return f"ref {the_type.reference_name.getText()}"
+            case type.Kind.List:
+                return f"list[{self.__typeSignature(the_type.item_type)}]"
+            case type.Kind.Map:
+                return f"map[{self.__typeSignature(the_type.key_type)},{self.__typeSignature(the_type.value_type)}]"
+
+        return "?"
 
     def visitEvent(self, the_event: event, parentData: Any) -> Any:
         scope = Engine.get_current_scope(the_event.parent)
@@ -65,6 +171,135 @@ class SemanticChecker(ElementVisitor):
                     if (other_event.version == the_event.version):
                         self.__error(the_event, f"An event '{the_event.name}' with same name and version is already exists in {neighbour.locationText()}.")
 
+        self.__check_event_version(the_event)
+        self.__check_single_partition_key(the_event, the_event.members, f"event '{the_event.name}'")
+        self.__check_event_placement(the_event)
+        self.__check_translated_from(the_event)
+
+    def visitAuditRecord(self, the_record: audit_record, parentData: Any) -> Any:
+        scope = Engine.get_current_scope(the_record.parent)
+        for neighbour in scope.getChildren():
+            if (neighbour is the_record):
+                continue
+            if (neighbour.name == the_record.name):
+                # Two VERSIONS of one record are the point, not a clash - the same way an interface
+                # carries v1 and v2 side by side. Until D3I-52 asked for the evolution of an audit
+                # record to be checked, nothing had ever declared a second version of one, and this
+                # branch refused the only shape that makes the mandatory version worth having.
+                if (isinstance(neighbour, audit_record) == False):
+                    self.__error(the_record, f"An audit record '{the_record.name}' conflicts with same name with element in {neighbour.locationText()}.")
+                elif (neighbour.version == the_record.version):
+                    self.__error(the_record, f"An audit record '{the_record.name}' with same name and version is already exists in {neighbour.locationText()}.")
+
+        # Evidence is kept for years, and the code that reads it back will be newer than the code
+        # that wrote it - the same reason a published contract carries a version.
+        if (the_record.version == None):
+            self.__error(the_record, f"The audit record '{the_record.name}' must declare a version: it is evidence, kept long enough that the code reading it back will be newer than the code that wrote it.")
+
+        self.__check_single_partition_key(the_record, the_record.members, f"audit record '{the_record.name}'")
+
+    def __check_event_placement(self, the_event: event):
+        # The place says who owns the fact, the keyword says what role it plays, and the two have to
+        # agree. Without this the model can claim a published contract while sitting somewhere only
+        # this context can see.
+        owning_interface = the_event.getInterface()
+
+        if (the_event.kind == event.Kind.Integration and owning_interface == None):
+            self.__error(the_event, f"The integration event '{the_event.name}' must be declared on an interface: it is a published contract, and an interface is what publishing means here.")
+        elif (the_event.kind == event.Kind.Domain and owning_interface != None):
+            self.__error(the_event, f"The event '{the_event.name}' is declared on the interface '{owning_interface.name}', so it is published and must say so: write 'integration event'. A domain event is the context's private language and belongs on an aggregate or on the context.")
+
+    def __check_translated_from(self, the_event: event):
+        """
+        A published contract has to say which internal fact it is translated from.
+
+        Not for the emitter's benefit - it is what forces the translation to EXIST. The generated
+        mapper has no body, so a contract nobody translated does not compile; and requiring the
+        source here means nobody can publish a fact without first deciding what internally caused it.
+        """
+        if (the_event.kind != event.Kind.Integration):
+            if (the_event.translated_from != None):
+                self.__error(the_event, f"Only an integration event may declare 'from': '{the_event.name}' is an internal fact and is not translated from anything.")
+            return
+
+        if (the_event.translated_from == None):
+            self.__error(the_event, f"The integration event '{the_event.name}' must declare what it is translated 'from'. A published contract is a translation of an internal fact, and naming the source is what makes the translation exist rather than be assumed.")
+            return
+
+        source, message = Engine.get_referenced_element_with_message(the_event, the_event.translated_from)
+        if (source == None):
+            self.__error(the_event.translated_from, f"The internal event '{the_event.translated_from.getText()}' named in 'from' is not found. {message}")
+        elif (isinstance(source, event) == False):
+            self.__error(the_event.translated_from, f"The element '{the_event.translated_from.getText()}' named in 'from' is not an event.")
+        elif (source.kind != event.Kind.Domain):
+            self.__error(the_event.translated_from, f"The event '{the_event.translated_from.getText()}' named in 'from' is not a domain event. A published contract is translated from an INTERNAL fact; translating one published contract into another would only move the coupling.")
+        elif (source.getContext() is not the_event.getContext()):
+            self.__error(the_event.translated_from, f"The event '{the_event.translated_from.getText()}' named in 'from' belongs to another context. A context publishes its OWN facts; republishing somebody else's makes this context a proxy for theirs.")
+
+    def __check_event_version(self, the_event: event):
+        """
+        A version is a compatibility promise, and a promise needs someone to make it to.
+
+        Where there IS such an audience the version is required; where there is not, writing one is
+        an error rather than a harmless extra - it tells a reader that this shape is being kept
+        stable for somebody, and nobody is going to keep that promise.
+        """
+        owning_interface = the_event.getInterface()
+        owning_aggregate = the_event.getAggregate()
+
+        eventsourced: bool = owning_aggregate != None and owning_aggregate.eventsourced == True
+
+        reason: str = None
+        if (owning_interface != None):
+            reason = f"it is published on the interface '{owning_interface.name}', so another team reads it"
+        elif (the_event.kind == event.Kind.Integration):
+            reason = "an integration event is a contract with somebody outside this context"
+        elif (eventsourced == True):
+            reason = f"'{owning_aggregate.name}' is eventsourced, so this fact stays in the stream longer than the code that wrote it"
+
+        if (reason != None):
+            if (the_event.version == None):
+                self.__error(the_event, f"The event '{the_event.name}' must declare a version, because {reason}.")
+            return
+
+        # No audience: the consumers ship in the same deployment unit and move with the producer, so
+        # breaking the shape is a compile error rather than a wire incident.
+        if (the_event.version != None):
+            where = f"the aggregate '{owning_aggregate.name}'" if owning_aggregate != None else "this context"
+            self.__error(the_event, f"The internal event '{the_event.name}' must not declare a version: it is private to {where}, its consumers move with it, and a version would promise a stability nobody is keeping. Mark the aggregate 'eventsourced', or publish the event on an interface, if the promise is real.")
+
+    def __allMembers(self, element) -> List[base_element]:
+        """
+        Own fields plus the ones inherited from composites.
+
+        A composite exists so a group of fields can be declared once and inherited - a root's
+        identity usually comes from one - and a rule that only looked at own members would force a
+        model to duplicate a field purely to be able to decorate it.
+        """
+        collected: List[base_element] = []
+        for inherit in getattr(element, "inherits", []) or []:
+            base = Engine.get_referenced_element(element.parent, inherit)
+            if (isinstance(base, composite) == True):
+                bases: List[composite] = []
+                self.__collect_composites(base, bases)
+                for base_composite in bases:
+                    collected = collected + base_composite.members
+
+        return collected + list(element.members)
+
+    def __collect_composites(self, base_composite: composite, collected: List[composite]):
+        collected.append(base_composite)
+        for inherit in base_composite.inherits:
+            base = Engine.get_referenced_element(base_composite.parent, inherit)
+            if (isinstance(base, composite) == True and base not in collected):
+                self.__collect_composites(base, collected)
+
+    def __check_single_partition_key(self, element: base_element, members: List[base_element], what: str):
+        marked = [member for member in members if member.find_decorator("partitionKey") != None]
+        if (len(marked) > 1):
+            names = ", ".join(member.name for member in marked)
+            self.__error(marked[1], f"More than one member of {what} is marked '@partitionKey' ({names}). The partition key is the ordering scope, and a fact can only be ordered against one thing.")
+        return marked
 
 
     def visitEventMember(self, eventMember: event_member, parentData: Any) -> Any:
@@ -89,6 +324,10 @@ class SemanticChecker(ElementVisitor):
             self.__error(the_eventhandler.handledEvent, f"The handled event '{the_eventhandler.handledEvent.getText()}' is not found. {message}")
         elif (isinstance(referenced_event, event) == False):
             self.__error(the_eventhandler.handledEvent, f"The element '{the_eventhandler.handledEvent.getText()}' is not an event.")
+        elif (the_eventhandler.handledKind != None and the_eventhandler.handledKind != referenced_event.kind):
+            claimed = the_eventhandler.handledKind.name.lower()
+            actual = referenced_event.kind.name.lower()
+            self.__error(the_eventhandler.handledEvent, f"The handler reacts to '{the_eventhandler.handledEvent.getText()}' as a {claimed} event, but it is declared as a {actual} event in {referenced_event.locationText()}. Which side of the boundary a fact is on is not the consumer's choice.")
 
     def visitEnum(self, enum: enum, parentData: Any) -> Any:
         scope = Engine.get_current_scope(enum.parent)
@@ -205,6 +444,41 @@ class SemanticChecker(ElementVisitor):
                     continue
                 if (neighbour.name == the_entity.name):
                     self.__error(the_entity, f"An entity '{the_entity.name}' conflicts with same name with element in {neighbour.locationText()}.")
+
+        self.__check_partition_key_on_root(the_entity, parent_aggregate)
+
+    def __check_partition_key_on_root(self, the_entity: entity, parent_aggregate: aggregate):
+        """
+        The ordering scope of a recorded fact.
+
+        Only checked on a root that actually records something: an entity that emits nothing has no
+        stream and needs no key.
+        """
+        marked = self.__check_single_partition_key(the_entity, self.__allMembers(the_entity), f"entity '{the_entity.name}'")
+
+        is_root: bool = the_entity.parent.isRoot == True
+        emits_anything: bool = any(len(operation.emits) > 0 for operation in the_entity.operations)
+
+        if (is_root == False):
+            # Only a marker put on THIS entity is worth complaining about. One inherited from a
+            # shared composite is a statement about roots, and nagging every entity that happens to
+            # inherit it would turn a useful warning into noise people learn to ignore.
+            own = [member for member in the_entity.members if member.find_decorator("partitionKey") != None]
+            if (len(own) > 0):
+                self.__warning(own[0], f"'@partitionKey' on '{the_entity.name}.{own[0].name}' has no effect: only an aggregate ROOT records facts, so only a root has an ordering scope.")
+            return
+
+        if (emits_anything == False or len(marked) > 0):
+            return
+
+        if (parent_aggregate.eventsourced == True):
+            # An event-sourced aggregate IS its stream, and a stream without a key is not a stream.
+            self.__error(the_entity, f"The root '{the_entity.name}' of the eventsourced aggregate '{parent_aggregate.name}' records facts but has no member marked '@partitionKey'. The stream key is the root's identity, and an eventsourced aggregate cannot be read back without it.")
+        else:
+            # Not fatal - the generated Record simply asks for the key - but it is almost always a
+            # mistyped decorator rather than a decision, and finding that out from a compiler error
+            # in hand-written code is a bad way to find it out.
+            self.__warning(the_entity, f"The root '{the_entity.name}' records facts but no member is marked '@partitionKey', so the generated 'Record' will ask for the ordering scope on every call. Mark the member that identifies the root if that was the intention.")
 
     def visitEntityMember(self, entity_member: entity_member, parentData: Any) -> Any:
         parent_entity: entity = entity_member.parent

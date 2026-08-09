@@ -226,6 +226,18 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(context_element.workflow())
                 child.parent = result
                 result.workflows.append(child)
+            elif (context_element.event()):
+                child = self.visit(context_element.event())
+                child.parent = result
+                result.events.append(child)
+            elif (context_element.eventhandler()):
+                child = self.visit(context_element.eventhandler())
+                child.parent = result
+                result.eventhandlers.append(child)
+            elif (context_element.audit_record()):
+                child = self.visit(context_element.audit_record())
+                child.parent = result
+                result.audit_records.append(child)
             counter = counter + 1
 
         return result
@@ -380,8 +392,6 @@ class ElementBuilder(d3iGrammarVisitor):
             kind_text = ctx.event_kind().getText()
             if (kind_text == "integration"):
                 result.kind = event.Kind.Integration
-            elif (kind_text == "audit"):
-                result.kind = event.Kind.Audit
             else:
                 result.kind = event.Kind.Domain
 
@@ -390,6 +400,9 @@ class ElementBuilder(d3iGrammarVisitor):
 
         if (ctx.inherits() != None):
             result.inherits = result.value = self.visit(ctx.inherits())
+
+        if (ctx.from_clause() != None):
+            result.translated_from = self.visit(ctx.from_clause().qualifiedName())
 
         self.__build_document_lines(ctx, result)
 
@@ -423,6 +436,36 @@ class ElementBuilder(d3iGrammarVisitor):
         self.__build_member(ctx, result)
         return result
 
+    # Visit a parse tree produced by d3iGrammar#audit_record.
+    def visitAudit_record(self, ctx: d3iGrammar.Audit_recordContext):
+        result = audit_record(self.fileName, ctx.start)
+        if (ctx.IDENTIFIER() != None):
+            result.name = ctx.IDENTIFIER().getText()
+
+        if (ctx.VERSION() != None):
+            result.version = int(ctx.INTEGER_CONSTANS().getText())
+
+        self.__build_document_lines(ctx, result)
+
+        self.__build_decorators(ctx, result)
+
+        counter = 0
+        while True:
+            event_element: d3iGrammar.Event_elementContext = ctx.event_element((counter))
+            if (event_element == None):
+                break
+            elif (event_element.event_member() != None):
+                child = self.visit(event_element.event_member())
+                child.parent = result
+                result.members.append(child)
+            elif (event_element.enum()):
+                child = self.visit(event_element.enum())
+                child.parent = result
+                result.enums.append(child)
+            counter = counter + 1
+
+        return result
+
     # Visit a parse tree produced by d3iGrammar#eventhandler.
     def visitEventhandler(self, ctx:d3iGrammar.EventhandlerContext):
         result = eventhandler(self.fileName, ctx.start)
@@ -432,6 +475,13 @@ class ElementBuilder(d3iGrammarVisitor):
         self.__build_document_lines(ctx, result)
 
         self.__build_decorators(ctx, result)
+
+        if (ctx.event_kind() != None):
+            kind_text = ctx.event_kind().getText()
+            if (kind_text == "integration"):
+                result.handledKind = event.Kind.Integration
+            else:
+                result.handledKind = event.Kind.Domain
 
         result.handledEvent = self.visit(ctx.qualifiedName())
         result.handledEvent.parent = result
@@ -516,6 +566,10 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(aggregate_element.value_object())
                 child.parent = result
                 result.value_objects.append(child)
+            elif (aggregate_element.event()):
+                child = self.visit(aggregate_element.event())
+                child.parent = result
+                result.events.append(child)
             counter = counter + 1
 
         return result
@@ -628,14 +682,6 @@ class ElementBuilder(d3iGrammarVisitor):
                 child = self.visit(service_element.operation())
                 child.parent = result
                 result.operations.append(child)
-            elif (service_element.event() != None):
-                child = self.visit(service_element.event())
-                child.parent = result
-                result.events.append(child)
-            elif (service_element.eventhandler() != None):
-                child = self.visit(service_element.eventhandler())
-                child.parent = result
-                result.eventhandlers.append(child)
             elif (service_element.enum()):
                 child = self.visit(service_element.enum())
                 child.parent = result
@@ -935,11 +981,17 @@ class ElementBuilder(d3iGrammarVisitor):
 
         counter = 0
         while True:
-            identifier = ctx.IDENTIFIER(counter)
-            if (identifier == None):
+            part_ctx = ctx.qualifiedNamePart(counter)
+            if (part_ctx == None):
                 break
             counter = counter + 1
-            result.names.append(identifier.getText())
+
+            version: int = None
+            if (part_ctx.VERSION_REF() != None):
+                # the token carries its '#', which is a lexer concern and not a name
+                version = int(part_ctx.VERSION_REF().getText()[1:])
+
+            result.parts.append(qualified_name_part(part_ctx.IDENTIFIER().getText(), version))
 
         return result
 
@@ -975,7 +1027,7 @@ class ElementBuilder(d3iGrammarVisitor):
             # Backward compat: a bare single-identifier positional param (e.g.
             # `@public_api( rest )`) also acts as a named flag, so find_param()
             # can still locate it by name. Dotted names stay purely positional.
-            if (result.name == None and len(ctx.qualifiedName().IDENTIFIER()) == 1):
+            if (result.name == None and len(result.value.parts) == 1):
                 result.name = ctx.qualifiedName().getText()
         elif (ctx.INTEGER_CONSTANS() != None):
             result.kind = decorator_param.Kind.Integer

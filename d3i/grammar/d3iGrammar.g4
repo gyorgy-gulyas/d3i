@@ -44,6 +44,9 @@ context
         | service
         | interface
         | workflow
+        | event          // a fact owned by the context itself, not by one service
+        | eventhandler   // the CONTEXT reacts; which class runs it is implementation
+        | audit_record   // evidence; nothing reacts to it
         ;
 
 value_object
@@ -89,16 +92,44 @@ composite
             : DOCUMENT_LINE* decorator* IDENTIFIER ':' type (VALIDATE validate_expr)?   //
             ;
 
+// The version is optional, and that is a modelling statement, not a convenience:
+// a version is a compatibility promise, and a promise needs someone to make it to.
+// An internal domain event of a non-eventsourced aggregate has no such audience -
+// its consumers ship in the same deployment unit and move with it, so breaking the
+// shape is a compile error, not a wire incident. Where the promise IS made (an
+// eventsourced stream that outlives the code, a published contract, a retained
+// audit fact) the linter requires the version. See D3I-50.
 event
-    :  DOCUMENT_LINE* decorator* event_kind? 'event' IDENTIFIER 'version' INTEGER_CONSTANS inherits? '{' event_element* '}'
+    :  DOCUMENT_LINE* decorator* event_kind? 'event' IDENTIFIER ('version' INTEGER_CONSTANS)? from_clause? inherits? '{' event_element* '}'
     ;
 
-    // three explicit event kinds. No prefix (or 'domain') = domain event.
+    // Two kinds. No prefix (or 'domain') = domain event. The audit fact is NOT here: nothing
+    // reacts to it, so calling it an event would promise a behaviour that does not exist. It has
+    // its own rule below, and with it the word 'event' in this language means exactly one thing -
+    // something reacts to this.
     event_kind
         : 'domain'
         | 'integration'
-        | 'audit'
         ;
+
+    // The internal fact this published contract is translated FROM.
+    //
+    // Required on an integration event, and the translation itself is HAND-WRITTEN: the emitter
+    // generates a mapper with no body, so a contract nobody translated does not compile. Automatic
+    // field matching is deliberately absent - the published language is not the internal one, and
+    // matching by name would let the domain leak back into the contract.
+    from_clause
+        : 'from' qualifiedName
+        ;
+
+// An audit fact: evidence, kept for years, that nothing subscribes to.
+//
+// It travels on the same pipe as an event and is reached through a DIFFERENT interface, so that
+// recording evidence and announcing a fact cannot be confused for one another - with two interfaces
+// the wrong one is impossible to use, with one interface it is merely discouraged.
+audit_record
+    : DOCUMENT_LINE* decorator* 'audit' 'record' IDENTIFIER ('version' INTEGER_CONSTANS)? '{' event_element* '}'
+    ;
 
     event_element
         : event_member
@@ -109,8 +140,13 @@ event
         : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
         ;
         
+// The kind prefix mirrors the declaration: a handler may say WHICH KIND of fact it reacts to,
+// and the linter holds it to that. Naming an integration event is the cross-context case the
+// whole mechanism exists for, so the reader should not have to chase the declaration to see
+// that a handler crosses a boundary. The prefix is optional; omitting it says nothing, it does
+// not mean 'domain'.
 eventhandler
-    : DOCUMENT_LINE* decorator* 'eventhandler' IDENTIFIER 'for' 'event' qualifiedName
+    : DOCUMENT_LINE* decorator* 'eventhandler' IDENTIFIER 'for' event_kind? 'event' qualifiedName
     ;
 
 entity
@@ -136,6 +172,7 @@ aggregate
         : aggregate_entity
         | enum
         | value_object
+        | event          // facts recorded by the root; the stream key is the root identity
         ;
         
         aggregate_entity
@@ -167,12 +204,14 @@ service
     :  DOCUMENT_LINE* decorator* 'service' IDENTIFIER '{' service_element*  '}'
     ;
 
+    // A service is not the owner of a fact: it is the plumbing that loads an aggregate,
+    // calls it and saves it. Events and handlers therefore live on the aggregate or on
+    // the context, never here - otherwise a consumer would have to name the producing
+    // service's contract just to name the fact it cares about.
     service_element
         : operation
         | enum
         | value_object
-        | event
-        | eventhandler
         ;
 
 // workflow — first-class now, Temporal implementation later.
@@ -273,9 +312,19 @@ type
         : REF qualifiedName
         ;
 
+// One rule, two separators, and they mean different things: a '.' goes DOWN a namespace, a '#'
+// picks a version of the thing just named. `Sales.OrderManagement.OrderIF#1.OrderPlaced#1`.
+//
+// It used to be '.v1', which reads like another namespace segment and is not one - while the
+// declaration a few lines up says `version 1`. Two spellings for one idea, and the wrong one
+// looked like the thing it is not.
 qualifiedName
-    : IDENTIFIER ('.' IDENTIFIER)*
+    : qualifiedNamePart ('.' qualifiedNamePart)*
     ;
+
+    qualifiedNamePart
+        : IDENTIFIER VERSION_REF?
+        ;
 
 // small, lintable validate expression sublanguage.
 // `value` is the field itself; a bare IDENTIFIER may reference a sibling field.

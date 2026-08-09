@@ -294,75 +294,72 @@ class Engine:
         return element
 
     @staticmethod
+    def __child_matches(child, part: qualified_name_part) -> bool:
+        """
+        Does this child answer to that name part?
+
+        The version is part of the question, not a segment of the path: an unversioned reference
+        matches only an unversioned element, and a versioned one only that exact version. Asking
+        for no version and getting version 1 would be a guess, and there is nothing to guess from -
+        an interface can carry v1 and v2 side by side, which is the whole point of versioning it.
+        """
+        if (child.name != part.name):
+            return False
+
+        if (Engine.has_version_int_member(child) == True):
+            return child.version == part.version
+
+        return part.version == None
+
+    @staticmethod
     def get_referenced_element_with_message(parent: base_element, name: qualified_name) -> IScope:
         scope = Engine.get_current_scope(parent)
 
-        first_part: str = name.names[0]
-        version_candidate: str = None
-        if (len(name.names) > 1):
-            version_candidate = name.names[1]
+        parts: List[qualified_name_part] = name.parts
+        if (len(parts) == 0):
+            return None, "The referenced name is empty."
 
-        rest_name_index = 1
-        # go up until we find the element for the first part of the name vit version is has it
+        # go up the scopes until one of them owns the first part of the name
         element = None
         while True:
-            if (scope == None ):
+            if (scope == None):
                 break
 
-            # is the scope that has a child with the name we are looking for
             if (isinstance(scope, IScope)):
                 for child in scope.getChildren():
-                    if (Engine.has_version_int_member(child) == True):
-                        if (child.name == name.names[0] and f"v{child.version}" == version_candidate):
-                            element = child
-                            rest_name_index = rest_name_index + 1  # skip version
-                            break
-                    elif (child.name == name.names[0]):
+                    if (Engine.__child_matches(child, parts[0]) == True):
                         element = child
                         break
 
                 if (element != None):
                     break
 
-            if( hasattr(scope, 'parent') == True):
+            if (hasattr(scope, 'parent') == True):
                 scope = scope.parent
             else:
                 scope = None
 
         if (element == None):
-            return None, f"The first part of the referenced name '{name.names[0]}' cannot be resolved."
+            return None, f"The first part of the referenced name '{parts[0].getText()}' cannot be resolved."
 
-        # processing the rest of the name part if exist
-        rest_names = name.names[rest_name_index:]
-        i: int = 0
-        while i < len(rest_names):
-            name_part = rest_names[i]
+        # then straight down, one part at a time
+        for part in parts[1:]:
             if (isinstance(element, IScope) == False):
-                return None, f"The referenced name '{name.names[0]}' cannot have an expected child: '{name_part}'."
+                return None, f"The referenced name '{parts[0].getText()}' cannot have an expected child: '{part.getText()}'."
 
             scope: IScope = element
-            if i + 1 < len(rest_names):
-                version_candidate = rest_names[i + 1]
-
             element = None
             for child in scope.getChildren():
-                if (Engine.has_version_int_member(child)):
-                    if (f"v{child.version}" == version_candidate):
-                        element = child
-                        i = i + 1  # skip version
-                        break
-                elif (child.name == name_part):
+                if (Engine.__child_matches(child, part) == True):
                     element = child
                     break
 
             if (element == None):
                 if (Engine.has_version_int_member(scope)):
-                    name = f"{scope.name} version {scope.version}"
+                    where = f"{scope.name} version {scope.version}"
                 else:
-                    name = scope.name
-                return None, f"The referenced name '{name}' does not have an expected child: '{name_part}'."
-
-            i = i + 1
+                    where = scope.name
+                return None, f"The referenced name '{where}' does not have an expected child: '{part.getText()}'."
 
         return element, "ok"
 

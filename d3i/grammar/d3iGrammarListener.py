@@ -161,6 +161,24 @@ class d3iGrammarListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by d3iGrammar#from_clause.
+    def enterFrom_clause(self, ctx:d3iGrammar.From_clauseContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#from_clause.
+    def exitFrom_clause(self, ctx:d3iGrammar.From_clauseContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#audit_record.
+    def enterAudit_record(self, ctx:d3iGrammar.Audit_recordContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#audit_record.
+    def exitAudit_record(self, ctx:d3iGrammar.Audit_recordContext):
+        pass
+
+
     # Enter a parse tree produced by d3iGrammar#event_element.
     def enterEvent_element(self, ctx:d3iGrammar.Event_elementContext):
         pass
@@ -464,6 +482,15 @@ class d3iGrammarListener(ParseTreeListener):
 
     # Exit a parse tree produced by d3iGrammar#qualifiedName.
     def exitQualifiedName(self, ctx:d3iGrammar.QualifiedNameContext):
+        pass
+
+
+    # Enter a parse tree produced by d3iGrammar#qualifiedNamePart.
+    def enterQualifiedNamePart(self, ctx:d3iGrammar.QualifiedNamePartContext):
+        pass
+
+    # Exit a parse tree produced by d3iGrammar#qualifiedNamePart.
+    def exitQualifiedNamePart(self, ctx:d3iGrammar.QualifiedNamePartContext):
         pass
 
 
