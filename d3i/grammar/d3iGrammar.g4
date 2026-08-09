@@ -140,8 +140,13 @@ audit_record
         : DOCUMENT_LINE* decorator* IDENTIFIER ':' type
         ;
         
+// The kind prefix mirrors the declaration: a handler may say WHICH KIND of fact it reacts to,
+// and the linter holds it to that. Naming an integration event is the cross-context case the
+// whole mechanism exists for, so the reader should not have to chase the declaration to see
+// that a handler crosses a boundary. The prefix is optional; omitting it says nothing, it does
+// not mean 'domain'.
 eventhandler
-    : DOCUMENT_LINE* decorator* 'eventhandler' IDENTIFIER 'for' 'event' qualifiedName
+    : DOCUMENT_LINE* decorator* 'eventhandler' IDENTIFIER 'for' event_kind? 'event' qualifiedName
     ;
 
 entity

@@ -921,6 +921,48 @@ domain SomeDomain {
         self.assertTrue("NotDefinedEvent" in session.diagnostics[0].toText())
         self.assertTrue("handled event" in session.diagnostics[0].toText())
 
+    def test_eventhandler_kind_matches_declaration_ok(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        domain event PaymentReceived {
+            amount:integer
+        }
+        eventhandler OnPaid for domain event PaymentReceived
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 0)
+
+    def test_eventhandler_wrong_kind_fail(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        domain event PaymentReceived {
+            amount:integer
+        }
+        eventhandler OnPaid for integration event PaymentReceived
+    }
+}
+"""))
+        root = engine.Build(session)
+        self.assertFalse(session.HasAnyError())
+
+        checker = SemanticChecker(session)
+        data = root.visit(checker, None)
+        session.PrintDiagnostics()
+        self.assertEqual(len(session.diagnostics), 1)
+        self.assertTrue("as a integration event" in session.diagnostics[0].toText())
+        self.assertTrue("declared as a domain event" in session.diagnostics[0].toText())
+
     def test_view_projection_unknown_fail(self):
         engine = Engine()
         session = Session(Source.CreateFromText("""

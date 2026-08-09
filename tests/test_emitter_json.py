@@ -1983,6 +1983,7 @@ domain SomeDomain {
                             "$type": "d3i.eventhandler",
                             "name": "TheHandler",
                             "handled_event": "TheEvent",
+                            "handled_kind": null,
                             "document_lines": [],
                             "decorators": []
                         }

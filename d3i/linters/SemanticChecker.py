@@ -211,6 +211,10 @@ class SemanticChecker(ElementVisitor):
             self.__error(the_eventhandler.handledEvent, f"The handled event '{the_eventhandler.handledEvent.getText()}' is not found. {message}")
         elif (isinstance(referenced_event, event) == False):
             self.__error(the_eventhandler.handledEvent, f"The element '{the_eventhandler.handledEvent.getText()}' is not an event.")
+        elif (the_eventhandler.handledKind != None and the_eventhandler.handledKind != referenced_event.kind):
+            claimed = the_eventhandler.handledKind.name.lower()
+            actual = referenced_event.kind.name.lower()
+            self.__error(the_eventhandler.handledEvent, f"The handler reacts to '{the_eventhandler.handledEvent.getText()}' as a {claimed} event, but it is declared as a {actual} event in {referenced_event.locationText()}. Which side of the boundary a fact is on is not the consumer's choice.")
 
     def visitEnum(self, enum: enum, parentData: Any) -> Any:
         scope = Engine.get_current_scope(enum.parent)

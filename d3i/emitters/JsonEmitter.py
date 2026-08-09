@@ -134,6 +134,8 @@ class JsonEmitter(ElementVisitor):
             "$type": "d3i.eventhandler",
             "name": eventhandler.name,
             "handled_event": eventhandler.handledEvent.getText(),
+            # null when the handler did not name a kind - silence, not a default
+            "handled_kind": str(eventhandler.handledKind) if eventhandler.handledKind != None else None,
         }
         parentData["eventhandlers"].append(data)
         return data

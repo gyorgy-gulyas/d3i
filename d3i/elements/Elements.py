@@ -481,6 +481,10 @@ class eventhandler(hinted_base_element):
         super().__init__(fileName, pos)
         self.name: str = None
         self.handledEvent: qualified_name = None
+        # The kind the handler CLAIMS to react to, or None when it did not say. None is silence,
+        # not a default of Domain: an unstated kind is checked against nothing, a stated one must
+        # match the declaration.
+        self.handledKind: event.Kind = None
 
     def visit(self, visitor: ElementVisitor, parentData: Any):
         data = visitor.visitEventHandler(self, parentData)

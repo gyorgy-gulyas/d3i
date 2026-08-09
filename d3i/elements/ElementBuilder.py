@@ -476,6 +476,13 @@ class ElementBuilder(d3iGrammarVisitor):
 
         self.__build_decorators(ctx, result)
 
+        if (ctx.event_kind() != None):
+            kind_text = ctx.event_kind().getText()
+            if (kind_text == "integration"):
+                result.handledKind = event.Kind.Integration
+            else:
+                result.handledKind = event.Kind.Domain
+
         result.handledEvent = self.visit(ctx.qualifiedName())
         result.handledEvent.parent = result
 

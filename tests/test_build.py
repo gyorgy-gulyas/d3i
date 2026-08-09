@@ -1081,6 +1081,24 @@ domain SomeDomain {
         self.assertEqual(len(context.eventhandlers), 1)
         self.assertEqual(context.eventhandlers[0].name, "TheHandler")
         self.assertEqual(context.eventhandlers[0].handledEvent.getText(), "SomeEvent")
+        self.assertIsNone(context.eventhandlers[0].handledKind)
+
+    def test_eventhandler_with_kind_prefix(self):
+        engine = Engine()
+        session = Session(Source.CreateFromText("""
+domain SomeDomain {
+    context Order {
+        eventhandler OnShipped for integration event Shipping.ShippingIF.v1.Shipped.v1
+        eventhandler OnPaid for domain event PaymentReceived
+    }
+}
+"""))
+        root = engine.Build(session)
+        context: context = root.domains[0].contexts[0]
+        self.assertEqual(len(context.eventhandlers), 2)
+        self.assertEqual(context.eventhandlers[0].handledKind, event.Kind.Integration)
+        self.assertEqual(context.eventhandlers[0].handledEvent.getText(), "Shipping.ShippingIF.v1.Shipped.v1")
+        self.assertEqual(context.eventhandlers[1].handledKind, event.Kind.Domain)
 
     def test_operation_command_query(self):
         engine = Engine()
