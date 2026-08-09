@@ -778,6 +778,59 @@ domain WebShop {
         self.assertIn("new RecordedEvent( @event, orderId )", emitted.content)
         self.assertIn("IReadOnlyList<RecordedEvent> IEventRecordingRoot.DrainRecordedEvents()", emitted.content)
 
+    def test_an_entity_command_is_declared_so_the_compiler_asks_for_it(self):
+        # Until this existed, an operation on an entity generated NOTHING: the model could declare a
+        # command, nobody could write it, and the project still compiled. Every other place the model
+        # declares behaviour - a reaction, a published translation, a workflow entry point - refuses
+        # to compile without a body, and this was the one exception.
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        aggregate Order {
+            root entity OrderHeader {
+                @partitionKey
+                orderId:string
+
+                # what it does
+                command place( total:number ) emits OrderPlaced.v1
+                query isPlaceable() : boolean
+            }
+
+            event OrderPlaced version 1 { orderId:string }
+        }
+    }
+}
+""", "OrderHeader.cs")
+
+        # Declaration only, and no facade: nothing wraps an aggregate's command, so there is nothing
+        # for a second name to hide.
+        self.assertIn("public partial void place(decimal total);", emitted.content)
+        self.assertIn("public partial bool isPlaceable();", emitted.content)
+        self.assertNotIn("OnPlace", emitted.content)
+
+        # Synchronous and context-free: an aggregate guards an invariant, it does not take part in
+        # the request pipeline and it performs no I/O.
+        self.assertNotIn("Task place", emitted.content)
+        self.assertNotIn("CallingContext", emitted.content)
+
+        # the document line the model put on the command survives
+        self.assertIn("what it does", emitted.content)
+
+    def test_a_plain_entity_without_operations_gets_no_behaviour_region(self):
+        emitted = self.__emitOne("""
+domain WebShop {
+    context Sales {
+        aggregate Order {
+            root entity OrderHeader {
+                orderId:string
+            }
+        }
+    }
+}
+""", "OrderHeader.cs")
+
+        self.assertNotIn("declared behaviour", emitted.content)
+
     def test_a_root_without_a_partition_key_has_to_be_told_the_scope(self):
         # Inventing a key would be worse than asking for one: a fact ordered against the wrong
         # scope is a bug nobody can see.
@@ -1499,29 +1552,35 @@ domain WebShop {
 
     def test_a_command_is_a_signal_without_a_return_and_an_update_with_one(self):
         content = self.__file("FulfilOrderWorkflow.cs")
-        self.assertIn("[WorkflowSignal]\n\t\tpublic Task cancel(string reason) => OnCancel(reason);", content)
-        self.assertIn("[WorkflowUpdate]\n\t\tpublic Task<bool> approve(string by) => OnApprove(by);", content)
+        # No facade and no hook: nothing is wrapped around these, so the declaration IS the method
+        self.assertIn("[WorkflowSignal]\n\t\tpublic partial Task cancel(string reason);", content)
+        self.assertIn("[WorkflowUpdate]\n\t\tpublic partial Task<bool> approve(string by);", content)
 
     def test_a_query_is_synchronous(self):
         # A Temporal query may not await anything, so it is not a Task
         content = self.__file("FulfilOrderWorkflow.cs")
-        self.assertIn("[WorkflowQuery]\n\t\tpublic string status(string orderId) => OnStatus(orderId);", content)
+        self.assertIn("[WorkflowQuery]\n\t\tpublic partial string status(string orderId);", content)
 
     def test_an_eventhandler_is_a_signal(self):
         content = self.__file("FulfilOrderWorkflow.cs")
-        self.assertIn("[WorkflowSignal]\n\t\tpublic Task onPaid(OrderPaid_v1 @event) => HandleOnPaid(@event);", content)
+        # a workflow signal may carry the name the model gave it, so there is nothing to translate
+        self.assertIn("[WorkflowSignal]\n\t\tpublic partial Task onPaid(OrderPaid_v1 @event);", content)
 
     def test_the_developer_half_is_declared_but_not_written(self):
         # partial declarations with a return value MUST be implemented, so the compiler is what
         # tells the developer which bodies are missing
         content = self.__file("FulfilOrderWorkflow.cs")
+        # The entry point is the ONE place with a hook, because it is the one place the generated
+        # half wraps the call: it rolls the saga back around it.
         self.assertIn("private partial Task<string> OnPlace(string orderId, Money total);", content)
-        self.assertIn("private partial Task OnCancel(string reason);", content)
-        self.assertIn("private partial Task<bool> OnApprove(string by);", content)
-        self.assertIn("private partial string OnStatus(string orderId);", content)
-        self.assertIn("private partial Task HandleOnPaid(OrderPaid_v1 @event);", content)
         # the run body itself is never generated
         self.assertNotIn("private partial Task<string> OnPlace(string orderId, Money total)\n", content)
+        # Everywhere else the declaration IS the method, so there is no second name for it. A hook
+        # that only forwards is a name the developer has to learn for nothing.
+        self.assertNotIn("OnCancel", content)
+        self.assertNotIn("OnApprove", content)
+        self.assertNotIn("OnStatus", content)
+        self.assertNotIn("HandleOnPaid", content)
 
     def test_a_step_with_a_compensation_records_it(self):
         content = self.__file("FulfilOrderWorkflow.cs")

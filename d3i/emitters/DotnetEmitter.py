@@ -380,7 +380,10 @@ class DotnetEmitter:
 
     def entityText(self, entity: entity, code: dotnet_code, indent: int = 1) -> dotnet_code:
         extra_interfaces: List[str] = None
-        extra_body: str = None
+        parts: List[str] = []
+
+        # What the entity DOES, before the machinery that supports it.
+        parts.append(self.entityOperationsText(entity, code, indent))
 
         # Only the aggregate ROOT records facts, and only the ones its commands declare with
         # `emits`. A non-root entity has no stream of its own.
@@ -389,9 +392,53 @@ class DotnetEmitter:
             if (len(emitted) > 0):
                 code.usings.add("ServiceKit.Net.Eventing")
                 extra_interfaces = ["IEventRecordingRoot"]
-                extra_body = self.rootRecordingText(entity, emitted, code, indent)
+                parts.append(self.rootRecordingText(entity, emitted, code, indent))
+
+        extra_body: str = "".join(parts)
+        if (extra_body == ""):
+            extra_body = None
 
         return self.dataClassText(entity, entity.inherits, entity.name, entity.members, code, indent=indent, extra_interfaces=extra_interfaces, extra_body=extra_body)
+
+    def entityOperationsText(self, the_entity: entity, code: dotnet_code, indent: int = 1) -> str:
+        """
+        The behaviour the model declares on an entity, as partial declarations.
+
+        Declaration only: the body is the developer's, and a command the model declares that nobody
+        wrote does not compile. That is the same rule the reactions and the published translations
+        follow, and until now the entity was the one place in the language where the model could say
+        something and the compiler would shrug - the operation generated nothing at all, and only
+        `emits` was read, to decide which Record overloads exist.
+
+        There is no facade and no separate hook here. A hook exists where the generated half wraps
+        the call and has something of its own to do around it - the workflow entry point rolls its
+        saga back, so it has one. Nothing wraps an aggregate's command, so the declaration IS the
+        method.
+
+        Synchronous, and no CallingContext: an aggregate is the guardian of an invariant, not a
+        participant in the request pipeline. It performs no I/O, and a domain object that needs the
+        ambient call to exist is one nobody can construct in a test.
+        """
+        if (len(the_entity.operations) == 0):
+            return ""
+
+        buffer = io.StringIO()
+        buffer.write(f"{utils.tab(indent+1)}#region declared behaviour\n\n")
+
+        for the_operation in the_entity.operations:
+            returns: operation_return = the_operation.operation_return
+            return_text: str = "void" if (returns == None) else self.typeText(returns.type, code, fullName=True)
+            params_text: str = self.__operationParamsText(the_operation, code)
+
+            buffer.write(self.documentLines(the_operation, indent+1))
+            buffer.write(f"{utils.tab(indent+1)}/// <summary>\n")
+            buffer.write(f"{utils.tab(indent+1)}/// Declared by the model; the body is yours. Without it this does not compile - it does\n")
+            buffer.write(f"{utils.tab(indent+1)}/// not quietly become a command that is merely never there.\n")
+            buffer.write(f"{utils.tab(indent+1)}/// </summary>\n")
+            buffer.write(f"{utils.tab(indent+1)}public partial {return_text} {the_operation.name}({params_text});\n\n")
+
+        buffer.write(f"{utils.tab(indent+1)}#endregion declared behaviour\n\n")
+        return buffer.getvalue()
 
     def __collectEmittedEvents(self, the_entity: entity) -> List[event]:
         """
@@ -2755,43 +2802,46 @@ class DotnetEmitter:
                 buffer.write(f"{utils.tab(indent+1)}}}\n")
                 hooks.append(f"private partial {return_text} {hook_name}({params_text});")
 
+            # The rest are declarations, not facades. Nothing is wrapped around them, so a facade
+            # would only be a second name for the same call - and the attribute sits on the
+            # declaration just as well, because a partial method's two halves share their attributes.
+
             elif (the_operation.kind == operation.Kind.Query):
                 # A Temporal query is read-only and synchronous - it may not await anything
                 return_text = "void" if (returns == None) else self.typeText(returns.type, code, fullName=True)
                 buffer.write(f"{utils.tab(indent+1)}[WorkflowQuery]\n")
-                buffer.write(f"{utils.tab(indent+1)}public {return_text} {the_operation.name}({params_text}) => {hook_name}({args_text});\n")
-                hooks.append(f"private partial {return_text} {hook_name}({params_text});")
+                buffer.write(f"{utils.tab(indent+1)}public partial {return_text} {the_operation.name}({params_text});\n")
 
             elif (returns == None):
                 # A command with nothing to return cannot answer the caller either: that is a signal
                 buffer.write(f"{utils.tab(indent+1)}[WorkflowSignal]\n")
-                buffer.write(f"{utils.tab(indent+1)}public Task {the_operation.name}({params_text}) => {hook_name}({args_text});\n")
-                hooks.append(f"private partial Task {hook_name}({params_text});")
+                buffer.write(f"{utils.tab(indent+1)}public partial Task {the_operation.name}({params_text});\n")
 
             else:
                 # It returns something, so the caller waits for it - and may be turned down: update
                 return_text = f"Task<{self.typeText(returns.type, code, fullName=True)}>"
                 buffer.write(f"{utils.tab(indent+1)}[WorkflowUpdate]\n")
-                buffer.write(f"{utils.tab(indent+1)}public {return_text} {the_operation.name}({params_text}) => {hook_name}({args_text});\n")
-                hooks.append(f"private partial {return_text} {hook_name}({params_text});")
+                buffer.write(f"{utils.tab(indent+1)}public partial {return_text} {the_operation.name}({params_text});\n")
 
         for the_eventhandler in the_workflow.eventhandlers:
             handled_event: event = Engine.get_referenced_element(the_eventhandler, the_eventhandler.handledEvent)
             if (handled_event == None):
                 continue
             event_text: str = code.getDotnetFullName(handled_event)
-            hook_name: str = "Handle" + utils.camel_to_pascal(the_eventhandler.name)
 
+            # Unlike a context-level handler - whose method name is fixed by IEventHandler<T> - a
+            # workflow signal is free to carry the name the model gave it. So there is nothing for a
+            # facade to translate, and the declaration is the method.
             buffer.write("\n")
             buffer.write(self.documentLines(the_eventhandler, indent+1))
             buffer.write(f"{utils.tab(indent+1)}[WorkflowSignal]\n")
-            buffer.write(f"{utils.tab(indent+1)}public Task {the_eventhandler.name}({event_text} @event) => {hook_name}(@event);\n")
-            hooks.append(f"private partial Task {hook_name}({event_text} @event);")
+            buffer.write(f"{utils.tab(indent+1)}public partial Task {the_eventhandler.name}({event_text} @event);\n")
 
         if (len(hooks) > 0):
             buffer.write("\n")
-            buffer.write(f"{utils.tab(indent+1)}// The other half of the partial: this is what you write. The model declares which steps\n")
-            buffer.write(f"{utils.tab(indent+1)}// exist, not in what order - so the body is yours, and the compiler will not let you forget it.\n")
+            buffer.write(f"{utils.tab(indent+1)}// The entry point is the one place with a hook of its own, because it is the one place\n")
+            buffer.write(f"{utils.tab(indent+1)}// the generated half wraps you: it rolls the saga back. Everywhere else the declaration\n")
+            buffer.write(f"{utils.tab(indent+1)}// above IS the method, and its body is yours.\n")
             for hook in hooks:
                 buffer.write(f"{utils.tab(indent+1)}{hook}\n")
 
