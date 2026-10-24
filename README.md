@@ -172,6 +172,12 @@ Once you run DDD Interpreter on your D3I input file, you can generate various ou
 
 We welcome contributions! Please read the [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to submit pull requests, report issues, and request features.
 
+## Author
+
+Gulyás György Tamás — [ggyt.hu](https://ggyt.hu/)
+
+Background and design notes on D3I (in Hungarian): [ggyt.hu/d3i.html](https://ggyt.hu/d3i.html)
+
 ## License
 
 This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
